@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { zhTW } from 'date-fns/locale'
+import { AutoPulseLogo } from '@/components/AutoPulseLogo'
+import Image from 'next/image'
 
 export const revalidate = 60 // 每60秒重新验证
 
@@ -47,18 +49,18 @@ export default async function Home() {
   const articles = await getPublishedArticles()
   const featuredArticles = await getFeaturedArticles()
 
-  // 熱門品牌列表（可從數據庫動態獲取）
+  // 熱門品牌列表（使用真實 Logo URL）
   const popularBrands = [
-    { name: 'Tesla', logo: '🔋' },
-    { name: 'BYD', logo: '⚡' },
-    { name: 'NIO', logo: '🚗' },
-    { name: 'XPeng', logo: '🅿️' },
-    { name: 'BMW', logo: '🔵' },
-    { name: 'Mercedes', logo: '⭐' },
-    { name: 'Audi', logo: '🔷' },
-    { name: 'Toyota', logo: '🔴' },
-    { name: 'Honda', logo: '🅷' },
-    { name: 'Volkswagen', logo: '🚙' },
+    { name: 'Tesla', logoUrl: 'https://logo.clearbit.com/tesla.com' },
+    { name: 'BYD', logoUrl: 'https://logo.clearbit.com/byd.com' },
+    { name: 'NIO', logoUrl: 'https://logo.clearbit.com/nio.com' },
+    { name: 'XPeng', logoUrl: 'https://logo.clearbit.com/xiaopeng.com' },
+    { name: 'BMW', logoUrl: 'https://logo.clearbit.com/bmw.com' },
+    { name: 'Mercedes', logoUrl: 'https://logo.clearbit.com/mercedes-benz.com' },
+    { name: 'Audi', logoUrl: 'https://logo.clearbit.com/audi.com' },
+    { name: 'Toyota', logoUrl: 'https://logo.clearbit.com/toyota.com' },
+    { name: 'Honda', logoUrl: 'https://logo.clearbit.com/honda.com' },
+    { name: 'Volkswagen', logoUrl: 'https://logo.clearbit.com/vw.com' },
   ]
 
   return (
@@ -68,12 +70,8 @@ export default async function Home() {
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4 sm:py-5">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex-shrink-0">
-                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-                </svg>
-              </div>
+            <Link href="/" className="flex items-center gap-3 group">
+              <AutoPulseLogo className="w-9 h-9 sm:w-10 sm:h-10 transition-transform group-hover:scale-110" />
               <div>
                 <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight">車勢日報</h1>
                 <p className="text-[9px] sm:text-[10px] text-cyan-400 font-medium tracking-wider">AUTOPULSE</p>
@@ -133,7 +131,16 @@ export default async function Home() {
                 href={`/brand/${brand.name}`}
                 className="flex items-center gap-2 px-3 py-2 bg-gray-50 hover:bg-cyan-50 border border-gray-200 hover:border-cyan-300 rounded-lg transition-all group whitespace-nowrap"
               >
-                <span className="text-lg">{brand.logo}</span>
+                <div className="relative w-6 h-6 flex-shrink-0">
+                  <Image
+                    src={brand.logoUrl}
+                    alt={`${brand.name} logo`}
+                    width={24}
+                    height={24}
+                    className="object-contain"
+                    unoptimized
+                  />
+                </div>
                 <span className="text-sm font-medium text-gray-700 group-hover:text-cyan-600">
                   {brand.name}
                 </span>
