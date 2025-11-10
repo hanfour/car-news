@@ -30,19 +30,38 @@ export default async function Home() {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-[1400px] mx-auto px-6 py-4">
+      <header className="bg-gradient-to-r from-slate-900 to-slate-800 border-b border-cyan-500/30">
+        <div className="max-w-[1400px] mx-auto px-6 py-5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">🚗</span>
-              <h1 className="text-2xl font-bold text-gray-900">Car News AI</h1>
+            {/* Logo */}
+            <div className="flex items-center gap-3">
+              {/* 脉搏图标 - 代表"势" */}
+              <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg">
+                <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-white tracking-tight">車勢日報</h1>
+                <p className="text-[10px] text-cyan-400 font-medium tracking-wider">AUTOPULSE</p>
+              </div>
             </div>
-            <nav className="flex items-center gap-6 text-sm text-gray-600">
-              <a href="#" className="hover:text-orange-500 transition-colors">首頁</a>
-              <a href="#" className="hover:text-orange-500 transition-colors">新車</a>
-              <a href="#" className="hover:text-orange-500 transition-colors">評測</a>
-              <a href="#" className="hover:text-orange-500 transition-colors">行業</a>
+
+            {/* Navigation */}
+            <nav className="flex items-center gap-8 text-sm">
+              <a href="#" className="text-gray-300 hover:text-cyan-400 transition-colors font-medium">首頁</a>
+              <a href="#" className="text-gray-300 hover:text-cyan-400 transition-colors font-medium">新車</a>
+              <a href="#" className="text-gray-300 hover:text-cyan-400 transition-colors font-medium">評測</a>
+              <a href="#" className="text-gray-300 hover:text-cyan-400 transition-colors font-medium">行業</a>
+              <a href="#" className="text-gray-300 hover:text-cyan-400 transition-colors font-medium">數據</a>
             </nav>
+          </div>
+
+          {/* Slogan */}
+          <div className="mt-3 pt-3 border-t border-slate-700/50">
+            <p className="text-xs text-gray-400 font-light tracking-wide">
+              從數據到動力，AI 帶你看懂車界未來
+            </p>
           </div>
         </div>
       </header>
@@ -73,22 +92,27 @@ export default async function Home() {
 
           {/* Right Sidebar */}
           <aside className="w-[300px] flex-shrink-0">
-            <div className="bg-white rounded-lg shadow-sm p-4 sticky top-6">
-              <h3 className="text-base font-semibold text-gray-900 mb-4 pb-3 border-b border-gray-200">
-                熱門文章
-              </h3>
+            <div className="bg-white rounded-lg shadow-sm p-4 sticky top-6 border border-gray-200">
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200">
+                <svg className="w-4 h-4 text-cyan-500" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+                <h3 className="text-base font-semibold text-gray-900">
+                  熱門文章
+                </h3>
+              </div>
               {articles.length > 0 ? (
                 <div className="space-y-3">
                   {articles.slice(0, 8).map((article, index) => (
                     <Link
                       key={article.id}
                       href={`/${article.published_at?.slice(0, 4) || new Date().getFullYear()}/${article.published_at?.slice(5, 7) || String(new Date().getMonth() + 1).padStart(2, '0')}/${article.id}`}
-                      className="flex items-start gap-3 hover:bg-gray-50 p-2 rounded transition-colors"
+                      className="flex items-start gap-3 hover:bg-cyan-50 p-2 rounded transition-colors group"
                     >
-                      <span className="text-orange-500 font-semibold text-sm flex-shrink-0 w-5">
+                      <span className="text-cyan-600 font-bold text-sm flex-shrink-0 w-5 group-hover:scale-110 transition-transform">
                         {index + 1}
                       </span>
-                      <p className="text-sm text-gray-700 line-clamp-2 leading-snug">
+                      <p className="text-sm text-gray-700 line-clamp-2 leading-snug group-hover:text-cyan-700">
                         {article.title_zh}
                       </p>
                     </Link>
@@ -105,11 +129,22 @@ export default async function Home() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 mt-12">
-        <div className="max-w-[1400px] mx-auto px-6 py-6">
-          <p className="text-center text-xs text-gray-500">
-            © 2025 Car News AI · Powered by Claude & OpenAI · AI驅動的汽車新聞聚合平台
-          </p>
+      <footer className="bg-gradient-to-r from-slate-900 to-slate-800 border-t border-cyan-500/30 mt-12">
+        <div className="max-w-[1400px] mx-auto px-6 py-8">
+          <div className="flex items-center justify-between text-sm">
+            <div>
+              <p className="text-white font-semibold mb-1">車勢日報 AutoPulse</p>
+              <p className="text-gray-400 text-xs">從數據到動力，AI 帶你看懂車界未來</p>
+            </div>
+            <div className="text-right">
+              <p className="text-gray-400 text-xs">
+                © 2025 AutoPulse · Powered by <span className="text-cyan-400">Claude</span> & <span className="text-cyan-400">OpenAI</span>
+              </p>
+              <p className="text-gray-500 text-[10px] mt-1">
+                AI驅動的汽車新聞聚合平台
+              </p>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
@@ -120,32 +155,42 @@ function ArticleCard({ article }: { article: any }) {
   const year = article.published_at?.slice(0, 4) || new Date().getFullYear()
   const month = article.published_at?.slice(5, 7) || String(new Date().getMonth() + 1).padStart(2, '0')
 
-  // 生成随机渐变色作为假缩略图
+  // 生成随机渐变色作为假缩略图 - 专业科技配色
   const gradients = [
-    'from-blue-400 to-blue-600',
-    'from-purple-400 to-purple-600',
-    'from-orange-400 to-orange-600',
-    'from-green-400 to-green-600',
-    'from-red-400 to-red-600',
-    'from-indigo-400 to-indigo-600',
+    'from-slate-800 to-slate-900',
+    'from-blue-900 to-slate-900',
+    'from-cyan-900 to-blue-900',
+    'from-indigo-900 to-slate-900',
+    'from-slate-700 to-blue-900',
+    'from-blue-800 to-cyan-900',
   ]
   const gradient = gradients[Math.abs(article.id.split('').reduce((a: number, b: string) => a + b.charCodeAt(0), 0)) % gradients.length]
 
   return (
     <Link href={`/${year}/${month}/${article.id}`}>
-      <article className="bg-white rounded-lg overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer group">
+      <article className="bg-white rounded-lg overflow-hidden hover:shadow-xl hover:shadow-cyan-500/10 transition-all duration-300 cursor-pointer group border border-gray-200">
         {/* 假缩略图 */}
         <div className={`relative aspect-[16/9] bg-gradient-to-br ${gradient} flex items-center justify-center`}>
-          <span className="text-white text-5xl opacity-20">🚗</span>
-          {/* HOT标签 */}
-          <div className="absolute top-3 left-3 bg-orange-500 text-white text-xs font-semibold px-2 py-1 rounded">
-            AI生成
+          {/* 网格背景 */}
+          <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '20px 20px'}}></div>
+
+          {/* 脉搏图标 */}
+          <svg className="w-20 h-20 text-cyan-400 opacity-30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+          </svg>
+
+          {/* AI标签 */}
+          <div className="absolute top-3 left-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-bold px-2.5 py-1 rounded-md flex items-center gap-1.5">
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
+            </svg>
+            AI
           </div>
         </div>
 
         {/* 内容 */}
         <div className="p-4">
-          <h2 className="text-base font-semibold text-gray-900 line-clamp-2 leading-snug mb-3 group-hover:text-orange-500 transition-colors">
+          <h2 className="text-base font-semibold text-gray-900 line-clamp-2 leading-snug mb-3 group-hover:text-cyan-600 transition-colors">
             {article.title_zh}
           </h2>
 
