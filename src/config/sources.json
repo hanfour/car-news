@@ -1,0 +1,37 @@
+[
+  {
+    "id": "motortrend",
+    "name": "Motor Trend",
+    "url": "https://www.motortrend.com/feeds/all.xml",
+    "type": "rss",
+    "enabled": true
+  },
+  {
+    "id": "caranddriver",
+    "name": "Car and Driver",
+    "url": "https://www.caranddriver.com/rss/all.xml/",
+    "type": "rss",
+    "enabled": true
+  },
+  {
+    "id": "autoblog",
+    "name": "Autoblog",
+    "url": "https://www.autoblog.com/rss.xml",
+    "type": "rss",
+    "enabled": true
+  },
+  {
+    "id": "theverge-cars",
+    "name": "The Verge - Cars",
+    "url": "https://www.theverge.com/rss/transportation/index.xml",
+    "type": "rss",
+    "enabled": true
+  },
+  {
+    "id": "roadandtrack",
+    "name": "Road & Track",
+    "url": "https://www.roadandtrack.com/rss/all.xml/",
+    "type": "rss",
+    "enabled": true
+  }
+]
