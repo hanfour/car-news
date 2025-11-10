@@ -25,38 +25,40 @@ export function AutoPulseLogo({ className = "w-10 h-10" }: { className?: string 
           fill="none"
         />
 
-        {/* 中間橫線 - 眼鏡造型 */}
-        {/* 左鏡框 */}
-        <ellipse
-          cx="38"
-          cy="52"
-          rx="8"
-          ry="6"
-          stroke="url(#logo-gradient)"
-          strokeWidth="4"
-          fill="none"
-        />
-
-        {/* 右鏡框 */}
-        <ellipse
-          cx="62"
-          cy="52"
-          rx="8"
-          ry="6"
-          stroke="url(#logo-gradient)"
-          strokeWidth="4"
-          fill="none"
-        />
-
-        {/* 鼻樑 */}
+        {/* 中間橫線 - 速度線（動態流線） */}
+        {/* 第一條速度線（最長） */}
         <line
-          x1="46"
-          y1="52"
-          x2="54"
-          y2="52"
+          x1="32"
+          y1="48"
+          x2="68"
+          y2="48"
           stroke="url(#logo-gradient)"
           strokeWidth="4"
           strokeLinecap="round"
+        />
+
+        {/* 第二條速度線（中等） */}
+        <line
+          x1="35"
+          y1="54"
+          x2="65"
+          y2="54"
+          stroke="url(#logo-gradient)"
+          strokeWidth="3.5"
+          strokeLinecap="round"
+          opacity="0.8"
+        />
+
+        {/* 第三條速度線（最短） */}
+        <line
+          x1="38"
+          y1="60"
+          x2="62"
+          y2="60"
+          stroke="url(#logo-gradient)"
+          strokeWidth="3"
+          strokeLinecap="round"
+          opacity="0.6"
         />
       </g>
     </svg>
@@ -89,10 +91,10 @@ export function AutoPulseLogoSimple({ className = "w-6 h-6" }: { className?: str
         fill="none"
       />
 
-      {/* 眼鏡簡化版 */}
-      <ellipse cx="38" cy="52" rx="7" ry="5" stroke="url(#simple-gradient)" strokeWidth="4" fill="none" />
-      <ellipse cx="62" cy="52" rx="7" ry="5" stroke="url(#simple-gradient)" strokeWidth="4" fill="none" />
-      <line x1="45" y1="52" x2="55" y2="52" stroke="url(#simple-gradient)" strokeWidth="4" />
+      {/* 速度線簡化版 */}
+      <line x1="32" y1="48" x2="68" y2="48" stroke="url(#simple-gradient)" strokeWidth="4" strokeLinecap="round" />
+      <line x1="35" y1="54" x2="65" y2="54" stroke="url(#simple-gradient)" strokeWidth="3.5" strokeLinecap="round" opacity="0.8" />
+      <line x1="38" y1="60" x2="62" y2="60" stroke="url(#simple-gradient)" strokeWidth="3" strokeLinecap="round" opacity="0.6" />
     </svg>
   )
 }
