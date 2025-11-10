@@ -8,9 +8,9 @@ export const revalidate = 60 // 每60秒重新验证
 async function getPublishedArticles() {
   const supabase = createClient()
 
-  const { data, error } = await supabase
+  const { data, error} = await supabase
     .from('generated_articles')
-    .select('id, title_zh, content_zh, published_at, view_count, share_count, created_at')
+    .select('id, title_zh, content_zh, published_at, view_count, share_count, created_at, brands, car_models, categories, tags')
     .eq('published', true)
     .order('published_at', { ascending: false })
     .order('created_at', { ascending: false })
@@ -24,8 +24,28 @@ async function getPublishedArticles() {
   return data || []
 }
 
+async function getFeaturedArticles() {
+  const supabase = createClient()
+
+  const { data, error } = await supabase
+    .from('generated_articles')
+    .select('id, title_zh, published_at, brands, categories')
+    .eq('published', true)
+    .eq('is_featured', true)
+    .order('published_at', { ascending: false })
+    .limit(5)
+
+  if (error) {
+    console.error('Failed to fetch featured articles:', error)
+    return []
+  }
+
+  return data || []
+}
+
 export default async function Home() {
   const articles = await getPublishedArticles()
+  const featuredArticles = await getFeaturedArticles()
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100">
@@ -90,6 +110,50 @@ export default async function Home() {
 
       {/* Main Container */}
       <div className="flex-1 max-w-[1400px] mx-auto px-4 sm:px-6 py-4 sm:py-6 w-full">
+        {/* 今日要闻 Featured Articles */}
+        {featuredArticles.length > 0 && (
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-1 h-6 bg-gradient-to-b from-cyan-500 to-blue-600 rounded-full"></div>
+              <h2 className="text-xl font-bold text-gray-900">今日要聞</h2>
+              <svg className="w-5 h-5 text-orange-500 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+              {featuredArticles.map((article: any) => (
+                <Link
+                  key={article.id}
+                  href={`/${article.published_at?.slice(0, 4) || new Date().getFullYear()}/${article.published_at?.slice(5, 7) || String(new Date().getMonth() + 1).padStart(2, '0')}/${article.id}`}
+                  className="group bg-gradient-to-br from-cyan-50 to-blue-50 hover:from-cyan-100 hover:to-blue-100 border-2 border-cyan-200 rounded-lg p-4 transition-all duration-200 hover:shadow-lg hover:scale-105"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <span className="text-xs font-bold text-cyan-600 bg-cyan-100 px-2 py-1 rounded">
+                      {article.categories?.[0] || '要聞'}
+                    </span>
+                    <svg className="w-4 h-4 text-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                  <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 leading-snug group-hover:text-cyan-700 transition-colors">
+                    {article.title_zh}
+                  </h3>
+                  {article.brands && article.brands.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {article.brands.slice(0, 2).map((brand: string) => (
+                        <span key={brand} className="text-[10px] text-gray-600 bg-white px-1.5 py-0.5 rounded">
+                          {brand}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
           {/* Main Content */}
           <main className="flex-1 min-w-0">
@@ -212,6 +276,22 @@ function ArticleCard({ article }: { article: any }) {
 
         {/* 内容 */}
         <div className="p-4">
+          {/* 标签栏 */}
+          {(article.categories || article.brands) && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {article.categories?.slice(0, 1).map((cat: string) => (
+                <span key={cat} className="text-[10px] font-semibold text-cyan-700 bg-cyan-100 px-2 py-0.5 rounded">
+                  {cat}
+                </span>
+              ))}
+              {article.brands?.slice(0, 2).map((brand: string) => (
+                <span key={brand} className="text-[10px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
+                  {brand}
+                </span>
+              ))}
+            </div>
+          )}
+
           <h2 className="text-base font-semibold text-gray-900 line-clamp-2 leading-snug mb-3 group-hover:text-cyan-600 transition-colors">
             {article.title_zh}
           </h2>

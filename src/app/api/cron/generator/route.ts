@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
         // 3.5 生成短ID
         const shortId = generateShortId()
 
-        // 3.6 保存文章
+        // 3.6 保存文章（包含标签）
         const { data: article, error: insertError } = await supabase
           .from('generated_articles')
           .insert({
@@ -101,7 +101,11 @@ export async function GET(request: NextRequest) {
             reasoning: generated.reasoning,
             style_version: 'v1.0',
             published: decision.shouldPublish,
-            published_at: decision.shouldPublish ? today : null
+            published_at: decision.shouldPublish ? today : null,
+            brands: generated.brands || [],
+            car_models: generated.car_models || [],
+            categories: generated.categories || [],
+            tags: generated.tags || []
           })
           .select()
           .single()

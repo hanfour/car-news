@@ -34,6 +34,10 @@ export interface GenerateArticleOutput {
     structure_valid: boolean
   }
   reasoning: string
+  brands?: string[]
+  car_models?: string[]
+  categories?: string[]
+  tags?: string[]
 }
 
 export async function generateArticleWithClaude(
@@ -79,8 +83,18 @@ ${s.content.slice(0, 2000)}...
     "has_unverified": false,
     "structure_valid": true
   },
-  "reasoning": "簡要說明為什麼這些來源可以聚合"
+  "reasoning": "簡要說明為什麼這些來源可以聚合",
+  "brands": ["Tesla", "BMW"],
+  "car_models": ["Model 3", "X5"],
+  "categories": ["新車", "評測", "行業", "數據"],
+  "tags": ["電動車", "自動駕駛", "新能源", "性能測試"]
 }
+
+**標籤提取說明**：
+- brands: 提取文章中提到的汽車品牌（英文）
+- car_models: 提取具體車型名稱
+- categories: 從以下選擇1-2個：新車、評測、行業、數據、技術
+- tags: 3-5個關鍵詞標籤（繁體中文）
 
 開始撰寫：
 `
