@@ -47,6 +47,20 @@ export default async function Home() {
   const articles = await getPublishedArticles()
   const featuredArticles = await getFeaturedArticles()
 
+  // 熱門品牌列表（可從數據庫動態獲取）
+  const popularBrands = [
+    { name: 'Tesla', logo: '🔋' },
+    { name: 'BYD', logo: '⚡' },
+    { name: 'NIO', logo: '🚗' },
+    { name: 'XPeng', logo: '🅿️' },
+    { name: 'BMW', logo: '🔵' },
+    { name: 'Mercedes', logo: '⭐' },
+    { name: 'Audi', logo: '🔷' },
+    { name: 'Toyota', logo: '🔴' },
+    { name: 'Honda', logo: '🅷' },
+    { name: 'Volkswagen', logo: '🚙' },
+  ]
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-100">
       {/* Header */}
@@ -54,7 +68,7 @@ export default async function Home() {
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4 sm:py-5">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             {/* Logo */}
-            <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-3">
               <div className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex-shrink-0">
                 <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
@@ -64,7 +78,7 @@ export default async function Home() {
                 <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight">車勢日報</h1>
                 <p className="text-[9px] sm:text-[10px] text-cyan-400 font-medium tracking-wider">AUTOPULSE</p>
               </div>
-            </div>
+            </Link>
 
             {/* Search + Navigation */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
@@ -108,55 +122,96 @@ export default async function Home() {
         </div>
       </header>
 
+      {/* 品牌導航欄 (AD-1: Premium Brand Navigation) */}
+      <div className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-3">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+            <span className="text-xs font-semibold text-gray-600 whitespace-nowrap mr-2">熱門品牌</span>
+            {popularBrands.map((brand) => (
+              <Link
+                key={brand.name}
+                href={`/brand/${brand.name}`}
+                className="flex items-center gap-2 px-3 py-2 bg-gray-50 hover:bg-cyan-50 border border-gray-200 hover:border-cyan-300 rounded-lg transition-all group whitespace-nowrap"
+              >
+                <span className="text-lg">{brand.logo}</span>
+                <span className="text-sm font-medium text-gray-700 group-hover:text-cyan-600">
+                  {brand.name}
+                </span>
+              </Link>
+            ))}
+            <button className="flex items-center gap-1 px-3 py-2 text-sm text-gray-500 hover:text-cyan-600 whitespace-nowrap">
+              更多品牌
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Main Container */}
       <div className="flex-1 max-w-[1400px] mx-auto px-4 sm:px-6 py-4 sm:py-6 w-full">
-        {/* 今日要闻 Featured Articles */}
-        {featuredArticles.length > 0 && (
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-1 h-6 bg-gradient-to-b from-cyan-500 to-blue-600 rounded-full"></div>
-              <h2 className="text-xl font-bold text-gray-900">今日要聞</h2>
-              <svg className="w-5 h-5 text-orange-500 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-              </svg>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-              {featuredArticles.map((article: any) => (
-                <Link
-                  key={article.id}
-                  href={`/${article.published_at?.slice(0, 4) || new Date().getFullYear()}/${article.published_at?.slice(5, 7) || String(new Date().getMonth() + 1).padStart(2, '0')}/${article.id}`}
-                  className="group bg-gradient-to-br from-cyan-50 to-blue-50 hover:from-cyan-100 hover:to-blue-100 border-2 border-cyan-200 rounded-lg p-4 transition-all duration-200 hover:shadow-lg hover:scale-105"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <span className="text-xs font-bold text-cyan-600 bg-cyan-100 px-2 py-1 rounded">
-                      {article.categories?.[0] || '要聞'}
-                    </span>
-                    <svg className="w-4 h-4 text-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                  <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 leading-snug group-hover:text-cyan-700 transition-colors">
-                    {article.title_zh}
-                  </h3>
-                  {article.brands && article.brands.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {article.brands.slice(0, 2).map((brand: string) => (
-                        <span key={brand} className="text-[10px] text-gray-600 bg-white px-1.5 py-0.5 rounded">
-                          {brand}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
-          {/* Main Content */}
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* 主內容區 */}
           <main className="flex-1 min-w-0">
+            {/* AD-2: Top Banner (728x90) */}
+            <div className="mb-6 bg-gradient-to-r from-gray-100 to-gray-200 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center h-[90px]">
+              <div className="text-center">
+                <p className="text-xs font-semibold text-gray-500 mb-1">廣告位 AD-2</p>
+                <p className="text-[10px] text-gray-400">728 x 90 Banner</p>
+              </div>
+            </div>
+
+            {/* 今日要闻 Featured Articles */}
+            {featuredArticles.length > 0 && (
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-1 h-6 bg-gradient-to-b from-cyan-500 to-blue-600 rounded-full"></div>
+                  <h2 className="text-xl font-bold text-gray-900">今日要聞</h2>
+                  <svg className="w-5 h-5 text-orange-500 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+                  {featuredArticles.map((article: any) => (
+                    <Link
+                      key={article.id}
+                      href={`/${article.published_at?.slice(0, 4) || new Date().getFullYear()}/${article.published_at?.slice(5, 7) || String(new Date().getMonth() + 1).padStart(2, '0')}/${article.id}`}
+                      className="group bg-gradient-to-br from-cyan-50 to-blue-50 hover:from-cyan-100 hover:to-blue-100 border-2 border-cyan-200 rounded-lg p-4 transition-all duration-200 hover:shadow-lg hover:scale-105"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <span className="text-xs font-bold text-cyan-600 bg-cyan-100 px-2 py-1 rounded">
+                          {article.categories?.[0] || '要聞'}
+                        </span>
+                        <svg className="w-4 h-4 text-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                      <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 leading-snug group-hover:text-cyan-700 transition-colors">
+                        {article.title_zh}
+                      </h3>
+                      {article.brands && article.brands.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {article.brands.slice(0, 2).map((brand: string) => (
+                            <span key={brand} className="text-[10px] text-gray-600 bg-white px-1.5 py-0.5 rounded">
+                              {brand}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 最新文章標題 */}
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-900">最新文章</h2>
+            </div>
+
+            {/* 文章列表 */}
             {articles.length === 0 ? (
               <div className="bg-white rounded-lg shadow-sm p-8 sm:p-12 text-center">
                 <div className="text-4xl sm:text-6xl mb-4">📰</div>
@@ -168,23 +223,68 @@ export default async function Home() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                {articles.map((article) => (
-                  <ArticleCard key={article.id} article={article} />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 mb-6">
+                  {articles.slice(0, 6).map((article) => (
+                    <ArticleCard key={article.id} article={article} />
+                  ))}
+                </div>
+
+                {/* AD-3: Native Ad (信息流廣告) */}
+                <div className="mb-6 bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg border-2 border-dashed border-amber-300 p-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-xs font-semibold text-amber-600 bg-amber-100 px-2 py-1 rounded">贊助內容</span>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-gray-600 mb-1">AD-3: 原生廣告位</p>
+                    <p className="text-xs text-gray-500">信息流廣告 / 贊助文章</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 mb-6">
+                  {articles.slice(6, 12).map((article) => (
+                    <ArticleCard key={article.id} article={article} />
+                  ))}
+                </div>
+
+                {/* AD-4: Bottom Banner (728x90) */}
+                <div className="mb-6 bg-gradient-to-r from-gray-100 to-gray-200 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center h-[90px]">
+                  <div className="text-center">
+                    <p className="text-xs font-semibold text-gray-500 mb-1">廣告位 AD-4</p>
+                    <p className="text-[10px] text-gray-400">728 x 90 Bottom Banner</p>
+                  </div>
+                </div>
+
+                {articles.length > 12 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                    {articles.slice(12).map((article) => (
+                      <ArticleCard key={article.id} article={article} />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </main>
 
           {/* Right Sidebar */}
-          <aside className="w-full lg:w-[300px] flex-shrink-0">
-            <div className="bg-white rounded-lg shadow-sm p-4 sticky top-6 border border-gray-200">
+          <aside className="w-full lg:w-[300px] flex-shrink-0 space-y-6">
+            {/* AD-5: Medium Rectangle (300x250) */}
+            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg border-2 border-dashed border-blue-300 p-6 h-[250px] flex items-center justify-center sticky top-6">
+              <div className="text-center">
+                <p className="text-sm font-semibold text-blue-600 mb-1">AD-5</p>
+                <p className="text-xs text-gray-500">300 x 250</p>
+                <p className="text-[10px] text-gray-400 mt-1">方形廣告</p>
+              </div>
+            </div>
+
+            {/* 熱門文章 */}
+            <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
               <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200">
                 <svg className="w-4 h-4 text-cyan-500" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                 </svg>
                 <h3 className="text-base font-semibold text-gray-900">
-                  熱門文章
+                  本週熱門
                 </h3>
               </div>
               {articles.length > 0 ? (
@@ -209,6 +309,24 @@ export default async function Home() {
                   暫無熱門文章
                 </p>
               )}
+            </div>
+
+            {/* AD-6: Wide Skyscraper (160x600) */}
+            <div className="bg-gradient-to-b from-purple-50 to-pink-50 rounded-lg border-2 border-dashed border-purple-300 h-[600px] flex items-center justify-center">
+              <div className="text-center">
+                <p className="text-sm font-semibold text-purple-600 mb-1">AD-6</p>
+                <p className="text-xs text-gray-500">160 x 600</p>
+                <p className="text-[10px] text-gray-400 mt-1">摩天大樓</p>
+              </div>
+            </div>
+
+            {/* AD-7: Bottom Rectangle (300x250) */}
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border-2 border-dashed border-green-300 p-6 h-[250px] flex items-center justify-center">
+              <div className="text-center">
+                <p className="text-sm font-semibold text-green-600 mb-1">AD-7</p>
+                <p className="text-xs text-gray-500">300 x 250</p>
+                <p className="text-[10px] text-gray-400 mt-1">底部方形</p>
+              </div>
             </div>
           </aside>
         </div>
