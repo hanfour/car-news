@@ -82,11 +82,11 @@ export default async function Home() {
 
               {/* Navigation - Desktop */}
               <nav className="hidden md:flex items-center gap-6 lg:gap-8 text-sm">
-                <a href="#" className="text-gray-300 hover:text-cyan-400 transition-colors font-medium whitespace-nowrap">首頁</a>
-                <a href="#" className="text-gray-300 hover:text-cyan-400 transition-colors font-medium whitespace-nowrap">新車</a>
-                <a href="#" className="text-gray-300 hover:text-cyan-400 transition-colors font-medium whitespace-nowrap">評測</a>
-                <a href="#" className="text-gray-300 hover:text-cyan-400 transition-colors font-medium whitespace-nowrap">行業</a>
-                <a href="#" className="text-gray-300 hover:text-cyan-400 transition-colors font-medium whitespace-nowrap">數據</a>
+                <Link href="/" className="text-cyan-400 font-medium whitespace-nowrap">首頁</Link>
+                <Link href="/category/新車" className="text-gray-300 hover:text-cyan-400 transition-colors font-medium whitespace-nowrap">新車</Link>
+                <Link href="/category/評測" className="text-gray-300 hover:text-cyan-400 transition-colors font-medium whitespace-nowrap">評測</Link>
+                <Link href="/category/行業" className="text-gray-300 hover:text-cyan-400 transition-colors font-medium whitespace-nowrap">行業</Link>
+                <Link href="/category/數據" className="text-gray-300 hover:text-cyan-400 transition-colors font-medium whitespace-nowrap">數據</Link>
               </nav>
 
               {/* Mobile Menu Button */}
