@@ -13,86 +13,57 @@ export function AutoPulseLogo({ className = "w-10 h-10" }: { className?: string 
         </linearGradient>
       </defs>
 
-      {/* A 字母 + 賽車儀表盤刻度 */}
+      {/* 賽車儀表：圓形 + 接近平行的指針 */}
       <g>
-        {/* A 字母左側斜線 */}
-        <path
-          d="M 25 85 L 45 20 L 50 10"
+        {/* 外圓（儀表外框） */}
+        <circle
+          cx="50"
+          cy="50"
+          r="40"
           stroke="url(#logo-gradient)"
-          strokeWidth="6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+          strokeWidth="5"
           fill="none"
         />
 
-        {/* A 字母右側斜線 */}
-        <path
-          d="M 50 10 L 55 20 L 75 85"
+        {/* 內圓（儀表內環，可選） */}
+        <circle
+          cx="50"
+          cy="50"
+          r="32"
           stroke="url(#logo-gradient)"
-          strokeWidth="6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+          strokeWidth="2"
           fill="none"
+          opacity="0.3"
         />
 
-        {/* A 的橫線 - 儀表盤刻度設計 */}
-        {/* 主刻度線（中央） */}
+        {/* 左側指針（接近平行，略微向上） */}
         <line
-          x1="35"
-          y1="55"
-          x2="65"
-          y2="55"
+          x1="20"
+          y1="52"
+          x2="48"
+          y2="48"
           stroke="url(#logo-gradient)"
           strokeWidth="5"
           strokeLinecap="round"
         />
 
-        {/* 小刻度線（左1） */}
+        {/* 右側指針（接近平行，略微向上） */}
         <line
-          x1="32"
-          y1="50"
-          x2="37"
-          y2="50"
+          x1="52"
+          y1="48"
+          x2="80"
+          y2="52"
           stroke="url(#logo-gradient)"
-          strokeWidth="3"
+          strokeWidth="5"
           strokeLinecap="round"
-          opacity="0.7"
         />
 
-        {/* 小刻度線（左2） */}
-        <line
-          x1="30"
-          y1="45"
-          x2="34"
-          y2="45"
-          stroke="url(#logo-gradient)"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          opacity="0.5"
-        />
-
-        {/* 小刻度線（右1） */}
-        <line
-          x1="63"
-          y1="50"
-          x2="68"
-          y2="50"
-          stroke="url(#logo-gradient)"
-          strokeWidth="3"
-          strokeLinecap="round"
-          opacity="0.7"
-        />
-
-        {/* 小刻度線（右2） */}
-        <line
-          x1="66"
-          y1="45"
-          x2="70"
-          y2="45"
-          stroke="url(#logo-gradient)"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          opacity="0.5"
+        {/* 中心點 */}
+        <circle
+          cx="50"
+          cy="50"
+          r="4"
+          fill="url(#logo-gradient)"
         />
       </g>
     </svg>
@@ -115,11 +86,11 @@ export function AutoPulseLogoSimple({ className = "w-6 h-6" }: { className?: str
         </linearGradient>
       </defs>
 
-      {/* 簡化的 A + 儀表刻度 */}
-      <path d="M 25 85 L 45 20 L 50 10 L 55 20 L 75 85" stroke="url(#simple-gradient)" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-      <line x1="35" y1="55" x2="65" y2="55" stroke="url(#simple-gradient)" strokeWidth="6" strokeLinecap="round" />
-      <line x1="32" y1="50" x2="37" y2="50" stroke="url(#simple-gradient)" strokeWidth="3" strokeLinecap="round" opacity="0.7" />
-      <line x1="63" y1="50" x2="68" y2="50" stroke="url(#simple-gradient)" strokeWidth="3" strokeLinecap="round" opacity="0.7" />
+      {/* 簡化的圓形儀表 + 平行指針 */}
+      <circle cx="50" cy="50" r="40" stroke="url(#simple-gradient)" strokeWidth="6" fill="none" />
+      <line x1="20" y1="52" x2="48" y2="48" stroke="url(#simple-gradient)" strokeWidth="6" strokeLinecap="round" />
+      <line x1="52" y1="48" x2="80" y2="52" stroke="url(#simple-gradient)" strokeWidth="6" strokeLinecap="round" />
+      <circle cx="50" cy="50" r="5" fill="url(#simple-gradient)" />
     </svg>
   )
 }
