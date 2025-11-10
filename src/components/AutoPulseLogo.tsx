@@ -13,11 +13,11 @@ export function AutoPulseLogo({ className = "w-10 h-10" }: { className?: string 
         </linearGradient>
       </defs>
 
-      {/* 字母 A 外框 - 扁平倒 U 型（壓扁 25%） */}
+      {/* 字母 A 外框 - 扁平倒 U 型（圓潤頂部） */}
       <g>
-        {/* 整體倒 U 型曲線（更扁平的弧度） */}
+        {/* 整體倒 U 型曲線（增加頂部圓弧曲率） */}
         <path
-          d="M 30 75 Q 25 60, 25 50 Q 25 30, 35 20 Q 45 12, 50 12 Q 55 12, 65 20 Q 75 30, 75 50 Q 75 60, 70 75"
+          d="M 30 75 Q 25 60, 25 50 Q 25 28, 38 17 Q 43 12, 50 12 Q 57 12, 62 17 Q 75 28, 75 50 Q 75 60, 70 75"
           stroke="url(#logo-gradient)"
           strokeWidth="5"
           strokeLinecap="round"
@@ -79,9 +79,9 @@ export function AutoPulseLogoSimple({ className = "w-6 h-6" }: { className?: str
         </linearGradient>
       </defs>
 
-      {/* 簡化的扁平倒 U 型 + 眼鏡 */}
+      {/* 簡化的扁平倒 U 型（圓潤頂部）+ 眼鏡 */}
       <path
-        d="M 30 75 Q 25 60, 25 48 Q 25 28, 37 18 Q 45 12, 50 12 Q 55 12, 63 18 Q 75 28, 75 48 Q 75 60, 70 75"
+        d="M 30 75 Q 25 60, 25 48 Q 25 26, 38 16 Q 43 12, 50 12 Q 57 12, 62 16 Q 75 26, 75 48 Q 75 60, 70 75"
         stroke="url(#simple-gradient)"
         strokeWidth="6"
         strokeLinecap="round"
