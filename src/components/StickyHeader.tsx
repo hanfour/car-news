@@ -4,7 +4,10 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { WantCarLogo } from '@/components/WantCarLogo'
 import { SearchModal } from '@/components/SearchModal'
+import { AuthModal } from '@/components/AuthModal'
+import { useAuth } from '@/contexts/AuthContext'
 import { CATEGORIES } from '@/config/categories'
+import { isValidImageUrl } from '@/lib/security'
 import { useState, useEffect, useRef } from 'react'
 
 interface Brand {
@@ -25,13 +28,18 @@ interface StickyHeaderProps {
 }
 
 export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true, currentPath = '' }: StickyHeaderProps) {
+  const { user, profile, loading, signOut } = useAuth()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [expandedCountries, setExpandedCountries] = useState<Set<string>>(new Set())
   const lastScrollY = useRef(0)
   const isTransitioning = useRef(false)
   const brandScrollRef = useRef<HTMLDivElement>(null)
+  const expandedUserMenuRef = useRef<HTMLDivElement>(null)
+  const collapsedUserMenuRef = useRef<HTMLDivElement>(null)
 
   const toggleCountry = (country: string) => {
     setExpandedCountries(prev => {
@@ -84,6 +92,28 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
     return () => window.removeEventListener('scroll', handleScroll)
   }, [isScrolled])
 
+  // 點擊外部關閉用戶選單
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const expandedMenu = expandedUserMenuRef.current
+      const collapsedMenu = collapsedUserMenuRef.current
+
+      if (expandedMenu && !expandedMenu.contains(event.target as Node)) {
+        setIsUserMenuOpen(false)
+      } else if (collapsedMenu && !collapsedMenu.contains(event.target as Node)) {
+        setIsUserMenuOpen(false)
+      }
+    }
+
+    if (isUserMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isUserMenuOpen])
+
   const scrollBrandsRight = () => {
     if (brandScrollRef.current) {
       brandScrollRef.current.scrollBy({ left: 400, behavior: 'smooth' })
@@ -112,17 +142,87 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                 </span>
               </Link>
 
-              {/* 右側功能：搜尋 + 電子報 */}
+              {/* 右側功能：搜尋 + 會員 */}
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setIsSearchOpen(true)}
                   className="p-2 hover:bg-gray-100 rounded"
                   style={{ color: '#404040' }}
+                  aria-label="搜尋"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </button>
+
+                {/* 會員按鈕 */}
+                {loading ? (
+                  <div className="w-8 h-8 flex items-center justify-center">
+                    <div className="w-5 h-5 border-2 border-gray-300 border-t-[#FFBB00] rounded-full animate-spin" />
+                  </div>
+                ) : user ? (
+                  <div className="relative" ref={expandedUserMenuRef}>
+                    <button
+                      onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                      className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded transition-colors"
+                      aria-label="用戶選單"
+                    >
+                      {profile?.avatar_url && isValidImageUrl(profile.avatar_url) ? (
+                        <Image
+                          src={profile.avatar_url}
+                          alt={profile.display_name || 'User'}
+                          width={32}
+                          height={32}
+                          className="rounded-full object-cover"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-[#FFBB00] flex items-center justify-center">
+                          <span className="text-sm font-bold" style={{ color: '#404040' }}>
+                            {profile?.display_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
+                          </span>
+                        </div>
+                      )}
+                    </button>
+
+                    {/* 用戶下拉選單 */}
+                    {isUserMenuOpen && (
+                      <div
+                        className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border py-1 z-50"
+                        style={{ borderColor: '#cdcdcd' }}
+                      >
+                        <div className="px-4 py-2 border-b" style={{ borderColor: '#e5e5e5' }}>
+                          <p className="text-sm font-medium" style={{ color: '#404040' }}>
+                            {profile?.display_name || user.email}
+                          </p>
+                          {profile?.display_name && (
+                            <p className="text-xs" style={{ color: '#808080' }}>
+                              {user.email}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => {
+                            signOut()
+                            setIsUserMenuOpen(false)
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
+                          style={{ color: '#808080' }}
+                        >
+                          登出
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsAuthModalOpen(true)}
+                    className="px-4 py-2 text-sm font-medium rounded hover:bg-[#FFCC33] transition-colors"
+                    style={{ backgroundColor: '#FFBB00', color: '#404040' }}
+                  >
+                    登入
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -132,12 +232,13 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
         <div className="">
           <div className="max-w-[1440px] mx-auto px-12">
             {isScrolled ? (
-              /* 收合模式：漢堡選單 + Logo | 搜尋 */
+              /* 收合模式：漢堡選單 + Logo | 搜尋 + 會員 */
               <div className="flex items-center justify-between py-3">
                 <div className="flex items-center gap-3">
                   <button
                     className="p-2 text-gray-600 hover:bg-gray-100 rounded"
                     onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    aria-label="選單"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -147,15 +248,88 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                     <WantCarLogo size={32} />
                   </Link>
                 </div>
-                <button
-                  onClick={() => setIsSearchOpen(true)}
-                  className="p-2 hover:bg-gray-100 rounded"
-                  style={{ color: '#404040' }}
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsSearchOpen(true)}
+                    className="p-2 hover:bg-gray-100 rounded"
+                    style={{ color: '#404040' }}
+                    aria-label="搜尋"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </button>
+
+                  {/* 會員按鈕 - 收合模式 */}
+                  {loading ? (
+                    <div className="w-8 h-8 flex items-center justify-center">
+                      <div className="w-4 h-4 border-2 border-gray-300 border-t-[#FFBB00] rounded-full animate-spin" />
+                    </div>
+                  ) : user ? (
+                    <div className="relative" ref={collapsedUserMenuRef}>
+                      <button
+                        onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                        className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded transition-colors"
+                        aria-label="用戶選單"
+                      >
+                        {profile?.avatar_url && isValidImageUrl(profile.avatar_url) ? (
+                          <Image
+                            src={profile.avatar_url}
+                            alt={profile.display_name || 'User'}
+                            width={28}
+                            height={28}
+                            className="rounded-full object-cover"
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="w-7 h-7 rounded-full bg-[#FFBB00] flex items-center justify-center">
+                            <span className="text-xs font-bold" style={{ color: '#404040' }}>
+                              {profile?.display_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
+                            </span>
+                          </div>
+                        )}
+                      </button>
+
+                      {/* 用戶下拉選單 */}
+                      {isUserMenuOpen && (
+                        <div
+                          className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border py-1 z-50"
+                          style={{ borderColor: '#cdcdcd' }}
+                        >
+                          <div className="px-4 py-2 border-b" style={{ borderColor: '#e5e5e5' }}>
+                            <p className="text-sm font-medium" style={{ color: '#404040' }}>
+                              {profile?.display_name || user.email}
+                            </p>
+                            {profile?.display_name && (
+                              <p className="text-xs" style={{ color: '#808080' }}>
+                                {user.email}
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => {
+                              signOut()
+                              setIsUserMenuOpen(false)
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
+                            style={{ color: '#808080' }}
+                          >
+                            登出
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setIsAuthModalOpen(true)}
+                      className="px-3 py-1.5 text-xs font-medium rounded hover:bg-[#FFCC33] transition-colors"
+                      style={{ backgroundColor: '#FFBB00', color: '#404040' }}
+                    >
+                      登入
+                    </button>
+                  )}
+                </div>
               </div>
             ) : (
               /* 展開模式：漢堡選單 | 分類導航 */
@@ -367,6 +541,9 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
 
       {/* Search Modal */}
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+
+      {/* Auth Modal */}
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
     </>
   )
 }
