@@ -21,7 +21,7 @@ export async function fetchWebpage(url: string): Promise<string> {
 export function extractTextFromHtml(
   html: string,
   selector?: { article?: string; title?: string; content?: string }
-): { title: string; content: string } | null {
+): { title: string; content: string; imageUrl?: string } | null {
   try {
     const $ = cheerio.load(html)
 
@@ -30,6 +30,7 @@ export function extractTextFromHtml(
 
     let title = ''
     let content = ''
+    let imageUrl = ''
 
     if (selector?.title) {
       title = $(selector.title).first().text().trim()
@@ -57,6 +58,24 @@ export function extractTextFromHtml(
       }
     }
 
+    // 提取第一张有意义的图片
+    // 優先順序：og:image > article img > main img > first img
+    imageUrl = $('meta[property="og:image"]').attr('content') || ''
+
+    if (!imageUrl) {
+      const articleImg = $('article img').first().attr('src')
+      const mainImg = $('main img').first().attr('src')
+      const firstImg = $('img').first().attr('src')
+
+      imageUrl = articleImg || mainImg || firstImg || ''
+    }
+
+    // 確保圖片 URL 是完整的
+    if (imageUrl && !imageUrl.startsWith('http')) {
+      // 如果是相對路徑，需要補全（這裡簡化處理，實際可能需要解析 base URL）
+      imageUrl = ''
+    }
+
     // 清理空白
     content = content.replace(/\s+/g, ' ').trim()
 
@@ -66,7 +85,8 @@ export function extractTextFromHtml(
 
     return {
       title,
-      content: content.slice(0, 5000)
+      content: content.slice(0, 5000),
+      imageUrl: imageUrl || undefined
     }
   } catch (error) {
     console.error('Failed to extract text from HTML:', error)

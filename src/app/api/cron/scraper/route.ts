@@ -64,7 +64,9 @@ export async function GET(request: NextRequest) {
             content: article.content,
             scraped_at: new Date().toISOString(),
             expires_at: expiresAt,
-            embedding
+            embedding,
+            image_url: article.imageUrl || null,
+            image_credit: article.source || null
           })
 
         if (error) {

@@ -4,6 +4,8 @@ import { clusterArticles } from '@/lib/ai/clustering'
 import { generateArticle, decidePublish } from '@/lib/generator'
 import { generateShortId } from '@/lib/utils/short-id'
 import { generateTopicHash } from '@/lib/utils/topic-hash'
+import { groupArticlesByBrand } from '@/lib/utils/brand-extractor'
+import { generateAndSaveCoverImage } from '@/lib/ai/image-generation'
 import { RawArticle } from '@/types/database'
 
 export const maxDuration = 300 // Vercel Pro限制：最长5分钟
@@ -41,25 +43,59 @@ export async function GET(request: NextRequest) {
 
     console.log(`Found ${rawArticles.length} articles`)
 
-    // 2. 聚类分析
-    console.log('Clustering articles...')
-    const clusters = await clusterArticles(rawArticles as RawArticle[], 3, 0.7)
+    // 2. 按品牌分組
+    console.log('Grouping articles by brand...')
+    const brandGroups = groupArticlesByBrand(rawArticles as RawArticle[])
 
-    console.log(`Found ${clusters.length} clusters`)
-
-    if (clusters.length === 0) {
-      return NextResponse.json({
-        success: true,
-        message: 'No valid clusters found',
-        articles_count: rawArticles.length
-      })
+    console.log(`Found ${brandGroups.size} brand groups:`)
+    for (const [brand, articles] of brandGroups.entries()) {
+      console.log(`  - ${brand}: ${articles.length} articles`)
     }
 
     const results = []
     const today = new Date().toISOString().split('T')[0]
 
-    // 3. 为每个聚类生成文章
-    for (const cluster of clusters) {
+    // 3. 對每個品牌進行聚類和生成
+    for (const [brand, brandArticles] of brandGroups.entries()) {
+      // 如果該品牌文章數不足3篇，跳過
+      if (brandArticles.length < 3) {
+        console.log(`\n[${brand}] Skipped: only ${brandArticles.length} articles`)
+        continue
+      }
+
+      console.log(`\n[${brand}] Processing ${brandArticles.length} articles...`)
+
+      // 3.1 在品牌內進行主題聚類
+      // 品牌內使用更寬鬆的條件：最少3篇，相似度0.5（因為已按品牌分組）
+      const brandClusters = await clusterArticles(brandArticles, 3, 0.5)
+
+      console.log(`[${brand}] Found ${brandClusters.length} topic clusters`)
+
+      // 如果聚類失敗，嘗試將所有文章合併成一個「品牌週報」
+      if (brandClusters.length === 0 && brandArticles.length >= 3) {
+        console.log(`[${brand}] No clusters found, creating brand weekly digest`)
+
+        // 解析第一篇文章的 embedding（可能是字串或陣列）
+        let centroid = brandArticles[0].embedding
+        if (typeof centroid === 'string') {
+          centroid = JSON.parse(centroid)
+        }
+
+        // 手動創建一個包含所有文章的 cluster
+        brandClusters.push({
+          articles: brandArticles,
+          centroid: centroid,
+          size: brandArticles.length
+        })
+      }
+
+      if (brandClusters.length === 0) {
+        console.log(`[${brand}] Skipping: no valid clusters`)
+        continue
+      }
+
+      // 3.2 為每個主題聚類生成文章
+      for (const cluster of brandClusters) {
       try {
         // 3.1 计算主题hash（防重复）
         const topicHash = generateTopicHash(cluster.centroid)
@@ -78,16 +114,49 @@ export async function GET(request: NextRequest) {
         }
 
         // 3.3 调用AI生成文章
-        console.log(`  → Generating article for cluster (${cluster.articles.length} sources)...`)
+        console.log(`[${brand}] → Generating article for cluster (${cluster.articles.length} sources)...`)
         const generated = await generateArticle(cluster.articles)
 
-        // 3.4 质量检查和发布决策
+        // 3.4 收集該 cluster 所有圖片
+        const images: Array<{ url: string; credit: string; caption?: string }> = []
+        for (const article of cluster.articles) {
+          if (article.image_url) {
+            images.push({
+              url: article.image_url,
+              credit: article.image_credit || 'Unknown',
+              caption: article.title.slice(0, 100) // 使用文章標題作為圖片說明
+            })
+          }
+        }
+
+        // 3.4.1 如果沒有圖片，使用 AI 生成封面圖
+        let coverImage = generated.coverImage
+        let imageCredit = generated.imageCredit
+
+        if (!coverImage && images.length === 0) {
+          console.log(`[${brand}] → No images found, generating and saving AI cover image...`)
+          const aiImage = await generateAndSaveCoverImage(
+            generated.title_zh,
+            generated.content_zh,
+            generated.brands
+          )
+
+          if (aiImage && aiImage.url) {
+            coverImage = aiImage.url
+            imageCredit = aiImage.credit
+            console.log(`[${brand}] ✓ AI cover image generated and saved`)
+          } else {
+            console.log(`[${brand}] ✗ AI image generation failed`)
+          }
+        }
+
+        // 3.5 质量检查和发布决策
         const decision = decidePublish(generated)
 
-        // 3.5 生成短ID
+        // 3.6 生成短ID
         const shortId = generateShortId()
 
-        // 3.6 保存文章（包含标签）
+        // 3.7 保存文章（包含标签、封面圖、品牌、多張圖片）
         const { data: article, error: insertError } = await supabase
           .from('generated_articles')
           .insert({
@@ -105,7 +174,11 @@ export async function GET(request: NextRequest) {
             brands: generated.brands || [],
             car_models: generated.car_models || [],
             categories: generated.categories || [],
-            tags: generated.tags || []
+            tags: generated.tags || [],
+            cover_image: coverImage || null,
+            image_credit: imageCredit || null,
+            primary_brand: brand === 'Other' ? null : brand,
+            images: images.length > 0 ? images : []
           })
           .select()
           .single()
@@ -124,30 +197,40 @@ export async function GET(request: NextRequest) {
 
         results.push({
           id: shortId,
+          brand,
           title: generated.title_zh,
           confidence: generated.confidence,
           published: decision.shouldPublish,
-          reason: decision.reason
+          reason: decision.reason,
+          images_count: images.length
         })
 
-        console.log(`  ✓ ${decision.shouldPublish ? 'Published' : 'Saved'}: ${generated.title_zh}`)
+        console.log(`[${brand}] ✓ ${decision.shouldPublish ? 'Published' : 'Saved'}: ${generated.title_zh} (${images.length} images)`)
 
       } catch (error: any) {
-        console.error('Error generating article for cluster:', error)
+        console.error(`[${brand}] Error generating article for cluster:`, error)
         // 继续处理下一个聚类
+      }
       }
     }
 
-    // 4. 记录日志
+    // 4. 统计和记录日志
+    const totalClusters = Array.from(brandGroups.values())
+      .reduce((sum, articles) => sum + (articles.length >= 3 ? 1 : 0), 0)
+
     await supabase.from('cron_logs').insert({
       job_name: 'generator',
       status: 'success',
       metadata: {
         raw_articles: rawArticles.length,
-        clusters_found: clusters.length,
+        brand_groups: brandGroups.size,
+        total_clusters: totalClusters,
         articles_generated: results.length,
         articles_published: results.filter(r => r.published).length,
-        duration_ms: Date.now() - startTime
+        duration_ms: Date.now() - startTime,
+        brands: Object.fromEntries(
+          Array.from(brandGroups.entries()).map(([brand, articles]) => [brand, articles.length])
+        )
       }
     })
 

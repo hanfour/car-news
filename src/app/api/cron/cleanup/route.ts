@@ -46,7 +46,12 @@ export async function GET(request: NextRequest) {
 
     results.old_logs = oldLogs || 0
 
-    // 4. 记录清理日志
+    // 4. 清理舊圖片（30天前的圖片）
+    const { deleteOldImages } = await import('@/lib/storage/image-uploader')
+    const deletedImages = await deleteOldImages(30)
+    results.old_images = deletedImages
+
+    // 5. 记录清理日志
     await supabase.from('cron_logs').insert({
       job_name: 'cleanup',
       status: 'success',

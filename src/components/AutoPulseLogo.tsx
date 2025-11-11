@@ -3,7 +3,6 @@ export function AutoPulseLogo({ className = "w-10 h-10" }: { className?: string 
     <svg
       viewBox="0 0 100 100"
       className={className}
-      fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
@@ -11,61 +10,29 @@ export function AutoPulseLogo({ className = "w-10 h-10" }: { className?: string 
           <stop offset="0%" stopColor="#06b6d4" />
           <stop offset="100%" stopColor="#2563eb" />
         </linearGradient>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="1" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
       </defs>
 
-      {/* 賽車儀表：圓形 + 接近平行的指針 */}
-      <g>
-        {/* 外圓（儀表外框） */}
-        <circle
-          cx="50"
-          cy="50"
-          r="40"
-          stroke="url(#logo-gradient)"
-          strokeWidth="5"
-          fill="none"
-        />
-
-        {/* 內圓（儀表內環，可選） */}
-        <circle
-          cx="50"
-          cy="50"
-          r="32"
-          stroke="url(#logo-gradient)"
-          strokeWidth="2"
-          fill="none"
-          opacity="0.3"
-        />
-
-        {/* 左側指針（接近平行，略微向上） */}
-        <line
-          x1="20"
-          y1="52"
-          x2="48"
-          y2="48"
-          stroke="url(#logo-gradient)"
-          strokeWidth="5"
-          strokeLinecap="round"
-        />
-
-        {/* 右側指針（接近平行，略微向上） */}
-        <line
-          x1="52"
-          y1="48"
-          x2="80"
-          y2="52"
-          stroke="url(#logo-gradient)"
-          strokeWidth="5"
-          strokeLinecap="round"
-        />
-
-        {/* 中心點 */}
-        <circle
-          cx="50"
-          cy="50"
-          r="4"
-          fill="url(#logo-gradient)"
-        />
-      </g>
+      {/* 圓潤質感的「咖」字 */}
+      <text
+        x="50"
+        y="72"
+        textAnchor="middle"
+        fontSize="64"
+        fontWeight="700"
+        fontFamily="'PingFang TC', 'Microsoft JhengHei', 'Noto Sans TC', sans-serif"
+        fill="url(#logo-gradient)"
+        filter="url(#glow)"
+        style={{ letterSpacing: '0px' }}
+      >
+        咖
+      </text>
     </svg>
   )
 }
@@ -76,7 +43,6 @@ export function AutoPulseLogoSimple({ className = "w-6 h-6" }: { className?: str
     <svg
       viewBox="0 0 100 100"
       className={className}
-      fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
@@ -86,11 +52,18 @@ export function AutoPulseLogoSimple({ className = "w-6 h-6" }: { className?: str
         </linearGradient>
       </defs>
 
-      {/* 簡化的圓形儀表 + 平行指針 */}
-      <circle cx="50" cy="50" r="40" stroke="url(#simple-gradient)" strokeWidth="6" fill="none" />
-      <line x1="20" y1="52" x2="48" y2="48" stroke="url(#simple-gradient)" strokeWidth="6" strokeLinecap="round" />
-      <line x1="52" y1="48" x2="80" y2="52" stroke="url(#simple-gradient)" strokeWidth="6" strokeLinecap="round" />
-      <circle cx="50" cy="50" r="5" fill="url(#simple-gradient)" />
+      {/* 簡化「咖」字 */}
+      <text
+        x="50"
+        y="72"
+        textAnchor="middle"
+        fontSize="64"
+        fontWeight="700"
+        fontFamily="'PingFang TC', 'Microsoft JhengHei', 'Noto Sans TC', sans-serif"
+        fill="url(#simple-gradient)"
+      >
+        咖
+      </text>
     </svg>
   )
 }

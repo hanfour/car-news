@@ -1,22 +1,83 @@
 import { createClient } from '@/lib/supabase'
-import Link from 'next/link'
-import { format } from 'date-fns'
-import { zhTW } from 'date-fns/locale'
-import { AutoPulseLogo } from '@/components/AutoPulseLogo'
-import Image from 'next/image'
+import { StickyHeader } from '@/components/StickyHeader'
+import { TodayArticlesCarousel } from '@/components/TodayArticlesCarousel'
+import { TodayFeaturedSection } from '@/components/TodayFeaturedSection'
+import { PopularArticlesCarousel } from '@/components/PopularArticlesCarousel'
+import { AllArticlesGrid } from '@/components/AllArticlesGrid'
+import { TagCloud } from '@/components/TagCloud'
+import { POPULAR_BRANDS, BRANDS_BY_COUNTRY } from '@/config/brands'
+import type { Article, ArticleWithContent, ArticleWithBrands, Tag } from '@/types/article'
+import { Metadata } from 'next'
 
 export const revalidate = 60 // 每60秒重新验证
 
-async function getPublishedArticles() {
+/**
+ * Homepage SEO metadata
+ */
+export const metadata: Metadata = {
+  title: '玩咖 WANT CAR - 想要車？玩車資訊一網打盡',
+  description: '玩咖 WANT CAR 使用 AI 技術聚合全球汽車新聞，為您提供 Tesla、BMW、Mercedes、Toyota 等熱門品牌的最新資訊、新車發表、評測報導和行業動態。',
+  keywords: '汽車新聞, 電動車, Tesla, BMW, 新車, 汽車評測, WANT CAR, 玩咖, 玩車資訊',
+  authors: [{ name: '玩咖 WANT CAR 編輯團隊' }],
+
+  openGraph: {
+    type: 'website',
+    url: process.env.NEXT_PUBLIC_BASE_URL || 'https://wantcar.com',
+    title: '玩咖 WANT CAR - 想要車？玩車資訊一網打盡',
+    description: '從數據到動力，AI 帶你玩懂車界未來。聚合全球汽車新聞，提供 Tesla、BMW、Mercedes 等品牌最新資訊。',
+    siteName: '玩咖 WANT CAR',
+    locale: 'zh_TW'
+  },
+
+  twitter: {
+    card: 'summary_large_image',
+    title: '玩咖 WANT CAR - 想要車？玩車資訊一網打盡',
+    description: '從數據到動力，AI 帶你玩懂車界未來',
+    creator: '@wantcar_tw'
+  },
+
+  alternates: {
+    canonical: process.env.NEXT_PUBLIC_BASE_URL || 'https://wantcar.com'
+  },
+
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1
+    }
+  }
+}
+
+/**
+ * Date utility functions
+ */
+function getStartOfToday(): Date {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return today
+}
+
+function getDaysAgo(days: number): Date {
+  const date = new Date()
+  date.setDate(date.getDate() - days)
+  date.setHours(0, 0, 0, 0)
+  return date
+}
+
+async function getPublishedArticles(): Promise<Article[]> {
   const supabase = createClient()
 
   const { data, error} = await supabase
     .from('generated_articles')
-    .select('id, title_zh, content_zh, published_at, view_count, share_count, created_at, brands, car_models, categories, tags')
+    .select('id, title_zh, published_at, view_count, share_count, cover_image, categories, primary_brand')
     .eq('published', true)
     .order('published_at', { ascending: false })
     .order('created_at', { ascending: false })
-    .limit(20)
+    .limit(100)
 
   if (error) {
     console.error('Failed to fetch articles:', error)
@@ -26,12 +87,121 @@ async function getPublishedArticles() {
   return data || []
 }
 
-async function getFeaturedArticles() {
+async function getAllTags(): Promise<Tag[]> {
+  const supabase = createClient()
+
+  // 使用數據庫函數進行高效聚合
+  // 注意: 需要先在 Supabase 中執行 supabase/migrations/20250111_get_popular_tags_function.sql
+  const { data, error } = await supabase
+    .rpc('get_popular_tags', { tag_limit: 30 })
+
+  if (error) {
+    console.error('Failed to fetch tags:', error)
+    // Fallback to old method if RPC function doesn't exist yet
+    return await getAllTagsFallback()
+  }
+
+  return data || []
+}
+
+// Fallback method for backwards compatibility
+async function getAllTagsFallback(): Promise<Tag[]> {
   const supabase = createClient()
 
   const { data, error } = await supabase
     .from('generated_articles')
-    .select('id, title_zh, published_at, brands, categories')
+    .select('tags')
+    .eq('published', true)
+    .not('tags', 'is', null)
+
+  if (error) {
+    console.error('Failed to fetch tags (fallback):', error)
+    return []
+  }
+
+  const tagCounts: Record<string, number> = {}
+  data.forEach((article) => {
+    if (article.tags && Array.isArray(article.tags)) {
+      article.tags.forEach((tag: string) => {
+        tagCounts[tag] = (tagCounts[tag] || 0) + 1
+      })
+    }
+  })
+
+  return Object.entries(tagCounts)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 30)
+}
+
+async function getTodayArticles(): Promise<ArticleWithBrands[]> {
+  const supabase = createClient()
+  const today = getStartOfToday()
+
+  const { data, error } = await supabase
+    .from('generated_articles')
+    .select('id, title_zh, published_at, cover_image, categories, brands, view_count, share_count, primary_brand')
+    .eq('published', true)
+    .gte('published_at', today.toISOString())
+    .order('published_at', { ascending: false })
+    .limit(12)
+
+  if (error) {
+    console.error('Failed to fetch today articles:', error)
+    return []
+  }
+
+  return data || []
+}
+
+async function getTodayTopArticles(): Promise<ArticleWithContent[]> {
+  const supabase = createClient()
+  const today = getStartOfToday()
+
+  const { data, error } = await supabase
+    .from('generated_articles')
+    .select('id, title_zh, content_zh, published_at, cover_image, categories, primary_brand, view_count, share_count')
+    .eq('published', true)
+    .gte('published_at', today.toISOString())
+    .order('view_count', { ascending: false, nullsFirst: false })
+    .order('published_at', { ascending: false })
+    .limit(6)
+
+  if (error) {
+    console.error('Failed to fetch today top articles:', error)
+    return []
+  }
+
+  return data || []
+}
+
+async function getRecentPopularArticles(): Promise<Article[]> {
+  const supabase = createClient()
+  const threeDaysAgo = getDaysAgo(3)
+
+  const { data, error } = await supabase
+    .from('generated_articles')
+    .select('id, title_zh, published_at, cover_image, categories, primary_brand, view_count, share_count')
+    .eq('published', true)
+    .gte('published_at', threeDaysAgo.toISOString())
+    .order('view_count', { ascending: false, nullsFirst: false })
+    .order('published_at', { ascending: false })
+    .limit(6)
+
+  if (error) {
+    console.error('Failed to fetch recent popular articles:', error)
+    return []
+  }
+
+  return data || []
+}
+
+async function getFeaturedArticles(): Promise<ArticleWithBrands[]> {
+  const supabase = createClient()
+
+  const { data, error } = await supabase
+    .from('generated_articles')
+    .select('id, title_zh, published_at, brands, categories, cover_image, view_count, share_count, primary_brand')
     .eq('published', true)
     .eq('is_featured', true)
     .order('published_at', { ascending: false })
@@ -46,410 +216,53 @@ async function getFeaturedArticles() {
 }
 
 export default async function Home() {
-  const articles = await getPublishedArticles()
-  const featuredArticles = await getFeaturedArticles()
-
-  // 熱門品牌列表（使用真實 Logo URL）
-  const popularBrands = [
-    { name: 'Tesla', logoUrl: 'https://logo.clearbit.com/tesla.com' },
-    { name: 'BYD', logoUrl: 'https://logo.clearbit.com/byd.com' },
-    { name: 'NIO', logoUrl: 'https://logo.clearbit.com/nio.com' },
-    { name: 'XPeng', logoUrl: 'https://logo.clearbit.com/xiaopeng.com' },
-    { name: 'BMW', logoUrl: 'https://logo.clearbit.com/bmw.com' },
-    { name: 'Mercedes', logoUrl: 'https://logo.clearbit.com/mercedes-benz.com' },
-    { name: 'Audi', logoUrl: 'https://logo.clearbit.com/audi.com' },
-    { name: 'Toyota', logoUrl: 'https://logo.clearbit.com/toyota.com' },
-    { name: 'Honda', logoUrl: 'https://logo.clearbit.com/honda.com' },
-    { name: 'Volkswagen', logoUrl: 'https://logo.clearbit.com/vw.com' },
-  ]
+  // 並行執行所有數據查詢以提升性能
+  const [articles, todayArticles, todayTopArticles, recentPopularArticles, allTags] = await Promise.all([
+    getPublishedArticles(),
+    getTodayArticles(),
+    getTodayTopArticles(),
+    getRecentPopularArticles(),
+    getAllTags(),
+  ])
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-gradient-to-r from-slate-900 to-slate-800 border-b border-cyan-500/30">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4 sm:py-5">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-3 group">
-              <AutoPulseLogo className="w-9 h-9 sm:w-10 sm:h-10 transition-transform group-hover:scale-110" />
-              <div>
-                <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight">車勢日報</h1>
-                <p className="text-[9px] sm:text-[10px] text-cyan-400 font-medium tracking-wider">AUTOPULSE</p>
-              </div>
-            </Link>
+    <div className="flex flex-col min-h-screen">
+      {/* Sticky Header with Sidebar */}
+      <StickyHeader popularBrands={POPULAR_BRANDS} brandsByCountry={BRANDS_BY_COUNTRY} />
 
-            {/* Search + Navigation */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
-              {/* Search Bar */}
-              <div className="relative flex-1 sm:flex-initial sm:w-64">
-                <input
-                  type="search"
-                  placeholder="搜索文章..."
-                  className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 pl-10 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                />
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
+      {/* 今日最新文章輪播 */}
+      <TodayArticlesCarousel articles={todayArticles} />
 
-              {/* Navigation - Desktop */}
-              <nav className="hidden md:flex items-center gap-6 lg:gap-8 text-sm">
-                <Link href="/" className="text-cyan-400 font-medium whitespace-nowrap">首頁</Link>
-                <Link href="/category/新車" className="text-gray-300 hover:text-cyan-400 transition-colors font-medium whitespace-nowrap">新車</Link>
-                <Link href="/category/評測" className="text-gray-300 hover:text-cyan-400 transition-colors font-medium whitespace-nowrap">評測</Link>
-                <Link href="/category/行業" className="text-gray-300 hover:text-cyan-400 transition-colors font-medium whitespace-nowrap">行業</Link>
-                <Link href="/category/數據" className="text-gray-300 hover:text-cyan-400 transition-colors font-medium whitespace-nowrap">數據</Link>
-              </nav>
+      <div className="w-full flex flex-col justify-center items-center">
+          {/* 今日焦點區塊 - 最大區塊+小列表 */}
+          <TodayFeaturedSection articles={todayTopArticles} />
 
-              {/* Mobile Menu Button */}
-              <button className="md:hidden flex items-center gap-2 text-gray-300 hover:text-cyan-400 transition-colors px-4 py-2 bg-slate-700/30 rounded-lg">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-                <span className="text-sm font-medium">選單</span>
-              </button>
-            </div>
-          </div>
+          {/* 熱門話題輪播 - 過去三天熱門文章 */}
+          <PopularArticlesCarousel articles={recentPopularArticles} />
 
-          {/* Slogan */}
-          <div className="mt-3 pt-3 border-t border-slate-700/50">
-            <p className="text-[10px] sm:text-xs text-gray-400 font-light tracking-wide">
-              從數據到動力，AI 帶你看懂車界未來
-            </p>
-          </div>
-        </div>
-      </header>
+          {/* 所有文章網格 - 9則+篩選+更多按鈕 */}
+          <AllArticlesGrid articles={articles} />
 
-      {/* 品牌導航欄 (AD-1: Premium Brand Navigation) */}
-      <div className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-3">
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-            <span className="text-xs font-semibold text-gray-600 whitespace-nowrap mr-2">熱門品牌</span>
-            {popularBrands.map((brand) => (
-              <Link
-                key={brand.name}
-                href={`/brand/${brand.name}`}
-                className="flex items-center gap-2 px-3 py-2 bg-gray-50 hover:bg-cyan-50 border border-gray-200 hover:border-cyan-300 rounded-lg transition-all group whitespace-nowrap"
-              >
-                <div className="relative w-6 h-6 flex-shrink-0">
-                  <Image
-                    src={brand.logoUrl}
-                    alt={`${brand.name} logo`}
-                    width={24}
-                    height={24}
-                    className="object-contain"
-                    unoptimized
-                  />
-                </div>
-                <span className="text-sm font-medium text-gray-700 group-hover:text-cyan-600">
-                  {brand.name}
-                </span>
-              </Link>
-            ))}
-            <button className="flex items-center gap-1 px-3 py-2 text-sm text-gray-500 hover:text-cyan-600 whitespace-nowrap">
-              更多品牌
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          </div>
-        </div>
+          {/* 玩咖熱詞標籤雲 */}
+          <TagCloud tags={allTags} />
       </div>
 
-      {/* Main Container */}
-      <div className="flex-1 max-w-[1400px] mx-auto px-4 sm:px-6 py-4 sm:py-6 w-full">
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* 主內容區 */}
-          <main className="flex-1 min-w-0">
-            {/* AD-2: Top Banner (728x90) */}
-            <div className="mb-6 bg-gradient-to-r from-gray-100 to-gray-200 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center h-[90px]">
-              <div className="text-center">
-                <p className="text-xs font-semibold text-gray-500 mb-1">廣告位 AD-2</p>
-                <p className="text-[10px] text-gray-400">728 x 90 Banner</p>
-              </div>
+      {/* Footer */}
+      <footer className="bg-[#333]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="text-center md:text-left">
+              <p className="text-white font-semibold mb-1">玩咖 WANT CAR</p>
+              <p className="text-gray-400 text-sm">想要車？從數據到動力，AI 帶你玩懂車界未來</p>
             </div>
-
-            {/* 今日要闻 Featured Articles */}
-            {featuredArticles.length > 0 && (
-              <div className="mb-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-1 h-6 bg-gradient-to-b from-cyan-500 to-blue-600 rounded-full"></div>
-                  <h2 className="text-xl font-bold text-gray-900">今日要聞</h2>
-                  <svg className="w-5 h-5 text-orange-500 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                  </svg>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-                  {featuredArticles.map((article: any) => (
-                    <Link
-                      key={article.id}
-                      href={`/${article.published_at?.slice(0, 4) || new Date().getFullYear()}/${article.published_at?.slice(5, 7) || String(new Date().getMonth() + 1).padStart(2, '0')}/${article.id}`}
-                      className="group bg-gradient-to-br from-cyan-50 to-blue-50 hover:from-cyan-100 hover:to-blue-100 border-2 border-cyan-200 rounded-lg p-4 transition-all duration-200 hover:shadow-lg hover:scale-105"
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <span className="text-xs font-bold text-cyan-600 bg-cyan-100 px-2 py-1 rounded">
-                          {article.categories?.[0] || '要聞'}
-                        </span>
-                        <svg className="w-4 h-4 text-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </div>
-                      <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 leading-snug group-hover:text-cyan-700 transition-colors">
-                        {article.title_zh}
-                      </h3>
-                      {article.brands && article.brands.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {article.brands.slice(0, 2).map((brand: string) => (
-                            <span key={brand} className="text-[10px] text-gray-600 bg-white px-1.5 py-0.5 rounded">
-                              {brand}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 最新文章標題 */}
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">最新文章</h2>
-            </div>
-
-            {/* 文章列表 */}
-            {articles.length === 0 ? (
-              <div className="bg-white rounded-lg shadow-sm p-8 sm:p-12 text-center">
-                <div className="text-4xl sm:text-6xl mb-4">📰</div>
-                <p className="text-gray-500 text-base sm:text-lg mb-2">
-                  目前還沒有文章
-                </p>
-                <p className="text-gray-400 text-xs sm:text-sm">
-                  系統將自動抓取並生成內容，請稍後再查看
-                </p>
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 mb-6">
-                  {articles.slice(0, 6).map((article) => (
-                    <ArticleCard key={article.id} article={article} />
-                  ))}
-                </div>
-
-                {/* AD-3: Native Ad (信息流廣告) */}
-                <div className="mb-6 bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg border-2 border-dashed border-amber-300 p-6">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-xs font-semibold text-amber-600 bg-amber-100 px-2 py-1 rounded">贊助內容</span>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm font-semibold text-gray-600 mb-1">AD-3: 原生廣告位</p>
-                    <p className="text-xs text-gray-500">信息流廣告 / 贊助文章</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 mb-6">
-                  {articles.slice(6, 12).map((article) => (
-                    <ArticleCard key={article.id} article={article} />
-                  ))}
-                </div>
-
-                {/* AD-4: Bottom Banner (728x90) */}
-                <div className="mb-6 bg-gradient-to-r from-gray-100 to-gray-200 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center h-[90px]">
-                  <div className="text-center">
-                    <p className="text-xs font-semibold text-gray-500 mb-1">廣告位 AD-4</p>
-                    <p className="text-[10px] text-gray-400">728 x 90 Bottom Banner</p>
-                  </div>
-                </div>
-
-                {articles.length > 12 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                    {articles.slice(12).map((article) => (
-                      <ArticleCard key={article.id} article={article} />
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </main>
-
-          {/* Right Sidebar */}
-          <aside className="w-full lg:w-[300px] flex-shrink-0 space-y-6">
-            {/* AD-5: Medium Rectangle (300x250) */}
-            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg border-2 border-dashed border-blue-300 p-6 h-[250px] flex items-center justify-center sticky top-6">
-              <div className="text-center">
-                <p className="text-sm font-semibold text-blue-600 mb-1">AD-5</p>
-                <p className="text-xs text-gray-500">300 x 250</p>
-                <p className="text-[10px] text-gray-400 mt-1">方形廣告</p>
-              </div>
-            </div>
-
-            {/* 熱門文章 */}
-            <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-              <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200">
-                <svg className="w-4 h-4 text-cyan-500" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                </svg>
-                <h3 className="text-base font-semibold text-gray-900">
-                  本週熱門
-                </h3>
-              </div>
-              {articles.length > 0 ? (
-                <div className="space-y-3">
-                  {articles.slice(0, 8).map((article, index) => (
-                    <Link
-                      key={article.id}
-                      href={`/${article.published_at?.slice(0, 4) || new Date().getFullYear()}/${article.published_at?.slice(5, 7) || String(new Date().getMonth() + 1).padStart(2, '0')}/${article.id}`}
-                      className="flex items-start gap-3 hover:bg-cyan-50 p-2 rounded transition-colors group"
-                    >
-                      <span className="text-cyan-600 font-bold text-sm flex-shrink-0 w-5 group-hover:scale-110 transition-transform">
-                        {index + 1}
-                      </span>
-                      <p className="text-sm text-gray-700 line-clamp-2 leading-snug group-hover:text-cyan-700">
-                        {article.title_zh}
-                      </p>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-400 text-center py-4">
-                  暫無熱門文章
-                </p>
-              )}
-            </div>
-
-            {/* AD-6: Wide Skyscraper (160x600) */}
-            <div className="bg-gradient-to-b from-purple-50 to-pink-50 rounded-lg border-2 border-dashed border-purple-300 h-[600px] flex items-center justify-center">
-              <div className="text-center">
-                <p className="text-sm font-semibold text-purple-600 mb-1">AD-6</p>
-                <p className="text-xs text-gray-500">160 x 600</p>
-                <p className="text-[10px] text-gray-400 mt-1">摩天大樓</p>
-              </div>
-            </div>
-
-            {/* AD-7: Bottom Rectangle (300x250) */}
-            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border-2 border-dashed border-green-300 p-6 h-[250px] flex items-center justify-center">
-              <div className="text-center">
-                <p className="text-sm font-semibold text-green-600 mb-1">AD-7</p>
-                <p className="text-xs text-gray-500">300 x 250</p>
-                <p className="text-[10px] text-gray-400 mt-1">底部方形</p>
-              </div>
-            </div>
-          </aside>
-        </div>
-      </div>
-
-      {/* Footer - Sticky to bottom */}
-      <footer className="mt-auto bg-gradient-to-r from-slate-900 to-slate-800 border-t border-cyan-500/30">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
-          <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-4 text-sm">
-            <div className="text-center sm:text-left">
-              <p className="text-white font-semibold mb-1">車勢日報 AutoPulse</p>
-              <p className="text-gray-400 text-xs">從數據到動力，AI 帶你看懂車界未來</p>
-            </div>
-            <div className="text-center sm:text-right">
-              <p className="text-gray-400 text-xs">
-                © 2025 AutoPulse · Powered by <span className="text-cyan-400">Claude</span> & <span className="text-cyan-400">OpenAI</span>
-              </p>
-              <p className="text-gray-500 text-[10px] mt-1">
-                AI驅動的汽車新聞聚合平台
+            <div className="text-center md:text-right">
+              <p className="text-gray-400 text-sm">
+                © 2025 WANT CAR · Powered by <span style={{ color: '#FFD966' }}>AI</span>
               </p>
             </div>
           </div>
         </div>
       </footer>
     </div>
-  )
-}
-
-function ArticleCard({ article }: { article: any }) {
-  const year = article.published_at?.slice(0, 4) || new Date().getFullYear()
-  const month = article.published_at?.slice(5, 7) || String(new Date().getMonth() + 1).padStart(2, '0')
-
-  // 生成随机渐变色作为假缩略图 - 专业科技配色
-  const gradients = [
-    'from-slate-800 to-slate-900',
-    'from-blue-900 to-slate-900',
-    'from-cyan-900 to-blue-900',
-    'from-indigo-900 to-slate-900',
-    'from-slate-700 to-blue-900',
-    'from-blue-800 to-cyan-900',
-  ]
-  const gradient = gradients[Math.abs(article.id.split('').reduce((a: number, b: string) => a + b.charCodeAt(0), 0)) % gradients.length]
-
-  return (
-    <Link href={`/${year}/${month}/${article.id}`}>
-      <article className="bg-white rounded-lg overflow-hidden hover:shadow-xl hover:shadow-cyan-500/10 transition-all duration-300 cursor-pointer group border border-gray-200">
-        {/* 假缩略图 */}
-        <div className={`relative aspect-[16/9] bg-gradient-to-br ${gradient} flex items-center justify-center`}>
-          {/* 网格背景 */}
-          <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '20px 20px'}}></div>
-
-          {/* 脉搏图标 */}
-          <svg className="w-20 h-20 text-cyan-400 opacity-30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-          </svg>
-
-          {/* AI标签 */}
-          <div className="absolute top-3 left-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-bold px-2.5 py-1 rounded-md flex items-center gap-1.5">
-            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
-            </svg>
-            AI
-          </div>
-        </div>
-
-        {/* 内容 */}
-        <div className="p-4">
-          {/* 标签栏 */}
-          {(article.categories || article.brands) && (
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {article.categories?.slice(0, 1).map((cat: string) => (
-                <span key={cat} className="text-[10px] font-semibold text-cyan-700 bg-cyan-100 px-2 py-0.5 rounded">
-                  {cat}
-                </span>
-              ))}
-              {article.brands?.slice(0, 2).map((brand: string) => (
-                <span key={brand} className="text-[10px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
-                  {brand}
-                </span>
-              ))}
-            </div>
-          )}
-
-          <h2 className="text-base font-semibold text-gray-900 line-clamp-2 leading-snug mb-3 group-hover:text-cyan-600 transition-colors">
-            {article.title_zh}
-          </h2>
-
-          {/* 元数据 */}
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <span className="flex items-center gap-1">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              {article.published_at
-                ? format(new Date(article.published_at), 'MM-dd HH:mm', { locale: zhTW })
-                : '最近'
-              }
-            </span>
-            <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                {article.view_count}
-              </span>
-              <span className="flex items-center gap-1">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                </svg>
-                {article.share_count}
-              </span>
-            </div>
-          </div>
-        </div>
-      </article>
-    </Link>
   )
 }

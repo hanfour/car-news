@@ -1,16 +1,19 @@
-import { createClient, createServiceClient } from '@/lib/supabase'
-import { notFound } from 'next/navigation'
+import { createClient } from '@/lib/supabase'
 import Link from 'next/link'
-import ReactMarkdown from 'react-markdown'
-import rehypeRaw from 'rehype-raw'
 import { format } from 'date-fns'
 import { zhTW } from 'date-fns/locale'
-import ShareButtons from './ShareButtons'
-import CommentSection from './CommentSection'
+import { WantCarLogo } from '@/components/WantCarLogo'
+import { CommentForm } from '@/components/CommentForm'
+import { notFound } from 'next/navigation'
+import Image from 'next/image'
+import { Metadata } from 'next'
+import { StickyHeader } from '@/components/StickyHeader'
+import { POPULAR_BRANDS, BRANDS_BY_COUNTRY } from '@/config/brands'
+import { ArticleActionBar } from './ArticleActionBar'
+import { HoverLink } from '@/components/HoverLink'
+import { BrandTag } from './BrandTag'
 
-export const revalidate = 300 // 5分钟重新验证
-
-type Props = {
+interface PageProps {
   params: Promise<{
     year: string
     month: string
@@ -32,33 +35,141 @@ async function getArticle(id: string) {
     return null
   }
 
-  // 增加浏览量
-  const serviceSupabase = createServiceClient()
-  await serviceSupabase
+  // Increment view count
+  await supabase
     .from('generated_articles')
-    .update({ view_count: data.view_count + 1 })
+    .update({ view_count: (data.view_count || 0) + 1 })
     .eq('id', id)
 
   return data
 }
 
-export async function generateMetadata({ params }: Props) {
+async function getComments(articleId: string) {
+  const supabase = createClient()
+
+  const { data, error } = await supabase
+    .from('comments')
+    .select('*')
+    .eq('article_id', articleId)
+    .eq('visible', true)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Failed to fetch comments:', error)
+    return []
+  }
+
+  return data || []
+}
+
+async function getRelatedArticles(articleId: string, brands: string[], categories: string[]) {
+  const supabase = createClient()
+
+  const { data, error } = await supabase
+    .from('generated_articles')
+    .select('id, title_zh, published_at, cover_image, view_count, brands, categories')
+    .eq('published', true)
+    .neq('id', articleId)
+    .limit(4)
+
+  if (error) {
+    console.error('Failed to fetch related articles:', error)
+    return []
+  }
+
+  return data || []
+}
+
+/**
+ * Generate SEO metadata for the article page
+ */
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params
   const article = await getArticle(id)
 
   if (!article) {
     return {
-      title: '文章未找到'
+      title: '文章不存在 | 玩咖 WANT CAR',
+      description: '抱歉，您所尋找的文章不存在或已被移除。'
     }
   }
 
+  // 生成文章摘要（前150字）
+  const description = article.content_zh
+    ? article.content_zh.slice(0, 150).trim() + '...'
+    : article.title_zh
+
+  // 網站基礎 URL
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://wantcar.com'
+  const articleUrl = `${baseUrl}/article/${id}`
+
+  // 品牌和分類標籤
+  const keywords = [
+    '汽車新聞',
+    'WANT CAR',
+    '玩咖',
+    '玩車資訊',
+    ...(article.brands || []),
+    ...(article.categories || [])
+  ].join(', ')
+
   return {
-    title: `${article.title_zh} | Car News AI`,
-    description: article.content_zh.slice(0, 160),
+    title: `${article.title_zh} | 玩咖 WANT CAR`,
+    description,
+    keywords,
+    authors: [{ name: '玩咖 WANT CAR 編輯團隊' }],
+
+    // Open Graph (Facebook, LinkedIn)
+    openGraph: {
+      type: 'article',
+      url: articleUrl,
+      title: article.title_zh,
+      description,
+      siteName: '玩咖 WANT CAR',
+      locale: 'zh_TW',
+      images: article.cover_image ? [
+        {
+          url: article.cover_image,
+          width: 1792,
+          height: 1024,
+          alt: article.title_zh,
+          type: 'image/webp'
+        }
+      ] : [],
+      publishedTime: article.published_at,
+      modifiedTime: article.updated_at,
+      tags: [...(article.brands || []), ...(article.categories || [])]
+    },
+
+    // Twitter Card
+    twitter: {
+      card: 'summary_large_image',
+      title: article.title_zh,
+      description,
+      images: article.cover_image ? [article.cover_image] : [],
+      creator: '@wantcar_tw'
+    },
+
+    // Additional metadata
+    alternates: {
+      canonical: articleUrl
+    },
+
+    // Robots
+    robots: {
+      index: article.published,
+      follow: article.published,
+      googleBot: {
+        index: article.published,
+        follow: article.published,
+        'max-image-preview': 'large',
+        'max-snippet': -1
+      }
+    }
   }
 }
 
-export default async function ArticlePage({ params }: Props) {
+export default async function ArticlePage({ params }: PageProps) {
   const { id } = await params
   const article = await getArticle(id)
 
@@ -66,78 +177,412 @@ export default async function ArticlePage({ params }: Props) {
     notFound()
   }
 
+  const comments = await getComments(id)
+  const relatedArticles = await getRelatedArticles(id, article.brands || [], article.categories || [])
+
+  // 將 Markdown 轉換為 HTML（保留文章結構）
+  const formatContent = (content: string) => {
+    // 移除文章末尾的「資訊來源」或「資料來源」區塊
+    // 這些內容已經通過 source_urls 欄位單獨顯示
+    let cleanedContent = content
+
+    // 找到「資訊來源」或「資料來源」開始的位置，並移除之後的所有內容
+    const sourcePatterns = [
+      /資訊來源[\s\S]*$/m,
+      /資料來源[\s\S]*$/m,
+      /本文綜合多方報導[\s\S]*$/m
+    ]
+
+    for (const pattern of sourcePatterns) {
+      cleanedContent = cleanedContent.replace(pattern, '')
+    }
+
+    return cleanedContent
+      .trim()
+      // 移除 Markdown 分隔線
+      .replace(/^---+$/gm, '')
+      .replace(/^\*\*\*+$/gm, '')
+      .replace(/^___+$/gm, '')
+      // 標題轉換（必須在粗體之前處理）
+      .replace(/^### (.+)$/gm, '<h3 class="text-xl font-bold text-gray-900 mt-8 mb-4">$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2 class="text-2xl font-bold text-gray-900 mt-10 mb-6">$1</h2>')
+      .replace(/^# (.+)$/gm, '<h1 class="text-3xl font-bold text-gray-900 mt-12 mb-6">$1</h1>')
+      // 粗體（必須在斜體之前處理）
+      .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
+      // 斜體
+      .replace(/\*(.+?)\*/g, '<em class="italic">$1</em>')
+      // 行內代碼
+      .replace(/`(.+?)`/g, '<code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono">$1</code>')
+      // 移除孤立的星號（如果還有殘餘）
+      .replace(/^\*\*\s*$/gm, '')
+      // 段落分隔（兩個換行符表示新段落）
+      .split('\n\n')
+      .map(para => {
+        const trimmed = para.trim()
+        // 過濾掉空段落和只包含 HTML 標籤的段落
+        if (!trimmed || trimmed === '<br>' || /^<\/?[^>]+>$/.test(trimmed)) {
+          return ''
+        }
+        // 如果已經是 HTML 標籤開頭（h1, h2, h3），直接返回
+        if (trimmed.startsWith('<h1') || trimmed.startsWith('<h2') || trimmed.startsWith('<h3')) {
+          return trimmed
+        }
+        return `<p class="mb-6">${trimmed}</p>`
+      })
+      .filter(para => para) // 移除空字串
+      .join('')
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <Link href="/" className="text-blue-600 hover:text-blue-800 text-sm">
-            ← 返回首頁
-          </Link>
-        </div>
-      </header>
+    <div className="min-h-screen flex flex-col bg-gray-50">
+      {/* Sticky Header */}
+      <StickyHeader popularBrands={POPULAR_BRANDS} brandsByCountry={BRANDS_BY_COUNTRY} showBrands={false} />
 
-      {/* Article */}
-      <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow-sm p-8">
-          {/* Title */}
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            {article.title_zh}
-          </h1>
+      {/* Main Content */}
+      <main className="flex-1 max-w-[1400px] mx-auto px-4 sm:px-6 py-8 w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8">
+          {/* Article Content */}
+          <article className="px-0">
+            {/* 1. Title */}
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 leading-tight">
+              {article.title_zh}
+            </h1>
 
-          {/* Meta */}
-          <div className="flex items-center gap-4 text-sm text-gray-500 mb-6 pb-6 border-b border-gray-200">
-            <span>
-              {article.published_at
-                ? format(new Date(article.published_at), 'yyyy年MM月dd日', { locale: zhTW })
-                : '最近發布'
-              }
-            </span>
-            <span>👁 {article.view_count} 次瀏覽</span>
-            <span>🔗 {article.share_count} 次分享</span>
-          </div>
-
-          {/* Content */}
-          <div className="prose prose-lg max-w-none mb-8">
-            <ReactMarkdown rehypePlugins={[rehypeRaw]}>
-              {article.content_zh}
-            </ReactMarkdown>
-          </div>
-
-          {/* Sources */}
-          {article.source_urls && article.source_urls.length > 0 && (
-            <div className="mt-8 pt-6 border-t border-gray-200">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">
-                資訊來源
-              </h3>
-              <ul className="space-y-2">
-                {article.source_urls.map((url: string, i: number) => (
-                  <li key={i}>
-                    <a
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:text-blue-800"
-                    >
-                      {url}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+            {/* 2. Metadata: Time & Views */}
+            <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 mb-3">
+              {article.published_at && (
+                <time className="flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  {format(new Date(article.published_at), 'yyyy年MM月dd日', { locale: zhTW })}
+                </time>
+              )}
+              <span className="flex items-center gap-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                {article.view_count} 閱讀
+              </span>
             </div>
-          )}
 
-          {/* Share Buttons */}
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <ShareButtons articleId={article.id} title={article.title_zh} />
+            {/* 2. Tags */}
+            {(article.brands?.length > 0 || article.categories?.length > 0) && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {article.brands?.map((brand: string) => (
+                  <BrandTag key={brand} brand={brand} />
+                ))}
+                {article.categories?.map((category: string) => (
+                  <Link
+                    key={category}
+                    href={`/category/${category}`}
+                    className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full hover:bg-blue-100 transition-colors"
+                  >
+                    {category}
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {/* 3. Author */}
+            <div className="text-sm text-gray-600 mb-6 pb-6 border-b border-gray-200">
+              文：玩咖 AI 整理
+            </div>
+
+            {/* 4. Cover Image */}
+            {article.cover_image && (
+              <div className="mb-6">
+                <div className="relative w-full aspect-[16/9] bg-gray-200">
+                  <Image
+                    src={article.cover_image}
+                    alt={article.title_zh}
+                    fill
+                    className="object-cover"
+                    priority
+                    unoptimized
+                  />
+                </div>
+                {article.image_credit && (
+                  <div className="pt-2 pb-4 border-b border-gray-200">
+                    <p className="text-xs text-gray-500">
+                      圖片來源：<span className="font-medium">{article.image_credit}</span>
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 5. Article Content */}
+            <div
+              className="text-gray-700 leading-relaxed text-base"
+              dangerouslySetInnerHTML={{ __html: formatContent(article.content_zh) }}
+            />
+
+            {/* Additional Images Gallery */}
+            {article.images && article.images.length > 0 && (
+              <div className="mt-8 pt-6 border-t border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-900 mb-4">相關圖片</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {article.images.map((img: any, index: number) => (
+                    <div key={index} className="group">
+                      <div className="relative aspect-[16/9] bg-gray-200 rounded-lg overflow-hidden">
+                        <Image
+                          src={img.url}
+                          alt={img.caption || `圖片 ${index + 1}`}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          unoptimized
+                        />
+                      </div>
+                      <div className="mt-2 space-y-1">
+                        {img.caption && (
+                          <p className="text-sm text-gray-700 line-clamp-2">{img.caption}</p>
+                        )}
+                        <p className="text-xs text-gray-500">
+                          圖片來源：<span className="font-medium">{img.credit}</span>
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Source URLs */}
+            {article.source_urls && article.source_urls.length > 0 && (
+              <div className="mt-8 pt-6 border-t border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">資料來源</h3>
+                <ul className="space-y-2">
+                  {article.source_urls.map((url: string, index: number) => (
+                    <li key={index}>
+                      <HoverLink
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm hover:underline break-all"
+                        baseColor="#FFBB00"
+                        hoverColor="#CC9600"
+                      >
+                        {url}
+                      </HoverLink>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Action Bar */}
+            <ArticleActionBar
+              articleId={id}
+              title={article.title_zh}
+              viewCount={article.view_count}
+              commentCount={comments.length}
+            />
+
+            {/* Comments Section */}
+            <div className="mt-12 pt-8">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">評論 ({comments.length})</h2>
+
+              {/* Comment Form */}
+              <CommentForm articleId={id} isLoggedIn={false} />
+
+              {/* Sort Options */}
+              <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-200">
+                <button
+                  className="text-sm font-medium pb-1 border-b-2"
+                  style={{ color: '#FFBB00', borderColor: '#FFBB00' }}
+                >
+                  按時間排序
+                </button>
+                <button className="text-sm text-gray-600 hover:text-gray-900 pb-1">
+                  按點讚排序
+                </button>
+              </div>
+
+              {/* Comments List */}
+              <div className="space-y-6">
+                {comments.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">尚無評論，成為第一個留言的人吧！</p>
+                ) : (
+                  comments.map((comment: {
+                    id: string
+                    author_name: string
+                    content: string
+                    created_at: string
+                  }) => {
+                    // 計算相對時間
+                    const getRelativeTime = (dateString: string) => {
+                      const now = new Date()
+                      const commentDate = new Date(dateString)
+                      const diffMs = now.getTime() - commentDate.getTime()
+                      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+                      const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+                      const diffMinutes = Math.floor(diffMs / (1000 * 60))
+
+                      if (diffDays > 0) return `${diffDays}天前`
+                      if (diffHours > 0) return `${diffHours}小時前`
+                      if (diffMinutes > 0) return `${diffMinutes}分鐘前`
+                      return '剛剛'
+                    }
+
+                    return (
+                      <div key={comment.id} className="flex items-start gap-3">
+                        {/* 頭像 */}
+                        <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                          {comment.author_name.charAt(0).toUpperCase()}
+                        </div>
+
+                        {/* 內容 */}
+                        <div className="flex-1 min-w-0">
+                          {/* 用戶名 */}
+                          <h4 className="font-medium text-gray-900 mb-1">{comment.author_name}</h4>
+
+                          {/* 評論內容 */}
+                          <p className="text-gray-700 text-sm leading-relaxed mb-2 whitespace-pre-wrap">
+                            {comment.content}
+                          </p>
+
+                          {/* 操作列 */}
+                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                            <span>{getRelativeTime(comment.created_at)}</span>
+                            <button className="hover:text-gray-700 flex items-center gap-1">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                              </svg>
+                              回覆
+                            </button>
+                            <button className="hover:text-gray-700 flex items-center gap-1">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                              </svg>
+                              舉報
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* 點贊 */}
+                        <div className="flex-shrink-0 flex flex-col items-center gap-1">
+                          <button className="hover:bg-gray-100 p-1.5 rounded transition-colors">
+                            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                            </svg>
+                          </button>
+                          <span className="text-xs text-gray-500">5人</span>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+          </article>
+
+          {/* Sidebar */}
+          <aside className="space-y-6">
+            {/* Related Articles */}
+            {relatedArticles.length > 0 && (
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">相關推薦</h3>
+                <div className="space-y-4">
+                  {relatedArticles.map((related: {
+                    id: string
+                    title_zh: string
+                    published_at: string
+                    cover_image?: string
+                    view_count: number
+                  }) => {
+                    const year = related.published_at?.slice(0, 4) || new Date().getFullYear()
+                    const month = related.published_at?.slice(5, 7) || String(new Date().getMonth() + 1).padStart(2, '0')
+
+                    // 生成漸層背景（與首頁卡片相同）
+                    const gradients = [
+                      'from-slate-800 to-slate-900',
+                      'from-blue-900 to-slate-900',
+                      'from-cyan-900 to-blue-900',
+                      'from-indigo-900 to-slate-900',
+                      'from-slate-700 to-blue-900',
+                      'from-blue-800 to-cyan-900',
+                    ]
+                    const gradient = gradients[Math.abs(related.id.split('').reduce((a: number, b: string) => a + b.charCodeAt(0), 0)) % gradients.length]
+
+                    return (
+                      <Link
+                        key={related.id}
+                        href={`/${year}/${month}/${related.id}`}
+                        className="flex gap-3 group"
+                      >
+                        {/* 縮圖 */}
+                        <div className={`relative w-28 h-20 flex-shrink-0 rounded overflow-hidden bg-gradient-to-br ${gradient}`}>
+                          {related.cover_image ? (
+                            <Image
+                              src={related.cover_image}
+                              alt={related.title_zh}
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                          ) : (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <svg className="w-10 h-10 opacity-30" style={{ color: '#FFD966' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 文字內容 */}
+                        <div className="flex-1 min-w-0">
+                          <HoverLink
+                            href={`/${year}/${month}/${related.id}`}
+                            className="text-sm font-medium transition-colors line-clamp-2 mb-2 leading-snug block"
+                            baseColor="#111827"
+                            hoverColor="#FFBB00"
+                          >
+                            {related.title_zh}
+                          </HoverLink>
+                          <div className="flex items-center gap-3 text-xs text-gray-500">
+                            {related.published_at && (
+                              <time>
+                                {format(new Date(related.published_at), 'MM/dd', { locale: zhTW })}
+                              </time>
+                            )}
+                            <span>{related.view_count} 次播放</span>
+                          </div>
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Ad Space */}
+            <div className="bg-gray-100 rounded-lg p-6 text-center border-2 border-dashed border-gray-300">
+              <p className="text-sm text-gray-500 mb-2">廣告位置 AD-6</p>
+              <p className="text-xs text-gray-400">160 x 600</p>
+              <p className="text-xs text-gray-400 mt-1">摩天大樓廣告</p>
+            </div>
+          </aside>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-[#333]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="text-center md:text-left">
+              <p className="text-white font-semibold mb-1">玩咖 WANT CAR</p>
+              <p className="text-gray-400 text-sm">想要車？從數據到動力，AI 帶你玩懂車界未來</p>
+            </div>
+            <div className="text-center md:text-right">
+              <p className="text-gray-400 text-sm">
+                © 2025 WANT CAR · Powered by <span style={{ color: '#FFD966' }}>AI</span>
+              </p>
+            </div>
           </div>
         </div>
-
-        {/* Comments */}
-        <div className="mt-8">
-          <CommentSection articleId={article.id} />
-        </div>
-      </article>
+      </footer>
     </div>
   )
 }

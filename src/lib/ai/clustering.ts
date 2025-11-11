@@ -10,28 +10,41 @@ export async function clusterArticles(
     return []
   }
 
+  // Filter out articles without embeddings and parse embeddings
+  const validArticles = articles
+    .filter(a => a.embedding != null)
+    .map(a => ({
+      ...a,
+      embedding: typeof a.embedding === 'string' ? JSON.parse(a.embedding) : a.embedding
+    }))
+
+  if (validArticles.length < minClusterSize) {
+    console.warn(`Not enough articles with valid embeddings: ${validArticles.length}/${articles.length}`)
+    return []
+  }
+
   const clusters: ArticleCluster[] = []
   const used = new Set<string>()
 
   // 简单的贪心聚类算法
-  for (let i = 0; i < articles.length; i++) {
-    if (used.has(articles[i].id)) continue
+  for (let i = 0; i < validArticles.length; i++) {
+    if (used.has(validArticles[i].id)) continue
 
-    const cluster: RawArticle[] = [articles[i]]
-    used.add(articles[i].id)
+    const cluster: RawArticle[] = [validArticles[i]]
+    used.add(validArticles[i].id)
 
     // 找到相似的文章
-    for (let j = i + 1; j < articles.length; j++) {
-      if (used.has(articles[j].id)) continue
+    for (let j = i + 1; j < validArticles.length; j++) {
+      if (used.has(validArticles[j].id)) continue
 
       const similarity = cosineSimilarity(
-        articles[i].embedding,
-        articles[j].embedding
+        validArticles[i].embedding,
+        validArticles[j].embedding
       )
 
       if (similarity >= similarityThreshold) {
-        cluster.push(articles[j])
-        used.add(articles[j].id)
+        cluster.push(validArticles[j])
+        used.add(validArticles[j].id)
       }
     }
 

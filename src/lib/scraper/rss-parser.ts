@@ -14,6 +14,7 @@ export interface ScrapedArticle {
   content: string
   publishedAt?: Date
   source: string
+  imageUrl?: string
 }
 
 export async function parseRSSFeed(source: NewsSource): Promise<ScrapedArticle[]> {
@@ -39,12 +40,30 @@ export async function parseRSSFeed(source: NewsSource): Promise<ScrapedArticle[]
         continue
       }
 
+      // 提取图片 URL
+      // RSS Feed 通常在 enclosure 或 media:content 中包含图片
+      let imageUrl: string | undefined
+
+      // 方法1: 檢查 enclosure (podcast/media)
+      if (item.enclosure?.url && item.enclosure.type?.startsWith('image/')) {
+        imageUrl = item.enclosure.url
+      }
+
+      // 方法2: 檢查 content 中的圖片 (使用正則提取)
+      if (!imageUrl && item.content) {
+        const imgMatch = item.content.match(/<img[^>]+src="([^">]+)"/)
+        if (imgMatch) {
+          imageUrl = imgMatch[1]
+        }
+      }
+
       articles.push({
         url: item.link,
         title: item.title,
         content: content.slice(0, 5000), // 限制长度
         publishedAt: item.pubDate ? new Date(item.pubDate) : undefined,
-        source: source.name
+        source: source.name,
+        imageUrl
       })
     }
 
