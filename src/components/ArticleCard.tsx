@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface ArticleCardProps {
   article: {
@@ -10,6 +11,7 @@ interface ArticleCardProps {
     view_count: number
     categories?: string[]
     brands?: string[]
+    cover_image?: string | null
   }
   gradient: string
 }
@@ -29,12 +31,24 @@ export function ArticleCard({ article, gradient }: ArticleCardProps) {
   return (
     <Link href={`/${year}/${month}/${article.id}`}>
       <article className="overflow-hidden transition-all duration-300 cursor-pointer group">
-        <div className={`relative aspect-[16/9] bg-gradient-to-br ${gradient} flex items-center justify-center`}>
-          <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '20px 20px'}}></div>
-          <svg className="w-20 h-20 opacity-30" style={{ color: '#FFD966' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-          </svg>
-          <div className="absolute top-3 left-3 text-white text-xs font-bold px-2.5 py-1 rounded-md flex items-center gap-1.5" style={{ background: 'linear-gradient(to right, #FFBB00, #FFED4E)' }}>
+        <div className={`relative aspect-[16/9] bg-gradient-to-br ${gradient} flex items-center justify-center overflow-hidden`}>
+          {article.cover_image ? (
+            <Image
+              src={article.cover_image}
+              alt={article.title_zh}
+              fill
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            />
+          ) : (
+            <>
+              <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '20px 20px'}}></div>
+              <svg className="w-20 h-20 opacity-30" style={{ color: '#FFD966' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+              </svg>
+            </>
+          )}
+          <div className="absolute top-3 left-3 text-white text-xs font-bold px-2.5 py-1 rounded-md flex items-center gap-1.5 z-10" style={{ background: 'linear-gradient(to right, #FFBB00, #FFED4E)' }}>
             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
             </svg>

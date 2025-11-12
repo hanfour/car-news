@@ -12,7 +12,7 @@ async function getArticlesByBrand(brand: string) {
 
   const { data, error } = await supabase
     .from('generated_articles')
-    .select('id, title_zh, content_zh, published_at, view_count, share_count, created_at, brands, car_models, categories, tags')
+    .select('id, title_zh, content_zh, published_at, view_count, share_count, created_at, brands, car_models, categories, tags, cover_image')
     .eq('published', true)
     .contains('brands', [brand])
     .order('published_at', { ascending: false })
