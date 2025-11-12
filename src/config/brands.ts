@@ -20,61 +20,61 @@ export const BRANDS_BY_COUNTRY: CountryBrands[] = [
   {
     country: '美國',
     brands: [
-      { name: 'Tesla', logoUrl: 'https://logo.clearbit.com/tesla.com' },
-      { name: 'Ford', logoUrl: 'https://logo.clearbit.com/ford.com' },
-      { name: 'Chevrolet', logoUrl: 'https://logo.clearbit.com/chevrolet.com' },
-      { name: 'Rivian', logoUrl: 'https://logo.clearbit.com/rivian.com' },
-      { name: 'Lucid', logoUrl: 'https://logo.clearbit.com/lucidmotors.com' },
+      { name: 'Tesla', logoUrl: 'https://www.google.com/s2/favicons?domain=tesla.com&sz=128' },
+      { name: 'Ford', logoUrl: 'https://www.google.com/s2/favicons?domain=ford.com&sz=128' },
+      { name: 'Chevrolet', logoUrl: 'https://www.google.com/s2/favicons?domain=chevrolet.com&sz=128' },
+      { name: 'Rivian', logoUrl: 'https://www.google.com/s2/favicons?domain=rivian.com&sz=128' },
+      { name: 'Lucid', logoUrl: 'https://www.google.com/s2/favicons?domain=lucidmotors.com&sz=128' },
     ]
   },
   {
     country: '中國',
     brands: [
-      { name: 'BYD', logoUrl: 'https://logo.clearbit.com/byd.com' },
-      { name: 'NIO', logoUrl: 'https://logo.clearbit.com/nio.com' },
-      { name: 'XPeng', logoUrl: 'https://logo.clearbit.com/xiaopeng.com' },
+      { name: 'BYD', logoUrl: 'https://www.google.com/s2/favicons?domain=byd.com&sz=128' },
+      { name: 'NIO', logoUrl: 'https://www.google.com/s2/favicons?domain=nio.com&sz=128' },
+      { name: 'XPeng', logoUrl: 'https://www.google.com/s2/favicons?domain=xiaopeng.com&sz=128' },
     ]
   },
   {
     country: '德國',
     brands: [
-      { name: 'BMW', logoUrl: 'https://logo.clearbit.com/bmw.com' },
-      { name: 'Mercedes', logoUrl: 'https://logo.clearbit.com/mercedes-benz.com' },
-      { name: 'Audi', logoUrl: 'https://logo.clearbit.com/audi.com' },
-      { name: 'Volkswagen', logoUrl: 'https://logo.clearbit.com/vw.com' },
-      { name: 'Porsche', logoUrl: 'https://logo.clearbit.com/porsche.com' },
+      { name: 'BMW', logoUrl: 'https://www.google.com/s2/favicons?domain=bmw.com&sz=128' },
+      { name: 'Mercedes', logoUrl: 'https://www.google.com/s2/favicons?domain=mercedes-benz.com&sz=128' },
+      { name: 'Audi', logoUrl: 'https://www.google.com/s2/favicons?domain=audi.com&sz=128' },
+      { name: 'Volkswagen', logoUrl: 'https://www.google.com/s2/favicons?domain=volkswagen.com&sz=128' },
+      { name: 'Porsche', logoUrl: 'https://www.google.com/s2/favicons?domain=porsche.com&sz=128' },
     ]
   },
   {
     country: '日本',
     brands: [
-      { name: 'Toyota', logoUrl: 'https://logo.clearbit.com/toyota.com' },
-      { name: 'Honda', logoUrl: 'https://logo.clearbit.com/honda.com' },
-      { name: 'Lexus', logoUrl: 'https://logo.clearbit.com/lexus.com' },
-      { name: 'Mazda', logoUrl: 'https://logo.clearbit.com/mazda.com' },
-      { name: 'Subaru', logoUrl: 'https://logo.clearbit.com/subaru.com' },
+      { name: 'Toyota', logoUrl: 'https://www.google.com/s2/favicons?domain=toyota.com&sz=128' },
+      { name: 'Honda', logoUrl: 'https://www.google.com/s2/favicons?domain=honda.com&sz=128' },
+      { name: 'Lexus', logoUrl: 'https://www.google.com/s2/favicons?domain=lexus.com&sz=128' },
+      { name: 'Mazda', logoUrl: 'https://www.google.com/s2/favicons?domain=mazda.com&sz=128' },
+      { name: 'Subaru', logoUrl: 'https://www.google.com/s2/favicons?domain=subaru.com&sz=128' },
     ]
   },
   {
     country: '韓國',
     brands: [
-      { name: 'Hyundai', logoUrl: 'https://logo.clearbit.com/hyundai.com' },
-      { name: 'Kia', logoUrl: 'https://logo.clearbit.com/kia.com' },
-      { name: 'Genesis', logoUrl: 'https://logo.clearbit.com/genesis.com' },
+      { name: 'Hyundai', logoUrl: 'https://www.google.com/s2/favicons?domain=hyundai.com&sz=128' },
+      { name: 'Kia', logoUrl: 'https://www.google.com/s2/favicons?domain=kia.com&sz=128' },
+      { name: 'Genesis', logoUrl: 'https://www.google.com/s2/favicons?domain=genesis.com&sz=128' },
     ]
   },
   {
     country: '義大利',
     brands: [
-      { name: 'Ferrari', logoUrl: 'https://logo.clearbit.com/ferrari.com' },
-      { name: 'Lamborghini', logoUrl: 'https://logo.clearbit.com/lamborghini.com' },
+      { name: 'Ferrari', logoUrl: 'https://www.google.com/s2/favicons?domain=ferrari.com&sz=128' },
+      { name: 'Lamborghini', logoUrl: 'https://www.google.com/s2/favicons?domain=lamborghini.com&sz=128' },
     ]
   },
   {
     country: '瑞典',
     brands: [
-      { name: 'Volvo', logoUrl: 'https://logo.clearbit.com/volvocars.com' },
-      { name: 'Polestar', logoUrl: 'https://logo.clearbit.com/polestar.com' },
+      { name: 'Volvo', logoUrl: 'https://www.google.com/s2/favicons?domain=volvocars.com&sz=128' },
+      { name: 'Polestar', logoUrl: 'https://www.google.com/s2/favicons?domain=polestar.com&sz=128' },
     ]
   },
 ] as const
