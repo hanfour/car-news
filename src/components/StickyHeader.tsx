@@ -132,8 +132,8 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
             overflow: 'hidden'
           }}
         >
-          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 py-4 h-full">
-            <div className="flex items-center justify-between h-full">
+          <div className="w-full px-4 sm:px-6 lg:px-12 py-4 h-full">
+            <div className="flex items-center justify-between h-full max-w-[1440px] mx-auto">
               {/* Logo + Slogan */}
               <Link href="/" className="flex items-center group">
                 <WantCarLogo className="transition-transform group-hover:scale-105" size={40} />
@@ -229,11 +229,11 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
         </div>
 
         {/* 展開狀態 - 第2行：漢堡選單 | 分類導航（展開時）/ 收合狀態：漢堡+Logo | 搜尋（收合時）*/}
-        <div className="">
-          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
+        <div className="w-full overflow-x-auto">
+          <div className="px-4 sm:px-6 lg:px-12">
             {isScrolled ? (
               /* 收合模式：漢堡選單 + Logo | 搜尋 + 會員 */
-              <div className="flex items-center justify-between py-3">
+              <div className="flex items-center justify-between py-3 max-w-[1440px] mx-auto">
                 <div className="flex items-center gap-3">
                   <button
                     className="p-2 text-gray-600 hover:bg-gray-100 rounded"
@@ -333,16 +333,16 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
               </div>
             ) : (
               /* 展開模式：漢堡選單 | 分類導航 */
-              <nav className="flex items-center justify-between">
+              <nav className="flex items-center">
                 <button
-                  className="p-4 text-gray-600 hover:bg-gray-100 rounded"
+                  className="p-4 text-gray-600 hover:bg-gray-100 rounded flex-shrink-0"
                   onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
                 </button>
-                <div className="flex items-center flex-1 justify-between">
+                <div className="flex items-center overflow-x-auto scrollbar-hide">
                   <Link
                     href="/latest"
                     className={`py-4 px-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
@@ -384,11 +384,11 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
               overflow: 'hidden'
             }}
           >
-          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 py-4 h-full">
-            <div className="flex items-center gap-1">
+          <div className="w-full px-4 sm:px-6 lg:px-12 py-4 h-full overflow-x-auto scrollbar-hide">
+            <div className="flex items-center gap-0.5">
               <div
                 ref={brandScrollRef}
-                className="flex items-center gap-1 overflow-x-auto scrollbar-hide flex-1"
+                className="flex items-center gap-0.5"
               >
                 {popularBrands.map((brand) => (
                   <Link
@@ -414,7 +414,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
               </div>
               <button
                 onClick={scrollBrandsRight}
-                className="flex-shrink-0 p-2 hover:bg-gray-100 rounded transition-colors"
+                className="hidden flex-shrink-0 p-2 hover:bg-gray-100 rounded transition-colors"
                 style={{ color: '#808080' }}
                 aria-label="向右滾動更多品牌"
               >

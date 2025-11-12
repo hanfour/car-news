@@ -21,7 +21,7 @@ export function TagCloud({ tags }: TagCloudProps) {
 
   return (
     <div className="bg-[#FFBB00] w-full">
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 py-12">
+      <div className="w-full px-4 sm:px-6 lg:px-12 py-12">
         {/* Section Title */}
         <h2 className="text-2xl font-bold mb-8" style={{ color: '#404040', fontFamily: 'Merriweather, Noto Sans TC, serif' }}>
           玩咖熱詞

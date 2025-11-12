@@ -52,7 +52,7 @@ export function TodayArticlesCarousel({ articles }: TodayArticlesCarouselProps) 
 
   return (
     <div className="bg-(--background)">
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 py-8">
+      <div className="w-full px-4 sm:px-6 lg:px-12 py-8">
         {/* Header */}
         <div className="!hidden flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold" style={{ color: '#404040', fontFamily: 'Merriweather, Noto Sans TC, serif' }}>
