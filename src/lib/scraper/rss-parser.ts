@@ -57,6 +57,16 @@ export async function parseRSSFeed(source: NewsSource): Promise<ScrapedArticle[]
         }
       }
 
+      // 解碼 HTML 實體 (例如 &#038; -> &)
+      if (imageUrl) {
+        imageUrl = imageUrl
+          .replace(/&#038;/g, '&')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+      }
+
       articles.push({
         url: item.link,
         title: item.title,
