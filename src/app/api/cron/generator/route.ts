@@ -57,23 +57,42 @@ export async function GET(request: NextRequest) {
 
     // 3. 對每個品牌進行聚類和生成
     for (const [brand, brandArticles] of brandGroups.entries()) {
-      // 如果該品牌文章數不足3篇，跳過
-      if (brandArticles.length < 3) {
-        console.log(`\n[${brand}] Skipped: only ${brandArticles.length} articles`)
-        continue
-      }
-
       console.log(`\n[${brand}] Processing ${brandArticles.length} articles...`)
 
       // 3.1 在品牌內進行主題聚類
-      // 品牌內使用更寬鬆的條件：最少3篇，相似度0.5（因為已按品牌分組）
-      const brandClusters = await clusterArticles(brandArticles, 3, 0.5)
+      // 根據文章數量決定聚類策略：
+      // - 1篇：直接生成單篇文章
+      // - 2篇：嘗試聚類（最少2篇，相似度0.6）
+      // - 3篇以上：正常聚類（最少2篇，相似度0.5）
+      let brandClusters = []
+
+      if (brandArticles.length === 1) {
+        // 單篇文章直接處理，不需要聚類
+        console.log(`[${brand}] Single article, processing directly`)
+        const article = brandArticles[0]
+        let centroid = article.embedding
+        if (typeof centroid === 'string') {
+          centroid = JSON.parse(centroid)
+        }
+        brandClusters.push({
+          articles: [article],
+          centroid: centroid,
+          size: 1,
+          similarity: 1.0  // 單篇文章相似度設為1.0
+        })
+      } else if (brandArticles.length === 2) {
+        // 2篇文章：使用較高相似度門檻
+        brandClusters = await clusterArticles(brandArticles, 2, 0.6)
+      } else {
+        // 3篇以上：正常聚類（最少2篇，相似度0.5）
+        brandClusters = await clusterArticles(brandArticles, 2, 0.5)
+      }
 
       console.log(`[${brand}] Found ${brandClusters.length} topic clusters`)
 
       // 如果聚類失敗，嘗試將所有文章合併成一個「品牌週報」
-      if (brandClusters.length === 0 && brandArticles.length >= 3) {
-        console.log(`[${brand}] No clusters found, creating brand weekly digest`)
+      if (brandClusters.length === 0 && brandArticles.length >= 2) {
+        console.log(`[${brand}] No clusters found, creating brand digest`)
 
         // 解析第一篇文章的 embedding（可能是字串或陣列）
         let centroid = brandArticles[0].embedding
