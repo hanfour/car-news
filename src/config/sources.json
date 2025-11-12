@@ -33,5 +33,47 @@
     "url": "https://www.roadandtrack.com/rss/all.xml/",
     "type": "rss",
     "enabled": true
+  },
+  {
+    "id": "autocar",
+    "name": "Autocar",
+    "url": "http://www.autocar.co.uk/rss",
+    "type": "rss",
+    "enabled": true
+  },
+  {
+    "id": "insideevs",
+    "name": "InsideEVs",
+    "url": "https://insideevs.com/rss/articles/all",
+    "type": "rss",
+    "enabled": true
+  },
+  {
+    "id": "carscoops",
+    "name": "Carscoops",
+    "url": "https://www.carscoops.com/feed",
+    "type": "rss",
+    "enabled": true
+  },
+  {
+    "id": "electrek",
+    "name": "Electrek",
+    "url": "https://electrek.co/feed",
+    "type": "rss",
+    "enabled": true
+  },
+  {
+    "id": "motorauthority",
+    "name": "Motor Authority",
+    "url": "https://www.motorauthority.com/rss",
+    "type": "rss",
+    "enabled": true
+  },
+  {
+    "id": "autoexpress",
+    "name": "Auto Express",
+    "url": "https://www.autoexpress.co.uk/rss",
+    "type": "rss",
+    "enabled": true
   }
 ]
