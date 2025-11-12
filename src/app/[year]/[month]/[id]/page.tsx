@@ -49,13 +49,23 @@ async function getComments(articleId: string) {
 
   const { data, error } = await supabase
     .from('comments')
-    .select('*')
+    .select(`
+      id,
+      content,
+      created_at,
+      user_id,
+      profiles!user_id (
+        display_name,
+        avatar_url
+      )
+    `)
     .eq('article_id', articleId)
-    .eq('visible', true)
+    .eq('is_approved', true)
+    .is('parent_id', null)
     .order('created_at', { ascending: false })
 
   if (error) {
-    console.error('Failed to fetch comments:', error)
+    // Comments table might not exist yet or error fetching - silently return empty array
     return []
   }
 
@@ -533,14 +543,12 @@ export default async function ArticlePage({ params }: PageProps) {
 
                         {/* 文字內容 */}
                         <div className="flex-1 min-w-0">
-                          <HoverLink
-                            href={`/${year}/${month}/${related.id}`}
-                            className="text-sm font-medium transition-colors line-clamp-2 mb-2 leading-snug block"
-                            baseColor="#111827"
-                            hoverColor="#FFBB00"
+                          <h4
+                            className="text-sm font-medium transition-colors line-clamp-2 mb-2 leading-snug block group-hover:text-[#FFBB00]"
+                            style={{ color: '#111827' }}
                           >
                             {related.title_zh}
-                          </HoverLink>
+                          </h4>
                           <div className="flex items-center gap-3 text-xs text-gray-500">
                             {related.published_at && (
                               <time>

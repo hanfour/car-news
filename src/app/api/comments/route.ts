@@ -19,9 +19,19 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabase
       .from('comments')
-      .select('id, author_name, content, created_at')
+      .select(`
+        id,
+        content,
+        created_at,
+        user_id,
+        profiles!user_id (
+          display_name,
+          avatar_url
+        )
+      `)
       .eq('article_id', articleId)
-      .eq('visible', true)
+      .eq('is_approved', true)
+      .is('parent_id', null)  // 只獲取頂層評論
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -46,19 +56,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { article_id, author_name, content } = body
+    const { article_id, content } = body
 
-    // 验证输入
-    if (!article_id || !author_name || !content) {
+    // 驗證輸入
+    if (!article_id || !content) {
       return NextResponse.json(
         { error: '請填寫所有必填欄位' },
-        { status: 400 }
-      )
-    }
-
-    if (author_name.length > 50) {
-      return NextResponse.json(
-        { error: '暱稱過長（最多50字）' },
         { status: 400 }
       )
     }
@@ -70,11 +73,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // AI审核
+    // 獲取當前用戶
+    const supabase = createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: '請先登入' },
+        { status: 401 }
+      )
+    }
+
+    // AI 審核
     console.log('Moderating comment...')
     const moderation = await moderateComment(content)
 
-    // 如果confidence > 95且有明确违规，拒绝
+    // 如果 confidence > 95 且有明確違規，拒絕
     if (moderation.confidence > 95 && moderation.flags.length > 0) {
       return NextResponse.json(
         { error: '您的評論包含不當內容，無法發布' },
@@ -82,21 +96,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 保存评论
-    const supabase = createServiceClient()
+    // 保存評論（使用 service client 繞過 RLS）
+    const serviceClient = createServiceClient()
 
-    const { data, error } = await supabase
+    const { data, error } = await serviceClient
       .from('comments')
       .insert({
         article_id,
-        author_name,
+        user_id: user.id,
         content,
-        ai_moderation: {
+        moderation_result: {
           passed: moderation.passed,
           confidence: moderation.confidence,
           flags: moderation.flags
         },
-        visible: true // 默认通过
+        is_approved: true  // 默認通過
       })
       .select()
       .single()

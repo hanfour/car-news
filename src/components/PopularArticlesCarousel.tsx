@@ -4,7 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { format } from 'date-fns'
 import { zhTW } from 'date-fns/locale'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 
 interface Article {
   id: string
@@ -21,6 +21,8 @@ interface PopularArticlesCarouselProps {
 
 export function PopularArticlesCarousel({ articles }: PopularArticlesCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
+  const touchStartX = useRef<number>(0)
+  const touchEndX = useRef<number>(0)
 
   if (articles.length === 0) return null
 
@@ -33,6 +35,37 @@ export function PopularArticlesCarousel({ articles }: PopularArticlesCarouselPro
   const totalSlides = slides.length
   const currentSlide = slides[currentIndex] || []
 
+  // Navigation handlers
+  const goToPrevious = () => {
+    setCurrentIndex((prev) => (prev === 0 ? totalSlides - 1 : prev - 1))
+  }
+
+  const goToNext = () => {
+    setCurrentIndex((prev) => (prev === totalSlides - 1 ? 0 : prev + 1))
+  }
+
+  // Touch handlers for swipe
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX
+  }
+
+  const handleTouchEnd = () => {
+    const diff = touchStartX.current - touchEndX.current
+    const threshold = 50 // Minimum swipe distance
+
+    if (Math.abs(diff) > threshold) {
+      if (diff > 0) {
+        goToNext() // Swipe left -> next
+      } else {
+        goToPrevious() // Swipe right -> previous
+      }
+    }
+  }
+
   return (
     <div className="bg-(--background)">
       <div className="w-full px-4 sm:px-6 lg:px-12 py-12">
@@ -44,7 +77,12 @@ export function PopularArticlesCarousel({ articles }: PopularArticlesCarouselPro
         {/* Carousel Container */}
         <div className="relative">
           {/* Articles Grid - 2 columns on desktop, 1 on mobile */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+          <div
+            className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
             {currentSlide.map((article) => {
               const year = article.published_at?.slice(0, 4) || new Date().getFullYear()
               const month = article.published_at?.slice(5, 7) || String(new Date().getMonth() + 1).padStart(2, '0')

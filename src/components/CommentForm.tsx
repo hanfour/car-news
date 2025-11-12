@@ -52,7 +52,6 @@ export function CommentForm({ articleId, isLoggedIn = false, onLoginRequired }: 
         },
         body: JSON.stringify({
           article_id: articleId,
-          author_name: 'Current User', // TODO: Get from auth
           content: content.trim(),
         }),
       })

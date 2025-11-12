@@ -33,6 +33,11 @@ const nextConfig: NextConfig = {
         hostname: '*.twimg.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'daubcanyykdfyptntfco.supabase.co',
+        pathname: '/storage/**',
+      },
     ],
   },
 };

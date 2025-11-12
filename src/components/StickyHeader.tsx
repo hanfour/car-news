@@ -333,7 +333,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
               </div>
             ) : (
               /* 展開模式：漢堡選單 | 分類導航 */
-              <nav className="flex items-center">
+              <nav className="flex items-center justify-between gap-4 sm:gap-6 lg:gap-12">
                 <button
                   className="p-4 text-gray-600 hover:bg-gray-100 rounded flex-shrink-0"
                   onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -342,7 +342,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
                 </button>
-                <div className="flex items-center overflow-x-auto scrollbar-hide">
+                <div className="flex-1 flex items-center justify-between overflow-x-auto scrollbar-hide">
                   <Link
                     href="/latest"
                     className={`py-4 px-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
@@ -384,44 +384,46 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
               overflow: 'hidden'
             }}
           >
-          <div className="w-full px-4 sm:px-6 lg:px-12 py-4 h-full overflow-x-auto scrollbar-hide">
-            <div className="flex items-center gap-0.5">
-              <div
-                ref={brandScrollRef}
-                className="flex items-center gap-0.5"
-              >
-                {popularBrands.map((brand) => (
-                  <Link
-                    key={brand.name}
-                    href={`/brand/${brand.name}`}
-                    className="flex flex-col items-center gap-2 px-3 py-2 hover:bg-gray-50 rounded transition-colors group flex-shrink-0"
-                  >
-                    <div className="relative w-12 h-12 flex items-center justify-center">
-                      <Image
-                        src={brand.logoUrl}
-                        alt={`${brand.name} logo`}
-                        width={48}
-                        height={48}
-                        className="object-contain filter grayscale group-hover:grayscale-0 transition-all"
-                        unoptimized
-                      />
-                    </div>
-                    <span className="text-xs font-medium" style={{ color: '#808080' }}>
-                      {brand.name}
-                    </span>
-                  </Link>
-                ))}
+          <div className="w-full px-4 sm:px-6 lg:px-12 py-4 h-full overflow-hidden">
+            <div className="w-full h-full overflow-x-auto scrollbar-hide">
+              <div className="flex items-center gap-0.5">
+                <div
+                  ref={brandScrollRef}
+                  className="flex items-center gap-0.5"
+                >
+                  {popularBrands.map((brand) => (
+                    <Link
+                      key={brand.name}
+                      href={`/brand/${brand.name}`}
+                      className="flex flex-col items-center gap-1 p-2 hover:bg-gray-50 rounded transition-colors group flex-shrink-0"
+                    >
+                      <div className="relative w-12 h-12 flex items-center justify-center">
+                        <Image
+                          src={brand.logoUrl}
+                          alt={`${brand.name} logo`}
+                          width={48}
+                          height={48}
+                          className="object-contain filter grayscale group-hover:grayscale-0 transition-all"
+                          unoptimized
+                        />
+                      </div>
+                      <span className="text-xs font-medium" style={{ color: '#808080' }}>
+                        {brand.name}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+                <button
+                  onClick={scrollBrandsRight}
+                  className="hidden flex-shrink-0 p-2 hover:bg-gray-100 rounded transition-colors"
+                  style={{ color: '#808080' }}
+                  aria-label="向右滾動更多品牌"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
               </div>
-              <button
-                onClick={scrollBrandsRight}
-                className="hidden flex-shrink-0 p-2 hover:bg-gray-100 rounded transition-colors"
-                style={{ color: '#808080' }}
-                aria-label="向右滾動更多品牌"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
             </div>
           </div>
         </div>
@@ -430,7 +432,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
 
       {/* Sidebar */}
       <div
-        className={`fixed top-0 left-0 h-full w-[85vw] sm:w-80 max-w-sm pb-10 bg-(--background) z-50 transform transition-transform duration-300 ${
+        className={`fixed top-0 left-0 h-dvh w-[85vw] sm:w-80 max-w-sm pb-10 bg-(--background) z-50 transform transition-transform duration-300 ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
         style={{ boxShadow: '2px 0 8px rgba(0,0,0,0.1)' }}

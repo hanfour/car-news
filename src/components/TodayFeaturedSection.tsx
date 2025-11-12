@@ -40,7 +40,7 @@ export function TodayFeaturedSection({ articles }: TodayFeaturedSectionProps) {
     <div className="bg-white w-full">
       <div className="w-full px-4 sm:px-6 lg:px-12 py-12">
         {/* Section Title */}
-        <h2 className="hidden text-2xl font-bold mb-8" style={{ color: '#404040', fontFamily: 'Merriweather, Noto Sans TC, serif' }}>
+        <h2 className="text-2xl font-bold mb-8" style={{ color: '#404040', fontFamily: 'Merriweather, Noto Sans TC, serif' }}>
           今日焦點
         </h2>
 
