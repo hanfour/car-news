@@ -149,11 +149,18 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // 3.4.1 如果沒有圖片，使用 AI 生成封面圖
+        // 3.4.1 決定封面圖片來源
         let coverImage = generated.coverImage
         let imageCredit = generated.imageCredit
 
-        if (!coverImage && images.length === 0) {
+        // 優先順序：1. AI生成的coverImage  2. 來源文章第一張圖  3. AI生成封面圖
+        if (!coverImage && images.length > 0) {
+          // 使用來源文章的第一張圖片作為封面
+          coverImage = images[0].url
+          imageCredit = images[0].credit
+          console.log(`[${brand}] → Using first source image as cover`)
+        } else if (!coverImage && images.length === 0) {
+          // 完全沒有圖片時，生成 AI 封面圖
           console.log(`[${brand}] → No images found, generating and saving AI cover image...`)
           const aiImage = await generateAndSaveCoverImage(
             generated.title_zh,
