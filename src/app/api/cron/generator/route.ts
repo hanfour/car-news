@@ -177,13 +177,22 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // 3.5 质量检查和发布决策
+        // 3.5 计算来源文章的最早发布时间
+        const sourceDates = cluster.articles
+          .map(a => a.published_at)
+          .filter((date): date is string => !!date)
+          .map(date => new Date(date))
+        const earliestSourceDate = sourceDates.length > 0
+          ? new Date(Math.min(...sourceDates.map(d => d.getTime()))).toISOString()
+          : today
+
+        // 3.6 质量检查和发布决策
         const decision = decidePublish(generated)
 
-        // 3.6 生成短ID
+        // 3.7 生成短ID
         const shortId = generateShortId()
 
-        // 3.7 保存文章（包含标签、封面圖、品牌、多張圖片）
+        // 3.8 保存文章（包含标签、封面圖、品牌、多張圖片、來源時間）
         const { data: article, error: insertError } = await supabase
           .from('generated_articles')
           .insert({
@@ -198,6 +207,7 @@ export async function GET(request: NextRequest) {
             style_version: 'v1.0',
             published: decision.shouldPublish,
             published_at: decision.shouldPublish ? today : null,
+            source_date: earliestSourceDate,  // 來源文章的最早發布時間
             brands: generated.brands || [],
             car_models: generated.car_models || [],
             categories: generated.categories || [],

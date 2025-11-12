@@ -63,6 +63,7 @@ export async function GET(request: NextRequest) {
             title: article.title,
             content: article.content,
             scraped_at: new Date().toISOString(),
+            published_at: article.publishedAt?.toISOString() || new Date().toISOString(),
             expires_at: expiresAt,
             embedding,
             image_url: article.imageUrl || null,

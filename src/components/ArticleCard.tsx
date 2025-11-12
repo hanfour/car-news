@@ -8,6 +8,7 @@ interface ArticleCardProps {
     id: string
     title_zh: string
     published_at: string
+    source_date?: string  // 來源文章的原始發布時間
     view_count: number
     categories?: string[]
     brands?: string[]
@@ -25,8 +26,12 @@ interface ArticleCardProps {
  * - View count and publish date
  */
 export function ArticleCard({ article, gradient }: ArticleCardProps) {
+  // 使用來源時間作為 URL 路徑（保持一致性）
   const year = article.published_at?.slice(0, 4) || new Date().getFullYear()
   const month = article.published_at?.slice(5, 7) || String(new Date().getMonth() + 1).padStart(2, '0')
+
+  // 顯示來源時間給使用者（真實新聞時間）
+  const displayDate = article.source_date || article.published_at
 
   return (
     <Link href={`/${year}/${month}/${article.id}`}>
@@ -96,7 +101,7 @@ export function ArticleCard({ article, gradient }: ArticleCardProps) {
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              {new Date(article.published_at).toLocaleDateString('zh-TW')}
+              {new Date(displayDate).toLocaleDateString('zh-TW')}
             </time>
           </div>
         </div>
