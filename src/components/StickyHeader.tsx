@@ -132,7 +132,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
             overflow: 'hidden'
           }}
         >
-          <div className="max-w-[1440px] mx-auto px-12 py-4 h-full">
+          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 py-4 h-full">
             <div className="flex items-center justify-between h-full">
               {/* Logo + Slogan */}
               <Link href="/" className="flex items-center group">
@@ -230,7 +230,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
 
         {/* 展開狀態 - 第2行：漢堡選單 | 分類導航（展開時）/ 收合狀態：漢堡+Logo | 搜尋（收合時）*/}
         <div className="">
-          <div className="max-w-[1440px] mx-auto px-12">
+          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
             {isScrolled ? (
               /* 收合模式：漢堡選單 + Logo | 搜尋 + 會員 */
               <div className="flex items-center justify-between py-3">
@@ -384,7 +384,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
               overflow: 'hidden'
             }}
           >
-          <div className="max-w-[1440px] mx-auto px-12 py-4 h-full">
+          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 py-4 h-full">
             <div className="flex items-center gap-1">
               <div
                 ref={brandScrollRef}
@@ -430,7 +430,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
 
       {/* Sidebar */}
       <div
-        className={`fixed top-0 left-0 h-full w-64 pb-10 bg-(--background) z-50 transform transition-transform duration-300 ${
+        className={`fixed top-0 left-0 h-full w-[85vw] sm:w-80 max-w-sm pb-10 bg-(--background) z-50 transform transition-transform duration-300 ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
         style={{ boxShadow: '2px 0 8px rgba(0,0,0,0.1)' }}
