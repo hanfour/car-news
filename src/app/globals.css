@@ -65,3 +65,16 @@ html {
 .article-card:hover {
   box-shadow: 0px 0px 24px rgba(0, 0, 0, 0.1);
 }
+
+/* Search Modal Height - iOS Safari Fix */
+.search-modal-height {
+  height: 100vh;
+  height: 100dvh;
+  min-height: -webkit-fill-available;
+}
+
+.search-results-height {
+  max-height: calc(100vh - 100px);
+  max-height: calc(100dvh - 100px);
+  min-height: calc(-webkit-fill-available - 100px);
+}

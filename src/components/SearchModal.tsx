@@ -88,12 +88,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] bg-white"
-      style={{
-        height: '100vh',
-        height: '100dvh',
-        minHeight: '-webkit-fill-available'
-      }}
+      className="fixed inset-0 z-[100] bg-white search-modal-height"
     >
       {/* Search Header */}
       <div className="border-b" style={{ borderColor: '#cdcdcd' }}>
@@ -145,12 +140,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
       {/* Search Results */}
       <div
-        className="max-w-[1440px] mx-auto px-4 sm:px-12 py-6 sm:py-12 overflow-y-auto"
-        style={{
-          maxHeight: 'calc(100vh - 100px)',
-          maxHeight: 'calc(100dvh - 100px)',
-          minHeight: 'calc(-webkit-fill-available - 100px)'
-        }}
+        className="max-w-[1440px] mx-auto px-4 sm:px-12 py-6 sm:py-12 overflow-y-auto search-results-height"
       >
         {isSearching ? (
           <div className="text-center py-12" style={{ color: '#808080' }}>
