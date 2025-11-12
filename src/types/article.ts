@@ -11,6 +11,7 @@ export interface Article {
   cover_image: string | null
   categories: string[] | null
   primary_brand: string | null
+  car_models: string[] | null
 }
 
 export interface ArticleWithContent extends Article {

@@ -73,7 +73,7 @@ async function getPublishedArticles(): Promise<Article[]> {
 
   const { data, error} = await supabase
     .from('generated_articles')
-    .select('id, title_zh, published_at, view_count, share_count, cover_image, categories, primary_brand')
+    .select('id, title_zh, published_at, view_count, share_count, cover_image, categories, primary_brand, car_models')
     .eq('published', true)
     .order('published_at', { ascending: false })
     .order('created_at', { ascending: false })
@@ -140,7 +140,7 @@ async function getTodayArticles(): Promise<ArticleWithBrands[]> {
 
   const { data, error } = await supabase
     .from('generated_articles')
-    .select('id, title_zh, published_at, cover_image, categories, brands, view_count, share_count, primary_brand')
+    .select('id, title_zh, published_at, cover_image, categories, brands, view_count, share_count, primary_brand, car_models')
     .eq('published', true)
     .gte('published_at', today.toISOString())
     .order('published_at', { ascending: false })
@@ -160,7 +160,7 @@ async function getTodayTopArticles(): Promise<ArticleWithContent[]> {
 
   const { data, error } = await supabase
     .from('generated_articles')
-    .select('id, title_zh, content_zh, published_at, cover_image, categories, primary_brand, view_count, share_count')
+    .select('id, title_zh, content_zh, published_at, cover_image, categories, primary_brand, view_count, share_count, car_models')
     .eq('published', true)
     .gte('published_at', today.toISOString())
     .order('view_count', { ascending: false, nullsFirst: false })
@@ -181,7 +181,7 @@ async function getRecentPopularArticles(): Promise<Article[]> {
 
   const { data, error } = await supabase
     .from('generated_articles')
-    .select('id, title_zh, published_at, cover_image, categories, primary_brand, view_count, share_count')
+    .select('id, title_zh, published_at, cover_image, categories, primary_brand, view_count, share_count, car_models')
     .eq('published', true)
     .gte('published_at', threeDaysAgo.toISOString())
     .order('view_count', { ascending: false, nullsFirst: false })
@@ -201,7 +201,7 @@ async function getFeaturedArticles(): Promise<ArticleWithBrands[]> {
 
   const { data, error } = await supabase
     .from('generated_articles')
-    .select('id, title_zh, published_at, brands, categories, cover_image, view_count, share_count, primary_brand')
+    .select('id, title_zh, published_at, brands, categories, cover_image, view_count, share_count, primary_brand, car_models')
     .eq('published', true)
     .eq('is_featured', true)
     .order('published_at', { ascending: false })

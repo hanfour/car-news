@@ -59,7 +59,8 @@ export async function clusterArticles(
       clusters.push({
         articles: cluster,
         centroid,
-        similarity: avgSimilarity
+        similarity: avgSimilarity,
+        size: cluster.length
       })
     }
   }

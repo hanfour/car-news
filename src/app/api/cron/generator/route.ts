@@ -104,7 +104,8 @@ export async function GET(request: NextRequest) {
         brandClusters.push({
           articles: brandArticles,
           centroid: centroid,
-          size: brandArticles.length
+          size: brandArticles.length,
+          similarity: 0.5  // 品牌週報使用預設相似度
         })
       }
 

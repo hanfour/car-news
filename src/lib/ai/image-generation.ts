@@ -39,8 +39,8 @@ export async function generateCoverImage(
       style: 'natural' // 自然風格，更適合新聞
     })
 
-    const imageUrl = response.data[0].url
-    const revisedPrompt = response.data[0].revised_prompt
+    const imageUrl = response.data?.[0]?.url
+    const revisedPrompt = response.data?.[0]?.revised_prompt
 
     if (!imageUrl) {
       console.error('✗ DALL-E 3 returned no image URL')

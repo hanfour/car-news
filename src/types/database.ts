@@ -6,6 +6,8 @@ export interface RawArticle {
   scraped_at: string
   expires_at: string
   embedding: number[]
+  image_url?: string
+  image_credit?: string
 }
 
 export interface GeneratedArticle {
@@ -59,6 +61,7 @@ export interface ArticleCluster {
   articles: RawArticle[]
   centroid: number[]
   similarity: number
+  size: number
 }
 
 export interface NewsSource {
