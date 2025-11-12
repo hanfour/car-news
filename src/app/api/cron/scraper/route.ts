@@ -55,14 +55,15 @@ export async function GET(request: NextRequest) {
         // 计算过期时间（72小时后）
         const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
 
-        // 保存到数据库
-        const { error } = await supabase
+        // 保存到数据库（包含來源發布時間）
+        const { error} = await supabase
           .from('raw_articles')
           .insert({
             url: article.url,
             title: article.title,
             content: article.content,
             scraped_at: new Date().toISOString(),
+            published_at: article.publishedAt?.toISOString() || new Date().toISOString(),
             expires_at: expiresAt,
             embedding,
             image_url: article.imageUrl || null,
