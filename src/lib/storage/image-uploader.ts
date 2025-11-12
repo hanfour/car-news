@@ -61,7 +61,7 @@ export async function uploadImageFromUrl(
     }
 
     const arrayBuffer = await response.arrayBuffer()
-    let buffer = Buffer.from(arrayBuffer)
+    let buffer: any = Buffer.from(arrayBuffer)
 
     // 2.1 如果需要添加浮水印
     if (addWatermark) {
