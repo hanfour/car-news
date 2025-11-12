@@ -187,6 +187,11 @@ export default async function ArticlePage({ params }: PageProps) {
     notFound()
   }
 
+  // Check if user is logged in
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const isLoggedIn = !!user
+
   const comments = await getComments(id)
   const relatedArticles = await getRelatedArticles(id, article.brands || [], article.categories || [])
 
@@ -395,7 +400,7 @@ export default async function ArticlePage({ params }: PageProps) {
               <h2 className="text-xl font-semibold text-gray-900 mb-6">評論 ({comments.length})</h2>
 
               {/* Comment Form */}
-              <CommentForm articleId={id} isLoggedIn={false} />
+              <CommentForm articleId={id} isLoggedIn={isLoggedIn} />
 
               {/* Sort Options */}
               <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-200">
@@ -417,10 +422,17 @@ export default async function ArticlePage({ params }: PageProps) {
                 ) : (
                   comments.map((comment: {
                     id: string
-                    author_name: string
                     content: string
                     created_at: string
+                    user_id: string
+                    profiles: {
+                      display_name: string
+                      avatar_url: string | null
+                    }[]
                   }) => {
+                    // 提取作者信息
+                    const authorName = comment.profiles[0]?.display_name || '匿名用戶'
+
                     // 計算相對時間
                     const getRelativeTime = (dateString: string) => {
                       const now = new Date()
@@ -440,13 +452,13 @@ export default async function ArticlePage({ params }: PageProps) {
                       <div key={comment.id} className="flex items-start gap-3">
                         {/* 頭像 */}
                         <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                          {comment.author_name.charAt(0).toUpperCase()}
+                          {authorName.charAt(0).toUpperCase()}
                         </div>
 
                         {/* 內容 */}
                         <div className="flex-1 min-w-0">
                           {/* 用戶名 */}
-                          <h4 className="font-medium text-gray-900 mb-1">{comment.author_name}</h4>
+                          <h4 className="font-medium text-gray-900 mb-1">{authorName}</h4>
 
                           {/* 評論內容 */}
                           <p className="text-gray-700 text-sm leading-relaxed mb-2 whitespace-pre-wrap">
