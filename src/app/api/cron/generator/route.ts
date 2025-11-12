@@ -6,6 +6,7 @@ import { generateShortId } from '@/lib/utils/short-id'
 import { generateTopicHash } from '@/lib/utils/topic-hash'
 import { groupArticlesByBrand } from '@/lib/utils/brand-extractor'
 import { generateAndSaveCoverImage } from '@/lib/ai/image-generation'
+import { downloadAndStoreImage, downloadAndStoreImages } from '@/lib/storage/image-downloader'
 import { RawArticle } from '@/types/database'
 
 export const maxDuration = 300 // Vercel Pro限制：最长5分钟
@@ -133,15 +134,18 @@ export async function GET(request: NextRequest) {
           continue
         }
 
-        // 3.3 调用AI生成文章
+        // 3.3 生成短ID（需要在圖片存儲前生成）
+        const shortId = generateShortId()
+
+        // 3.4 调用AI生成文章
         console.log(`[${brand}] → Generating article for cluster (${cluster.articles.length} sources)...`)
         const generated = await generateArticle(cluster.articles)
 
-        // 3.4 收集該 cluster 所有圖片
-        const images: Array<{ url: string; credit: string; caption?: string }> = []
+        // 3.5 收集該 cluster 所有圖片（外部 URL）
+        const sourceImages: Array<{ url: string; credit: string; caption?: string }> = []
         for (const article of cluster.articles) {
           if (article.image_url) {
-            images.push({
+            sourceImages.push({
               url: article.image_url,
               credit: article.image_credit || 'Unknown',
               caption: article.title.slice(0, 100) // 使用文章標題作為圖片說明
@@ -149,17 +153,36 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // 3.4.1 決定封面圖片來源
+        console.log(`[${brand}] → Found ${sourceImages.length} source images, downloading and storing...`)
+
+        // 3.4.1 下載並存儲圖片到 Supabase Storage
+        const storedImages = await downloadAndStoreImages(sourceImages, shortId)
+        console.log(`[${brand}] → Successfully stored ${storedImages.length}/${sourceImages.length} images`)
+
+        // 3.4.2 決定封面圖片來源
         let coverImage = generated.coverImage
         let imageCredit = generated.imageCredit
 
         // 優先順序：1. AI生成的coverImage  2. 來源文章第一張圖  3. AI生成封面圖
-        if (!coverImage && images.length > 0) {
+        if (generated.coverImage) {
+          // 下載並存儲 AI 生成的封面圖
+          console.log(`[${brand}] → Downloading AI-generated cover image...`)
+          const storedCover = await downloadAndStoreImage(
+            generated.coverImage,
+            shortId,
+            'AI Generated'
+          )
+          if (storedCover) {
+            coverImage = storedCover.url
+            imageCredit = storedCover.credit
+            console.log(`[${brand}] → ✓ AI cover image stored`)
+          }
+        } else if (storedImages.length > 0) {
           // 使用來源文章的第一張圖片作為封面
-          coverImage = images[0].url
-          imageCredit = images[0].credit
+          coverImage = storedImages[0].url
+          imageCredit = storedImages[0].credit
           console.log(`[${brand}] → Using first source image as cover`)
-        } else if (!coverImage && images.length === 0) {
+        } else if (sourceImages.length === 0) {
           // 完全沒有圖片時，生成 AI 封面圖
           console.log(`[${brand}] → No images found, generating and saving AI cover image...`)
           const aiImage = await generateAndSaveCoverImage(
@@ -189,10 +212,7 @@ export async function GET(request: NextRequest) {
         // 3.6 质量检查和发布决策
         const decision = decidePublish(generated)
 
-        // 3.7 生成短ID
-        const shortId = generateShortId()
-
-        // 3.8 保存文章（包含标签、封面圖、品牌、多張圖片、來源時間）
+        // 3.7 保存文章（包含标签、封面圖、品牌、多張圖片、來源時間）
         const { data: article, error: insertError } = await supabase
           .from('generated_articles')
           .insert({
@@ -215,7 +235,7 @@ export async function GET(request: NextRequest) {
             cover_image: coverImage || null,
             image_credit: imageCredit || null,
             primary_brand: brand === 'Other' ? null : brand,
-            images: images.length > 0 ? images : []
+            images: storedImages.length > 0 ? storedImages : []
           })
           .select()
           .single()
@@ -239,10 +259,10 @@ export async function GET(request: NextRequest) {
           confidence: generated.confidence,
           published: decision.shouldPublish,
           reason: decision.reason,
-          images_count: images.length
+          images_count: storedImages.length
         })
 
-        console.log(`[${brand}] ✓ ${decision.shouldPublish ? 'Published' : 'Saved'}: ${generated.title_zh} (${images.length} images)`)
+        console.log(`[${brand}] ✓ ${decision.shouldPublish ? 'Published' : 'Saved'}: ${generated.title_zh} (${storedImages.length} images stored)`)
 
       } catch (error: any) {
         console.error(`[${brand}] Error generating article for cluster:`, error)

@@ -1,0 +1,162 @@
+import { createServiceClient } from '@/lib/supabase'
+import crypto from 'crypto'
+
+/**
+ * 圖片下載和存儲服務
+ *
+ * 功能：
+ * 1. 從外部 URL 下載圖片
+ * 2. 上傳到 Supabase Storage
+ * 3. 返回公開訪問 URL
+ *
+ * 優勢：
+ * - 避免外部圖片失效（404）
+ * - 提升加載速度（CDN 加速）
+ * - 完整控制圖片生命週期
+ * - 支持 SEO 優化
+ */
+
+export interface StoredImage {
+  url: string
+  credit: string
+  originalUrl: string
+  size?: number
+  mimeType?: string
+}
+
+/**
+ * 從 URL 生成唯一的文件名
+ */
+function generateFilename(url: string, articleId: string): string {
+  // 使用 URL 的 hash 確保相同圖片不會重複上傳
+  const urlHash = crypto.createHash('md5').update(url).digest('hex').slice(0, 8)
+
+  // 提取文件擴展名
+  const urlWithoutQuery = url.split('?')[0]
+  const ext = urlWithoutQuery.split('.').pop()?.toLowerCase() || 'jpg'
+
+  // 只允許常見圖片格式
+  const allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'gif']
+  const finalExt = allowedExts.includes(ext) ? ext : 'jpg'
+
+  // 格式：{articleId}-{timestamp}-{hash}.{ext}
+  return `${articleId}/${Date.now()}-${urlHash}.${finalExt}`
+}
+
+/**
+ * 下載圖片並存儲到 Supabase Storage
+ *
+ * @param imageUrl 外部圖片 URL
+ * @param articleId 文章 ID（用於組織文件結構）
+ * @param credit 圖片來源標註
+ * @returns 存儲後的圖片信息，失敗返回 null
+ */
+export async function downloadAndStoreImage(
+  imageUrl: string,
+  articleId: string,
+  credit: string = 'Unknown'
+): Promise<StoredImage | null> {
+  try {
+    console.log(`[Image Storage] Downloading: ${imageUrl}`)
+
+    // 1. 下載圖片
+    const response = await fetch(imageUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; CarNewsAI/1.0)',
+      },
+      signal: AbortSignal.timeout(30000), // 30秒超時
+    })
+
+    if (!response.ok) {
+      console.error(`[Image Storage] Download failed: ${response.status} ${response.statusText}`)
+      return null
+    }
+
+    // 檢查是否為圖片
+    const contentType = response.headers.get('content-type')
+    if (!contentType?.startsWith('image/')) {
+      console.error(`[Image Storage] Invalid content type: ${contentType}`)
+      return null
+    }
+
+    // 2. 轉換為 Blob
+    const blob = await response.blob()
+    const size = blob.size
+
+    // 檢查文件大小（限制 10MB）
+    if (size > 10 * 1024 * 1024) {
+      console.error(`[Image Storage] File too large: ${size} bytes`)
+      return null
+    }
+
+    console.log(`[Image Storage] Downloaded ${size} bytes, type: ${contentType}`)
+
+    // 3. 生成文件名
+    const filename = generateFilename(imageUrl, articleId)
+
+    // 4. 上傳到 Supabase Storage
+    const supabase = createServiceClient()
+    const { data, error } = await supabase.storage
+      .from('article-images')
+      .upload(filename, blob, {
+        contentType: blob.type,
+        cacheControl: '31536000', // 1 year
+        upsert: false, // 不覆蓋已存在的文件
+      })
+
+    if (error) {
+      console.error(`[Image Storage] Upload failed:`, error)
+      return null
+    }
+
+    // 5. 獲取公開 URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('article-images')
+      .getPublicUrl(filename)
+
+    console.log(`[Image Storage] ✓ Stored successfully: ${publicUrl}`)
+
+    return {
+      url: publicUrl,
+      credit,
+      originalUrl: imageUrl,
+      size,
+      mimeType: blob.type,
+    }
+  } catch (error: any) {
+    console.error(`[Image Storage] Error:`, error.message)
+    return null
+  }
+}
+
+/**
+ * 批量下載和存儲圖片
+ *
+ * @param images 圖片列表 {url, credit}
+ * @param articleId 文章 ID
+ * @returns 成功存儲的圖片列表
+ */
+export async function downloadAndStoreImages(
+  images: Array<{ url: string; credit: string; caption?: string }>,
+  articleId: string
+): Promise<Array<{ url: string; credit: string; caption?: string }>> {
+  const results: Array<{ url: string; credit: string; caption?: string }> = []
+
+  for (const image of images) {
+    const stored = await downloadAndStoreImage(image.url, articleId, image.credit)
+
+    if (stored) {
+      results.push({
+        url: stored.url,
+        credit: stored.credit,
+        caption: image.caption,
+      })
+    } else {
+      // 如果下載失敗，保留原 URL 作為降級方案
+      console.warn(`[Image Storage] Falling back to original URL for: ${image.url}`)
+      results.push(image)
+    }
+  }
+
+  return results
+}
