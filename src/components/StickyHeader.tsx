@@ -432,14 +432,12 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
 
       {/* Sidebar */}
       <div
-        className={`fixed top-0 left-0 w-[85vw] sm:w-80 max-w-sm pb-10 bg-(--background) z-50 transform transition-transform duration-300 ${
+        className={`fixed top-0 left-0 bottom-0 w-[85vw] sm:w-80 max-w-sm pb-10 bg-(--background) z-50 transform transition-transform duration-300 ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
         style={{
           boxShadow: '2px 0 8px rgba(0,0,0,0.1)',
-          height: '100vh',
-          height: '100dvh',
-          minHeight: '-webkit-fill-available'
+          height: '100%'
         }}
       >
         <div className="flex flex-col h-full">

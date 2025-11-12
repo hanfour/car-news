@@ -87,10 +87,17 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] bg-white">
+    <div
+      className="fixed inset-0 z-[100] bg-white"
+      style={{
+        height: '100vh',
+        height: '100dvh',
+        minHeight: '-webkit-fill-available'
+      }}
+    >
       {/* Search Header */}
       <div className="border-b" style={{ borderColor: '#cdcdcd' }}>
-        <div className="max-w-[1440px] mx-auto px-12 py-6">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-12 py-4 sm:py-6">
           <div className="flex items-center gap-4">
             {/* Search Icon */}
             <svg className="w-6 h-6 flex-shrink-0" style={{ color: '#404040' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -104,16 +111,16 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               autoFocus
-              className="flex-1 text-xl outline-none"
+              className="flex-1 text-base sm:text-xl outline-none"
               style={{ color: '#404040' }}
             />
 
-            {/* Search Button */}
+            {/* Search Button - Hidden on mobile, visible on larger screens */}
             <button
               onClick={() => {
                 // Trigger search explicitly if needed
               }}
-              className="px-6 py-2 rounded transition-colors"
+              className="hidden sm:block px-6 py-2 rounded transition-colors"
               style={{
                 backgroundColor: '#FFBB00',
                 color: '#333'
@@ -137,7 +144,14 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
       </div>
 
       {/* Search Results */}
-      <div className="max-w-[1440px] mx-auto px-12 py-12 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 120px)' }}>
+      <div
+        className="max-w-[1440px] mx-auto px-4 sm:px-12 py-6 sm:py-12 overflow-y-auto"
+        style={{
+          maxHeight: 'calc(100vh - 100px)',
+          maxHeight: 'calc(100dvh - 100px)',
+          minHeight: 'calc(-webkit-fill-available - 100px)'
+        }}
+      >
         {isSearching ? (
           <div className="text-center py-12" style={{ color: '#808080' }}>
             搜尋中...
