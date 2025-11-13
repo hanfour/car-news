@@ -130,3 +130,4 @@ car-news-ai/
 ## 📝 授權
 
 MIT
+# Trigger redeploy to register cron jobs
