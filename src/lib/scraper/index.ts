@@ -5,27 +5,36 @@ import { fetchWebpage, extractTextFromHtml } from './fetcher'
 
 export async function scrapeAllSources(): Promise<ScrapedArticle[]> {
   const enabledSources = sources.filter((s) => s.enabled) as NewsSource[]
-  const allArticles: ScrapedArticle[] = []
 
-  for (const source of enabledSources) {
-    try {
-      console.log(`Scraping ${source.name}...`)
+  console.log(`Scraping ${enabledSources.length} sources in parallel...`)
 
-      let articles: ScrapedArticle[] = []
+  // 並行處理所有來源（更快！）
+  const results = await Promise.allSettled(
+    enabledSources.map(async (source) => {
+      try {
+        console.log(`Scraping ${source.name}...`)
 
-      if (source.type === 'rss') {
-        articles = await parseRSSFeed(source as NewsSource)
-      } else if (source.type === 'scrape') {
-        // 网页抓取方式（暂未实现，可以后续扩展）
-        console.warn(`Scrape type not implemented for ${source.name}`)
-        continue
+        if (source.type === 'rss') {
+          const articles = await parseRSSFeed(source as NewsSource)
+          console.log(`  → Found ${articles.length} articles from ${source.name}`)
+          return articles
+        } else if (source.type === 'scrape') {
+          console.warn(`Scrape type not implemented for ${source.name}`)
+          return []
+        }
+        return []
+      } catch (error) {
+        console.error(`Failed to scrape ${source.name}:`, error)
+        return []
       }
+    })
+  )
 
-      console.log(`  → Found ${articles.length} articles`)
-      allArticles.push(...articles)
-    } catch (error) {
-      console.error(`Failed to scrape ${source.name}:`, error)
-      // 继续处理其他源
+  // 收集所有成功的結果
+  const allArticles: ScrapedArticle[] = []
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      allArticles.push(...result.value)
     }
   }
 
