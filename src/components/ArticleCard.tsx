@@ -34,8 +34,8 @@ export function ArticleCard({ article, gradient }: ArticleCardProps) {
   const displayDate = article.source_date || article.published_at
 
   return (
-    <Link href={`/${year}/${month}/${article.id}`}>
-      <article className="overflow-hidden transition-all duration-300 cursor-pointer group">
+    <Link href={`/${year}/${month}/${article.id}`} prefetch={false}>
+      <article className="overflow-hidden transition-all duration-200 cursor-pointer group">
         <div className={`relative aspect-[16/9] bg-gradient-to-br ${gradient} flex items-center justify-center overflow-hidden`}>
           {article.cover_image ? (
             <Image
@@ -77,15 +77,7 @@ export function ArticleCard({ article, gradient }: ArticleCardProps) {
             </div>
           )}
 
-          <h2
-            className="text-base font-semibold text-gray-900 line-clamp-2 leading-snug mb-3 transition-colors"
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = '#FFBB00'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = '#111827'
-            }}
-          >
+          <h2 className="text-base font-semibold text-gray-900 group-hover:text-[#FFBB00] line-clamp-2 leading-snug mb-3 transition-colors duration-200">
             {article.title_zh}
           </h2>
 

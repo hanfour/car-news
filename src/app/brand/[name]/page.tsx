@@ -14,7 +14,7 @@ async function getArticlesByBrand(brand: string) {
     .from('generated_articles')
     .select('id, title_zh, content_zh, published_at, source_date, view_count, share_count, created_at, brands, car_models, categories, tags, cover_image')
     .eq('published', true)
-    .contains('brands', [brand])
+    .eq('primary_brand', brand)  // 只顯示主要品牌匹配的文章
     .order('published_at', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(50)

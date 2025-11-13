@@ -38,6 +38,16 @@ const nextConfig: NextConfig = {
         hostname: 'daubcanyykdfyptntfco.supabase.co',
         pathname: '/storage/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'images.hgmsites.net',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.google.com',
+        pathname: '/s2/favicons',
+      },
     ],
   },
 };

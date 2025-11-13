@@ -33,6 +33,7 @@ export function TagCloud({ tags }: TagCloudProps) {
             <Link
               key={tag.name}
               href={`/tag/${encodeURIComponent(tag.name)}`}
+              prefetch={false}
               className="inline-block px-4 py-2 transition-all duration-200 text-[#333] hover:bg-[#333] hover:text-white rounded-full border border-[#333]"
               style={{
                 fontSize: `${getFontSize(tag.count)}px`,

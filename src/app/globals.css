@@ -39,6 +39,10 @@ body {
   /* Fix for iOS Safari viewport height */
   min-height: 100vh;
   min-height: -webkit-fill-available;
+  /* Eliminate 300ms tap delay on mobile */
+  touch-action: manipulation;
+  /* Improve touch scrolling on iOS */
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Fix iOS Safari viewport height issues */
@@ -77,4 +81,36 @@ html {
   max-height: calc(100vh - 100px);
   max-height: calc(100dvh - 100px);
   min-height: calc(-webkit-fill-available - 100px);
+}
+
+/* Fast tap response for all interactive elements */
+a, button, [role="button"], [role="link"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(255, 187, 0, 0.1);
+  cursor: pointer;
+}
+
+/* Active state feedback for better touch UX */
+a:active, button:active {
+  opacity: 0.7;
+  transition: opacity 0.1s;
+}
+
+/* Prevent button double-tap zoom on iOS */
+button, [role="button"] {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Optimize transitions for mobile performance */
+@media (max-width: 768px) {
+  * {
+    -webkit-tap-highlight-color: rgba(255, 187, 0, 0.1);
+  }
+
+  /* Reduce motion for better mobile performance */
+  .transition-all, .transition-opacity, .transition-transform, .transition-colors {
+    transition-duration: 150ms;
+  }
 }

@@ -1,0 +1,337 @@
+{
+  "info": {
+    "name": "Car News AI - Admin API",
+    "description": "管理文章和評分的 Admin API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "列出所有文章",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/admin/articles?published=true&limit=20",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "admin", "articles"],
+          "query": [
+            {
+              "key": "published",
+              "value": "true",
+              "description": "true=已發布, false=草稿"
+            },
+            {
+              "key": "limit",
+              "value": "20",
+              "description": "每頁數量"
+            },
+            {
+              "key": "offset",
+              "value": "0",
+              "description": "跳過前 N 筆",
+              "disabled": true
+            },
+            {
+              "key": "brand",
+              "value": "Tesla",
+              "description": "篩選品牌",
+              "disabled": true
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "找出低品質文章 (confidence < 70)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/admin/articles?published=true&limit=100",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "admin", "articles"],
+          "query": [
+            {
+              "key": "published",
+              "value": "true"
+            },
+            {
+              "key": "limit",
+              "value": "100"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "給文章評 5 分（優秀）",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"human_rating\": 5\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/admin/articles/:articleId",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "admin", "articles", ":articleId"],
+          "variable": [
+            {
+              "key": "articleId",
+              "value": "xjBZdZD",
+              "description": "文章 ID（從列表 API 取得）"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "給文章評 2 分（差）",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"human_rating\": 2\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/admin/articles/:articleId",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "admin", "articles", ":articleId"],
+          "variable": [
+            {
+              "key": "articleId",
+              "value": "ARTICLE_ID_HERE",
+              "description": "要評分的文章 ID"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "下架文章",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"published\": false\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/admin/articles/:articleId",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "admin", "articles", ":articleId"],
+          "variable": [
+            {
+              "key": "articleId",
+              "value": "ARTICLE_ID_HERE",
+              "description": "要下架的文章 ID"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "下架並評差 (2分)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"published\": false,\n  \"human_rating\": 2\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/admin/articles/:articleId",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "admin", "articles", ":articleId"],
+          "variable": [
+            {
+              "key": "articleId",
+              "value": "ARTICLE_ID_HERE",
+              "description": "要下架的文章 ID"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "重新發布文章",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"published\": true\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/admin/articles/:articleId",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "admin", "articles", ":articleId"],
+          "variable": [
+            {
+              "key": "articleId",
+              "value": "ARTICLE_ID_HERE",
+              "description": "要發布的文章 ID"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "修改文章標題",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title_zh\": \"修改後的標題\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/admin/articles/:articleId",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "admin", "articles", ":articleId"],
+          "variable": [
+            {
+              "key": "articleId",
+              "value": "ARTICLE_ID_HERE",
+              "description": "要修改的文章 ID"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "刪除文章",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/admin/articles/:articleId",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "admin", "articles", ":articleId"],
+          "variable": [
+            {
+              "key": "articleId",
+              "value": "ARTICLE_ID_HERE",
+              "description": "要刪除的文章 ID"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "查看統計 - 總文章數",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/admin/articles?limit=1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "admin", "articles"],
+          "query": [
+            {
+              "key": "limit",
+              "value": "1"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "查看統計 - 已發布數",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/admin/articles?published=true&limit=1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "admin", "articles"],
+          "query": [
+            {
+              "key": "published",
+              "value": "true"
+            },
+            {
+              "key": "limit",
+              "value": "1"
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

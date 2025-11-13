@@ -12,6 +12,8 @@ import { POPULAR_BRANDS, BRANDS_BY_COUNTRY } from '@/config/brands'
 import { ArticleActionBar } from './ArticleActionBar'
 import { HoverLink } from '@/components/HoverLink'
 import { BrandTag } from './BrandTag'
+import { ArticleViewTracker } from '@/components/ArticleViewTracker'
+import { SanitizedContent } from '@/components/SanitizedContent'
 
 interface PageProps {
   params: Promise<{
@@ -35,12 +37,8 @@ async function getArticle(id: string) {
     return null
   }
 
-  // Increment view count
-  await supabase
-    .from('generated_articles')
-    .update({ view_count: (data.view_count || 0) + 1 })
-    .eq('id', id)
-
+  // View count is now handled by client-side API call
+  // to avoid blocking server-side rendering
   return data
 }
 
@@ -250,6 +248,9 @@ export default async function ArticlePage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
+      {/* Client-side view tracking */}
+      <ArticleViewTracker articleId={id} />
+
       {/* Sticky Header */}
       <StickyHeader popularBrands={POPULAR_BRANDS} brandsByCountry={BRANDS_BY_COUNTRY} showBrands={false} />
 
@@ -328,10 +329,10 @@ export default async function ArticlePage({ params }: PageProps) {
               </div>
             )}
 
-            {/* 5. Article Content */}
-            <div
+            {/* 5. Article Content - Sanitized to prevent XSS */}
+            <SanitizedContent
+              html={formatContent(article.content_zh)}
               className="text-gray-700 leading-relaxed text-base"
-              dangerouslySetInnerHTML={{ __html: formatContent(article.content_zh) }}
             />
 
             {/* Additional Images Gallery */}

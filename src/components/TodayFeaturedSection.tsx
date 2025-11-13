@@ -49,6 +49,7 @@ export function TodayFeaturedSection({ articles }: TodayFeaturedSectionProps) {
           {/* Featured Article - Left Side (60%) */}
           <Link
             href={`/${featuredYear}/${featuredMonth}/${featuredArticle.id}`}
+            prefetch={false}
             className="flex-1 lg:w-[60%] group"
           >
             <article className="cursor-pointer transition-opacity duration-200 group-hover:opacity-70">
@@ -134,6 +135,7 @@ export function TodayFeaturedSection({ articles }: TodayFeaturedSectionProps) {
                 <Link
                   key={article.id}
                   href={`/${year}/${month}/${article.id}`}
+                  prefetch={false}
                   className="flex gap-4 group"
                 >
                   <article className="flex gap-4 cursor-pointer transition-opacity duration-200 group-hover:opacity-70 w-full">

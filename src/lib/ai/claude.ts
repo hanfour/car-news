@@ -136,7 +136,7 @@ ${s.content.slice(0, 2000)}...
 }
 
 **標籤提取說明**：
-- brands: 提取文章中提到的汽車品牌（英文）
+- brands: 提取文章的**主要品牌**（最多3個，英文）。只包含內容主要討論的品牌，不要列出只是順帶提及的品牌。
 - car_models: 提取具體車型名稱
 - categories: 從以下選擇1-2個最符合的分類，按以下標準嚴格判斷：
   * 新車：新車型發表、上市資訊、車款改款（必須有具體新車型或改款資訊）
@@ -188,7 +188,15 @@ ${s.content.slice(0, 2000)}...
         .replace(/```\n?/g, '')
         .trim()
 
-      const result = JSON.parse(jsonText)
+      // Parse JSON with error handling
+      let result
+      try {
+        result = JSON.parse(jsonText)
+      } catch (parseError) {
+        console.error('Failed to parse Claude response JSON:', jsonText.slice(0, 500))
+        throw new Error(`Invalid JSON from Claude: ${(parseError as Error).message}`)
+      }
+
       console.log('✓ Article generated successfully with Claude')
       return result
     } catch (error: any) {

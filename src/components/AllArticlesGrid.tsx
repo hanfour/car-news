@@ -101,6 +101,7 @@ export function AllArticlesGrid({ articles }: AllArticlesGridProps) {
             <Link
               key={article.id}
               href={`/${year}/${month}/${article.id}`}
+              prefetch={false}
               className="group"
             >
               <article className="cursor-pointer transition-opacity duration-200 group-hover:opacity-70">

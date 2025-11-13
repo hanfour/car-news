@@ -68,15 +68,18 @@ function getDaysAgo(days: number): Date {
   return date
 }
 
+// Common field selection to avoid duplication - includes all required Article fields
+const ARTICLE_LIST_FIELDS = 'id, title_zh, published_at, cover_image, categories, primary_brand, car_models'
+const ARTICLE_WITH_STATS = `${ARTICLE_LIST_FIELDS}, view_count, share_count`
+
 async function getPublishedArticles(): Promise<Article[]> {
   const supabase = createClient()
 
   const { data, error} = await supabase
     .from('generated_articles')
-    .select('id, title_zh, published_at, view_count, share_count, cover_image, categories, primary_brand, car_models')
+    .select(ARTICLE_WITH_STATS)
     .eq('published', true)
     .order('published_at', { ascending: false })
-    .order('created_at', { ascending: false })
     .limit(100)
 
   if (error) {
@@ -140,7 +143,7 @@ async function getTodayArticles(): Promise<ArticleWithBrands[]> {
 
   const { data, error } = await supabase
     .from('generated_articles')
-    .select('id, title_zh, published_at, cover_image, categories, brands, view_count, share_count, primary_brand, car_models')
+    .select(`${ARTICLE_WITH_STATS}, brands`)
     .eq('published', true)
     .gte('published_at', today.toISOString())
     .order('published_at', { ascending: false })
@@ -160,7 +163,7 @@ async function getTodayTopArticles(): Promise<ArticleWithContent[]> {
 
   const { data, error } = await supabase
     .from('generated_articles')
-    .select('id, title_zh, content_zh, published_at, cover_image, categories, primary_brand, view_count, share_count, car_models')
+    .select(`${ARTICLE_WITH_STATS}, content_zh`)
     .eq('published', true)
     .gte('published_at', today.toISOString())
     .order('view_count', { ascending: false, nullsFirst: false })
@@ -181,7 +184,7 @@ async function getRecentPopularArticles(): Promise<Article[]> {
 
   const { data, error } = await supabase
     .from('generated_articles')
-    .select('id, title_zh, published_at, cover_image, categories, primary_brand, view_count, share_count, car_models')
+    .select(ARTICLE_WITH_STATS)
     .eq('published', true)
     .gte('published_at', threeDaysAgo.toISOString())
     .order('view_count', { ascending: false, nullsFirst: false })

@@ -75,6 +75,7 @@ export function TodayArticlesCarousel({ articles }: TodayArticlesCarouselProps) 
               <Link
                 key={article.id}
                 href={`/${year}/${month}/${article.id}`}
+                prefetch={false}
                 className="flex-shrink-0 group"
                 style={{ scrollSnapAlign: 'start', width: '280px' }}
               >

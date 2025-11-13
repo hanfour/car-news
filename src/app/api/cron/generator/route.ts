@@ -141,6 +141,62 @@ export async function GET(request: NextRequest) {
         console.log(`[${brand}] → Generating article for cluster (${cluster.articles.length} sources)...`)
         const generated = await generateArticle(cluster.articles)
 
+        // 3.4.1 檢查是否已存在相同標題的文章（防止重複）
+        const { data: exactDuplicate } = await supabase
+          .from('generated_articles')
+          .select('id')
+          .eq('title_zh', generated.title_zh)
+          .single()
+
+        if (exactDuplicate) {
+          console.log(`[${brand}] ⚠ Article with same title already exists: "${generated.title_zh}"`)
+          console.log(`[${brand}] → Skipping to avoid duplicate`)
+          continue
+        }
+
+        // 3.4.2 檢查是否已存在極度相似的文章（相似標題 + 今天生成）
+        // 提取標題關鍵詞（移除常見詞彙）
+        const titleKeywords = generated.title_zh
+          .replace(/與|和|的|年式|登場|推出|售價|美元|起|，/g, ' ')
+          .trim()
+          .split(/\s+/)
+          .filter(w => w.length > 1)
+          .slice(0, 3)  // 取前 3 個關鍵詞
+
+        let shouldSkip = false
+
+        if (titleKeywords.length > 0) {
+          const { data: similarArticles } = await supabase
+            .from('generated_articles')
+            .select('id, title_zh')
+            .gte('created_at', today)  // 只檢查今天生成的文章
+            .limit(20)
+
+          if (similarArticles && similarArticles.length > 0) {
+            for (const existing of similarArticles) {
+              // 檢查是否包含相同的關鍵詞
+              const matchCount = titleKeywords.filter(keyword =>
+                (existing.title_zh as string).includes(keyword)
+              ).length
+
+              // 如果有 2 個以上關鍵詞匹配,認為是相似文章
+              if (matchCount >= 2) {
+                console.log(`[${brand}] ⚠ Similar article already exists:`)
+                console.log(`[${brand}]   Existing: "${existing.title_zh}"`)
+                console.log(`[${brand}]   New:      "${generated.title_zh}"`)
+                console.log(`[${brand}]   Match:    ${matchCount}/${titleKeywords.length} keywords`)
+                console.log(`[${brand}] → Skipping to avoid near-duplicate`)
+                shouldSkip = true
+                break  // 跳出內層 for 循環
+              }
+            }
+          }
+        }
+
+        if (shouldSkip) {
+          continue  // 跳到下一個 cluster
+        }
+
         // 3.5 收集該 cluster 所有圖片（外部 URL）
         const sourceImages: Array<{ url: string; credit: string; caption?: string }> = []
         for (const article of cluster.articles) {
@@ -212,7 +268,22 @@ export async function GET(request: NextRequest) {
         // 3.6 质量检查和发布决策
         const decision = decidePublish(generated)
 
-        // 3.7 保存文章（包含标签、封面圖、品牌、多張圖片、來源時間）
+        // 3.7 限制品牌數量：確保 primary_brand 在首位，最多保留 3 個品牌
+        const allBrands = generated.brands || []
+        let filteredBrands: string[] = []
+
+        // 如果有 primary_brand，確保它在第一位
+        if (brand !== 'Other') {
+          filteredBrands.push(brand)
+          // 添加其他品牌（不包括 primary_brand），最多再加 2 個
+          const otherBrands = allBrands.filter(b => b !== brand).slice(0, 2)
+          filteredBrands.push(...otherBrands)
+        } else {
+          // 沒有 primary_brand 時，直接取前 3 個
+          filteredBrands = allBrands.slice(0, 3)
+        }
+
+        // 3.8 保存文章（包含标签、封面圖、品牌、多張圖片、來源時間）
         const { data: article, error: insertError } = await supabase
           .from('generated_articles')
           .insert({
@@ -228,7 +299,7 @@ export async function GET(request: NextRequest) {
             published: decision.shouldPublish,
             published_at: decision.shouldPublish ? today : null,
             source_date: earliestSourceDate,
-            brands: generated.brands || [],
+            brands: filteredBrands,
             car_models: generated.car_models || [],
             categories: generated.categories || [],
             tags: generated.tags || [],
@@ -245,12 +316,18 @@ export async function GET(request: NextRequest) {
           continue
         }
 
-        // 3.7 创建topic lock
-        await supabase.from('daily_topic_locks').insert({
+        // 3.7 创建topic lock (防止重複生成相似主題)
+        const { error: lockError } = await supabase.from('daily_topic_locks').insert({
           date: today,
           topic_hash: topicHash,
           article_id: shortId
         })
+
+        if (lockError) {
+          console.error(`[${brand}] ⚠ Failed to create topic lock:`, lockError)
+          // 如果 topic lock 創建失敗,這篇文章可能會被重複生成
+          // 但我們還是保留已生成的文章(因為已經消耗了 API 額度)
+        }
 
         results.push({
           id: shortId,

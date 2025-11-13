@@ -49,5 +49,13 @@ export function cosineSimilarity(a: number[], b: number[]): number {
     normB += b[i] * b[i]
   }
 
-  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB))
+  const denominator = Math.sqrt(normA) * Math.sqrt(normB)
+
+  // Prevent division by zero
+  if (denominator === 0) {
+    console.warn('Division by zero in cosineSimilarity - zero vectors detected')
+    return 0
+  }
+
+  return dotProduct / denominator
 }

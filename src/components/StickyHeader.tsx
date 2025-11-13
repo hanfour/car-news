@@ -135,7 +135,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
           <div className="w-full px-4 sm:px-6 lg:px-12 py-4 h-full">
             <div className="flex items-center justify-between h-full max-w-[1440px] mx-auto">
               {/* Logo + Slogan */}
-              <Link href="/" className="flex items-center group">
+              <Link href="/" prefetch={false} className="flex items-center group">
                 <WantCarLogo className="transition-transform group-hover:scale-105" size={40} />
                 <span className="ml-4 text-sm font-medium hidden lg:block" style={{ color: '#808080' }}>
                   想要車？從數據到動力，AI 帶你玩懂車界未來
@@ -244,7 +244,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                     </svg>
                   </button>
-                  <Link href="/" className="flex items-center">
+                  <Link href="/" prefetch={false} className="flex items-center">
                     <WantCarLogo size={32} />
                   </Link>
                 </div>
@@ -345,6 +345,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                 <div className="flex-1 flex items-center justify-between overflow-x-auto scrollbar-hide">
                   <Link
                     href="/latest"
+                    prefetch={false}
                     className={`py-4 px-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                       currentPath === '/latest'
                         ? 'border-[#FFBB00]'
@@ -358,6 +359,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                     <Link
                       key={category.slug}
                       href={`/category/${category.slug}`}
+                      prefetch={false}
                       className={`py-4 px-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                         currentPath === `/category/${category.slug}`
                           ? 'border-[#FFBB00]'
@@ -395,6 +397,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                     <Link
                       key={brand.name}
                       href={`/brand/${brand.name}`}
+                      prefetch={false}
                       className="flex flex-col items-center gap-1 p-2 hover:bg-gray-50 rounded transition-colors group flex-shrink-0"
                     >
                       <div className="relative w-12 h-12 flex items-center justify-center">
@@ -460,6 +463,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
             <div className="space-y-1">
               <Link
                 href="/latest"
+                prefetch={false}
                 className={`block px-4 py-3 text-sm font-medium rounded transition-colors ${
                   currentPath === '/latest' ? 'bg-[#FFF3CC]' : 'hover:bg-gray-100'
                 }`}
@@ -472,6 +476,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                 <Link
                   key={category.slug}
                   href={`/category/${category.slug}`}
+                  prefetch={false}
                   className={`block px-4 py-3 text-sm font-medium rounded transition-colors ${
                     currentPath === `/category/${category.slug}` ? 'bg-[#FFF3CC]' : 'hover:bg-gray-100'
                   }`}
@@ -516,6 +521,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                           <Link
                             key={brand.name}
                             href={`/brand/${brand.name}`}
+                            prefetch={false}
                             className="flex items-center gap-3 px-4 py-2 rounded hover:bg-gray-100 transition-colors group"
                             onClick={() => setIsSidebarOpen(false)}
                           >

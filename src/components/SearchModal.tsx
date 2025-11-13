@@ -165,6 +165,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
               <Link
                 key={article.id}
                 href={`/${year}/${month}/${article.id}`}
+                prefetch={false}
                 onClick={onClose}
                 className="group"
               >

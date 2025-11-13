@@ -1,0 +1,63 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createServiceClient } from '@/lib/supabase'
+
+// Secure API Key validation - no insecure defaults allowed
+const ADMIN_API_KEY = process.env.ADMIN_API_KEY
+
+if (!ADMIN_API_KEY || ADMIN_API_KEY === 'admin-secret-key-change-me' || ADMIN_API_KEY.length < 20) {
+  throw new Error(
+    '❌ ADMIN_API_KEY must be set to a secure value (at least 20 characters).\n' +
+    'Current value is either missing or insecure.\n' +
+    'Generate a secure key with: openssl rand -hex 32'
+  )
+}
+
+function verifyAuth(request: NextRequest): boolean {
+  const authHeader = request.headers.get('authorization')
+  return authHeader === `Bearer ${ADMIN_API_KEY}`
+}
+
+// GET /api/admin/articles - 列出所有文章
+export async function GET(request: NextRequest) {
+  if (!verifyAuth(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const supabase = createServiceClient()
+  const searchParams = request.nextUrl.searchParams
+
+  // 篩選參數
+  const published = searchParams.get('published') // 'true' | 'false' | null (all)
+  const brand = searchParams.get('brand')
+  const limit = parseInt(searchParams.get('limit') || '50', 10)
+  const offset = parseInt(searchParams.get('offset') || '0', 10)
+
+  let query = supabase
+    .from('generated_articles')
+    .select('id, title_zh, published, published_at, created_at, confidence, primary_brand, categories, view_count', { count: 'exact' })
+    .order('created_at', { ascending: false })
+
+  // 應用篩選
+  if (published !== null) {
+    query = query.eq('published', published === 'true')
+  }
+
+  if (brand) {
+    query = query.eq('primary_brand', brand)
+  }
+
+  query = query.range(offset, offset + limit - 1)
+
+  const { data, error, count } = await query
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({
+    articles: data,
+    total: count,
+    limit,
+    offset
+  })
+}
