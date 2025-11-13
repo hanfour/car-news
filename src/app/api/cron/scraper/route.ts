@@ -17,7 +17,13 @@ async function handleCronJob(request: NextRequest) {
     isVercelCron,
     hasAuthHeader: !!authHeader,
     authMatches: isManualTrigger,
-    expectedPrefix: expectedAuth.substring(0, 20) + '...'
+    receivedLength: authHeader?.length,
+    expectedLength: expectedAuth.length,
+    receivedPrefix: authHeader?.substring(0, 30) + '...',
+    expectedPrefix: expectedAuth.substring(0, 30) + '...',
+    receivedSuffix: authHeader?.substring(authHeader.length - 10),
+    expectedSuffix: expectedAuth.substring(expectedAuth.length - 10),
+    envSecretLength: process.env.CRON_SECRET?.length
   })
 
   if (!isVercelCron && !isManualTrigger) {
