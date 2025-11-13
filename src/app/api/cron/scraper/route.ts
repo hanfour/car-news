@@ -5,7 +5,7 @@ import { generateEmbedding } from '@/lib/ai/embeddings'
 
 export const maxDuration = 60 // Vercel Pro限制：最长60秒
 
-export async function GET(request: NextRequest) {
+async function handleCronJob(request: NextRequest) {
   // 验证 Vercel Cron 或手动触发
   const isVercelCron = request.headers.get('x-vercel-cron') === '1'
   const authHeader = request.headers.get('authorization')
@@ -148,4 +148,13 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+
+export async function GET(request: NextRequest) {
+  return handleCronJob(request)
+}
+
+export async function POST(request: NextRequest) {
+  return handleCronJob(request)
 }
