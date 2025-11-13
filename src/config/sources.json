@@ -4,7 +4,8 @@
     "name": "Motor Trend",
     "url": "https://www.motortrend.com/feeds/all.xml",
     "type": "rss",
-    "enabled": true
+    "enabled": false,
+    "note": "RSS feed removed (404) - disabled 2025-11-13"
   },
   {
     "id": "caranddriver",
@@ -18,7 +19,8 @@
     "name": "Autoblog",
     "url": "https://www.autoblog.com/rss.xml",
     "type": "rss",
-    "enabled": true
+    "enabled": false,
+    "note": "Bot access blocked (403) - disabled 2025-11-13"
   },
   {
     "id": "theverge-cars",

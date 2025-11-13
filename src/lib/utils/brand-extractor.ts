@@ -37,6 +37,24 @@ const CAR_BRANDS = [
   'Tata', 'Mahindra'
 ]
 
+// 機車品牌列表（用於過濾排除）
+const MOTORCYCLE_BRANDS = [
+  // 日本品牌
+  'Harley-Davidson', 'Harley', 'Ducati', 'Yamaha', 'Kawasaki', 'Suzuki',
+  'Honda', 'KTM', 'BMW', 'Triumph', 'Aprilia', 'Moto Guzzi', 'Husqvarna',
+  'Royal Enfield', 'Indian', 'Victory', 'MV Agusta', 'Benelli', 'SYM',
+  'Kymco', 'PGO', 'Gogoro',
+  // 中文
+  '哈雷', '杜卡迪', '本田', '川崎', '鈴木', '雅馬哈', '山葉', '光陽', 'Gogoro'
+]
+
+// 機車關鍵詞（用於內容檢測）
+const MOTORCYCLE_KEYWORDS = [
+  '機車', '摩托車', '重機', '檔車', '速克達', 'motorcycle', 'bike', 'motorbike',
+  '騎士', '二輪', '125cc', '150cc', '250cc', '600cc', '1000cc', 'cc',
+  '排氣量', 'MotoGP', '賽車手', '摩托', '電動機車', '油車'
+]
+
 // 品牌別名映射（用於標準化）
 const BRAND_ALIASES: Record<string, string> = {
   'VW': 'Volkswagen',
@@ -108,6 +126,50 @@ export function extractPrimaryBrand(title: string, content: string): string | nu
   }
 
   return null
+}
+
+/**
+ * 檢測是否為機車相關內容
+ */
+export function isMotorcycleContent(title: string, content: string): boolean {
+  const text = (title + ' ' + content.slice(0, 500)).toLowerCase()
+
+  // 檢查機車品牌
+  for (const brand of MOTORCYCLE_BRANDS) {
+    if (text.includes(brand.toLowerCase())) {
+      return true
+    }
+  }
+
+  // 檢查機車關鍵詞（需要多個關鍵詞匹配以提高準確性）
+  let keywordMatches = 0
+  for (const keyword of MOTORCYCLE_KEYWORDS) {
+    if (text.includes(keyword.toLowerCase())) {
+      keywordMatches++
+    }
+  }
+
+  // 如果有2個以上機車關鍵詞，判定為機車內容
+  if (keywordMatches >= 2) {
+    return true
+  }
+
+  return false
+}
+
+/**
+ * 過濾機車相關文章
+ */
+export function filterOutMotorcycleArticles<T extends { title: string; content: string }>(
+  articles: T[]
+): T[] {
+  return articles.filter(article => {
+    const isMotorcycle = isMotorcycleContent(article.title, article.content)
+    if (isMotorcycle) {
+      console.log(`🏍️  Filtered out motorcycle article: ${article.title.slice(0, 100)}`)
+    }
+    return !isMotorcycle
+  })
 }
 
 /**

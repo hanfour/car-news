@@ -4,13 +4,21 @@ import { clusterArticles } from '@/lib/ai/clustering'
 import { generateArticle, decidePublish } from '@/lib/generator'
 import { generateShortId } from '@/lib/utils/short-id'
 import { generateTopicHash } from '@/lib/utils/topic-hash'
-import { groupArticlesByBrand } from '@/lib/utils/brand-extractor'
+import { groupArticlesByBrand, filterOutMotorcycleArticles } from '@/lib/utils/brand-extractor'
 import { generateAndSaveCoverImage } from '@/lib/ai/image-generation'
 import { downloadAndStoreImage, downloadAndStoreImages } from '@/lib/storage/image-downloader'
 import { generateEmbedding } from '@/lib/ai/embeddings'
 import { RawArticle } from '@/types/database'
 
 export const maxDuration = 300 // Vercel Pro限制：最长5分钟
+
+// 配置参数：防止超时的保守策略
+const TIMEOUT_CONFIG = {
+  MAX_DURATION_MS: 270_000,      // 270秒 (4.5分钟) - 留30秒缓冲
+  MAX_ARTICLES_PER_RUN: 8,       // 每次最多处理8篇文章
+  TIME_CHECK_INTERVAL: 1000,     // 每1秒检查一次时间
+  ESTIMATED_TIME_PER_ARTICLE: 30_000  // 估计每篇文章需要30秒
+}
 
 async function handleCronJob(request: NextRequest) {
   // 验证 Vercel Cron 或手动触发
@@ -23,6 +31,27 @@ async function handleCronJob(request: NextRequest) {
   }
 
   const startTime = Date.now()
+
+  // 辅助函数：检查是否应该继续处理
+  function shouldContinueProcessing(processedCount: number): boolean {
+    const elapsedTime = Date.now() - startTime
+    const remainingTime = TIMEOUT_CONFIG.MAX_DURATION_MS - elapsedTime
+    const estimatedTimeForNext = TIMEOUT_CONFIG.ESTIMATED_TIME_PER_ARTICLE
+
+    // 条件1: 已达到最大文章数限制
+    if (processedCount >= TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN) {
+      console.log(`⏸️  Reached article limit (${TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN}), stopping gracefully`)
+      return false
+    }
+
+    // 条件2: 剩余时间不足以处理下一篇
+    if (remainingTime < estimatedTimeForNext) {
+      console.log(`⏸️  Insufficient time remaining (${Math.round(remainingTime/1000)}s), stopping gracefully`)
+      return false
+    }
+
+    return true
+  }
 
   try {
     const supabase = createServiceClient()
@@ -48,8 +77,26 @@ async function handleCronJob(request: NextRequest) {
 
     console.log(`Found ${rawArticles.length} articles`)
 
-    // 1.5 為沒有 embedding 的文章生成 embedding（批次處理）
-    const articlesWithoutEmbedding = rawArticles.filter(a => !a.embedding)
+    // 1.5 過濾機車相關文章（網站專注於汽車）
+    const carArticles = filterOutMotorcycleArticles(rawArticles as RawArticle[])
+    const filteredCount = rawArticles.length - carArticles.length
+
+    if (filteredCount > 0) {
+      console.log(`🏍️  Filtered out ${filteredCount} motorcycle articles`)
+    }
+
+    if (carArticles.length < 3) {
+      return NextResponse.json({
+        success: true,
+        message: 'Not enough car articles after filtering motorcycles',
+        total: rawArticles.length,
+        filtered: filteredCount,
+        remaining: carArticles.length
+      })
+    }
+
+    // 1.6 為沒有 embedding 的文章生成 embedding（批次處理）
+    const articlesWithoutEmbedding = carArticles.filter(a => !a.embedding)
     if (articlesWithoutEmbedding.length > 0) {
       console.log(`Generating embeddings for ${articlesWithoutEmbedding.length} articles...`)
 
@@ -75,7 +122,7 @@ async function handleCronJob(request: NextRequest) {
 
     // 2. 按品牌分組
     console.log('Grouping articles by brand...')
-    const brandGroups = groupArticlesByBrand(rawArticles as RawArticle[])
+    const brandGroups = groupArticlesByBrand(carArticles)
 
     console.log(`Found ${brandGroups.size} brand groups:`)
     for (const [brand, articles] of brandGroups.entries()) {
@@ -84,9 +131,18 @@ async function handleCronJob(request: NextRequest) {
 
     const results = []
     const today = new Date().toISOString().split('T')[0]
+    let totalProcessed = 0
+    let skippedDueToTimeout = 0
 
     // 3. 對每個品牌進行聚類和生成
     for (const [brand, brandArticles] of brandGroups.entries()) {
+      // 在处理每个品牌前检查时间
+      if (!shouldContinueProcessing(totalProcessed)) {
+        skippedDueToTimeout++
+        console.log(`⏭️  Skipping remaining brands (${Array.from(brandGroups.keys()).length - results.length} left) to avoid timeout`)
+        break
+      }
+
       console.log(`\n[${brand}] Processing ${brandArticles.length} articles...`)
 
       // 3.1 在品牌內進行主題聚類
@@ -146,6 +202,12 @@ async function handleCronJob(request: NextRequest) {
 
       // 3.2 為每個主題聚類生成文章
       for (const cluster of brandClusters) {
+      // 在处理每个cluster前检查时间和数量限制
+      if (!shouldContinueProcessing(totalProcessed)) {
+        console.log(`[${brand}] ⏸️  Stopping cluster processing to avoid timeout`)
+        break
+      }
+
       try {
         // 3.1 计算主题hash（防重复）
         const topicHash = generateTopicHash(cluster.centroid)
@@ -368,7 +430,8 @@ async function handleCronJob(request: NextRequest) {
           images_count: storedImages.length
         })
 
-        console.log(`[${brand}] ✓ ${decision.shouldPublish ? 'Published' : 'Saved'}: ${generated.title_zh} (${storedImages.length} images stored)`)
+        totalProcessed++  // 增加已处理计数
+        console.log(`[${brand}] ✓ ${decision.shouldPublish ? 'Published' : 'Saved'}: ${generated.title_zh} (${storedImages.length} images stored) [${totalProcessed}/${TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN}]`)
 
       } catch (error: any) {
         console.error(`[${brand}] Error generating article for cluster:`, error)
@@ -381,16 +444,32 @@ async function handleCronJob(request: NextRequest) {
     const totalClusters = Array.from(brandGroups.values())
       .reduce((sum, articles) => sum + (articles.length >= 3 ? 1 : 0), 0)
 
+    const elapsedTime = Date.now() - startTime
+    const hitTimeout = totalProcessed >= TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN ||
+                       elapsedTime >= TIMEOUT_CONFIG.MAX_DURATION_MS
+
+    if (hitTimeout) {
+      console.log(`\n⏸️  === GRACEFUL STOP ===`)
+      console.log(`Processed: ${totalProcessed} articles`)
+      console.log(`Time: ${Math.round(elapsedTime/1000)}s / ${TIMEOUT_CONFIG.MAX_DURATION_MS/1000}s`)
+      console.log(`Reason: ${totalProcessed >= TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN ? 'Article limit' : 'Time limit'}`)
+      console.log(`Note: Remaining articles will be processed in next run\n`)
+    }
+
     await supabase.from('cron_logs').insert({
       job_name: 'generator',
       status: 'success',
       metadata: {
         raw_articles: rawArticles.length,
+        motorcycle_filtered: filteredCount,
+        car_articles: carArticles.length,
         brand_groups: brandGroups.size,
         total_clusters: totalClusters,
         articles_generated: results.length,
         articles_published: results.filter(r => r.published).length,
-        duration_ms: Date.now() - startTime,
+        duration_ms: elapsedTime,
+        hit_timeout: hitTimeout,
+        timeout_reason: hitTimeout ? (totalProcessed >= TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN ? 'article_limit' : 'time_limit') : null,
         brands: Object.fromEntries(
           Array.from(brandGroups.entries()).map(([brand, articles]) => [brand, articles.length])
         )
@@ -402,7 +481,13 @@ async function handleCronJob(request: NextRequest) {
       generated: results.length,
       published: results.filter(r => r.published).length,
       articles: results,
-      duration: Date.now() - startTime
+      duration: elapsedTime,
+      timeout_info: hitTimeout ? {
+        hit_limit: true,
+        processed: totalProcessed,
+        max_per_run: TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN,
+        reason: totalProcessed >= TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN ? 'article_limit' : 'time_limit'
+      } : null
     })
 
   } catch (error: any) {
