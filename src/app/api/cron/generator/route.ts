@@ -12,9 +12,12 @@ import { RawArticle } from '@/types/database'
 export const maxDuration = 300 // Vercel Pro限制：最长5分钟
 
 export async function GET(request: NextRequest) {
-  // 验证Cron密钥
+  // 验证 Vercel Cron 或手动触发
+  const isVercelCron = request.headers.get('x-vercel-cron') === '1'
   const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const isManualTrigger = authHeader === `Bearer ${process.env.CRON_SECRET}`
+
+  if (!isVercelCron && !isManualTrigger) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
