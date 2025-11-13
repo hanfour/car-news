@@ -7,6 +7,7 @@ import { generateTopicHash } from '@/lib/utils/topic-hash'
 import { groupArticlesByBrand } from '@/lib/utils/brand-extractor'
 import { generateAndSaveCoverImage } from '@/lib/ai/image-generation'
 import { downloadAndStoreImage, downloadAndStoreImages } from '@/lib/storage/image-downloader'
+import { generateEmbedding } from '@/lib/ai/embeddings'
 import { RawArticle } from '@/types/database'
 
 export const maxDuration = 300 // Vercel Pro限制：最长5分钟
@@ -46,6 +47,31 @@ export async function GET(request: NextRequest) {
     }
 
     console.log(`Found ${rawArticles.length} articles`)
+
+    // 1.5 為沒有 embedding 的文章生成 embedding（批次處理）
+    const articlesWithoutEmbedding = rawArticles.filter(a => !a.embedding)
+    if (articlesWithoutEmbedding.length > 0) {
+      console.log(`Generating embeddings for ${articlesWithoutEmbedding.length} articles...`)
+
+      for (const article of articlesWithoutEmbedding) {
+        try {
+          const embedding = await generateEmbedding(article.content)
+          const { error: updateError } = await supabase
+            .from('raw_articles')
+            .update({ embedding })
+            .eq('id', article.id)
+
+          if (updateError) {
+            console.error(`Failed to update embedding for ${article.url}:`, updateError)
+          } else {
+            article.embedding = embedding // 更新本地對象
+          }
+        } catch (error) {
+          console.error(`Failed to generate embedding for ${article.url}:`, error)
+        }
+      }
+      console.log(`✓ Embeddings generated`)
+    }
 
     // 2. 按品牌分組
     console.log('Grouping articles by brand...')

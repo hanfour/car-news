@@ -37,7 +37,8 @@ export async function GET(request: NextRequest) {
     let savedCount = 0
     let skippedCount = 0
 
-    // 2. 处理每篇文章
+    // 2. 批次處理文章（先保存，稍後生成 embedding）
+    const articlesToSave = []
     for (const article of articles) {
       try {
         // 检查URL是否已存在
@@ -52,38 +53,41 @@ export async function GET(request: NextRequest) {
           continue
         }
 
-        // 生成embedding
-        const embedding = await generateEmbedding(article.content)
-
         // 计算过期时间（72小时后）
         const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
 
-        // 保存到数据库（包含來源發布時間）
-        const { error} = await supabase
-          .from('raw_articles')
-          .insert({
-            url: article.url,
-            title: article.title,
-            content: article.content,
-            scraped_at: new Date().toISOString(),
-            published_at: article.publishedAt?.toISOString() || new Date().toISOString(),
-            expires_at: expiresAt,
-            embedding,
-            image_url: article.imageUrl || null,
-            image_credit: article.source || null
-          })
+        articlesToSave.push({
+          url: article.url,
+          title: article.title,
+          content: article.content,
+          scraped_at: new Date().toISOString(),
+          published_at: article.publishedAt?.toISOString() || new Date().toISOString(),
+          expires_at: expiresAt,
+          embedding: null, // 延遲生成 embedding（generator 中處理）
+          image_url: article.imageUrl || null,
+          image_credit: article.source || null
+        })
 
-        if (error) {
-          console.error(`Failed to save article ${article.url}:`, error)
-        } else {
-          savedCount++
-          results.push({
-            url: article.url,
-            title: article.title.slice(0, 100)
-          })
-        }
+        results.push({
+          url: article.url,
+          title: article.title.slice(0, 100)
+        })
       } catch (error) {
         console.error(`Error processing article ${article.url}:`, error)
+      }
+    }
+
+    // 3. 批次保存到數據庫
+    if (articlesToSave.length > 0) {
+      const { error: bulkInsertError } = await supabase
+        .from('raw_articles')
+        .insert(articlesToSave)
+
+      if (bulkInsertError) {
+        console.error('Bulk insert error:', bulkInsertError)
+      } else {
+        savedCount = articlesToSave.length
+        console.log(`✓ Saved ${savedCount} articles`)
       }
     }
 
