@@ -22,7 +22,8 @@ interface TodayFeaturedSectionProps {
 }
 
 export function TodayFeaturedSection({ articles }: TodayFeaturedSectionProps) {
-  if (articles.length === 0) return null
+  // Always show the section title
+  // if (articles.length === 0) return null
 
   const [featuredArticle, ...moreArticles] = articles
 
@@ -33,8 +34,8 @@ export function TodayFeaturedSection({ articles }: TodayFeaturedSectionProps) {
     return plainText.length > 150 ? plainText.substring(0, 150) + '...' : plainText
   }
 
-  const featuredYear = featuredArticle.published_at?.slice(0, 4) || new Date().getFullYear()
-  const featuredMonth = featuredArticle.published_at?.slice(5, 7) || String(new Date().getMonth() + 1).padStart(2, '0')
+  const featuredYear = featuredArticle?.published_at?.slice(0, 4) || new Date().getFullYear()
+  const featuredMonth = featuredArticle?.published_at?.slice(5, 7) || String(new Date().getMonth() + 1).padStart(2, '0')
 
   return (
     <div className="bg-white w-full">
@@ -44,6 +45,12 @@ export function TodayFeaturedSection({ articles }: TodayFeaturedSectionProps) {
           今日焦點
         </h2>
 
+        {articles.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            今日焦點文章即將推出，敬請期待
+          </div>
+        ) : (
+        <>
         {/* Desktop: Side by Side | Mobile: Stacked */}
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Featured Article - Left Side (60%) */}
@@ -206,6 +213,8 @@ export function TodayFeaturedSection({ articles }: TodayFeaturedSectionProps) {
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   )

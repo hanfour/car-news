@@ -48,13 +48,14 @@ export function TodayArticlesCarousel({ articles }: TodayArticlesCarouselProps) 
     }
   }
 
-  if (articles.length === 0) return null
+  // Always show the section, even if no articles today
+  // if (articles.length === 0) return null
 
   return (
     <div className="bg-(--background)">
       <div className="w-full px-4 sm:px-6 lg:px-12 py-8">
         {/* Header */}
-        <div className="!hidden flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold" style={{ color: '#404040', fontFamily: 'Merriweather, Noto Sans TC, serif' }}>
             今日最新
           </h2>
@@ -62,6 +63,11 @@ export function TodayArticlesCarousel({ articles }: TodayArticlesCarouselProps) 
 
         {/* Carousel Container */}
         <div className="relative">
+          {articles.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              今日尚無新文章，請稍後再回來查看
+            </div>
+          ) : (
           <div
             ref={scrollContainerRef}
             className="flex gap-6 overflow-x-auto scrollbar-hide pb-2"
@@ -142,9 +148,10 @@ export function TodayArticlesCarousel({ articles }: TodayArticlesCarouselProps) 
               )
             })}
           </div>
+          )}
 
           {/* Scroll Right Button */}
-          {canScrollRight && (
+          {articles.length > 0 && canScrollRight && (
             <button
               onClick={scrollRight}
               className="absolute right-0 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-3 rounded-full shadow-lg transition-all"
