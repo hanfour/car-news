@@ -9,7 +9,8 @@ async function handleCronJob(request: NextRequest) {
   // 验证 Vercel Cron 或手动触发
   const isVercelCron = request.headers.get('x-vercel-cron') === '1'
   const authHeader = request.headers.get('authorization')
-  const expectedAuth = `Bearer ${process.env.CRON_SECRET}`
+  // Trim CRON_SECRET to remove any trailing newlines or whitespace
+  const expectedAuth = `Bearer ${process.env.CRON_SECRET?.trim()}`
   const isManualTrigger = authHeader === expectedAuth
 
   // Debug logging
