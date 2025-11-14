@@ -129,7 +129,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
           style={{
             borderColor: '#cdcdcd',
             height: isScrolled ? '0' : '73px',
-            overflow: 'hidden'
+            overflow: isScrolled ? 'hidden' : 'visible'
           }}
         >
           <div className="w-full px-4 sm:px-6 lg:px-12 py-4 h-full">
@@ -230,7 +230,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
         </div>
 
         {/* 展開狀態 - 第2行：漢堡選單 | 分類導航（展開時）/ 收合狀態：漢堡+Logo | 搜尋（收合時）*/}
-        <div className="w-full overflow-x-auto">
+        <div className="w-full" style={{ overflow: isUserMenuOpen ? 'visible' : 'auto' }}>
           <div className="px-4 sm:px-6 lg:px-12">
             {isScrolled ? (
               /* 收合模式：漢堡選單 + Logo | 搜尋 + 會員 */
