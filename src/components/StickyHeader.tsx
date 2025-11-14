@@ -127,7 +127,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
         <div
           className="border-b"
           style={{
-            borderColor: '#cdcdcd',
+            borderColor: 'var(--border-color)',
             height: isScrolled ? '0' : '73px',
             overflow: isScrolled ? 'hidden' : 'visible'
           }}
@@ -137,7 +137,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
               {/* Logo + Slogan */}
               <Link href="/" prefetch={false} className="flex items-center group">
                 <WantCarLogo className="transition-transform group-hover:scale-105" size={40} />
-                <span className="ml-4 text-sm font-medium hidden lg:block" style={{ color: '#808080' }}>
+                <span className="ml-4 text-sm font-medium hidden lg:block" style={{ color: 'var(--text-secondary)' }}>
                   想要車？從數據到動力，AI 帶你玩懂車界未來
                 </span>
               </Link>
@@ -147,7 +147,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                 <button
                   onClick={() => setIsSearchOpen(true)}
                   className="p-2 hover:bg-gray-100 rounded"
-                  style={{ color: '#404040' }}
+                  style={{ color: 'var(--text-primary)' }}
                   aria-label="搜尋"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -158,7 +158,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                 {/* 會員按鈕 */}
                 {loading ? (
                   <div className="w-8 h-8 flex items-center justify-center">
-                    <div className="w-5 h-5 border-2 border-gray-300 border-t-[#FFBB00] rounded-full animate-spin" />
+                    <div className="w-5 h-5 border-2 border-gray-300 border-t-(--brand-primary) rounded-full animate-spin" />
                   </div>
                 ) : user ? (
                   <div className="relative" ref={expandedUserMenuRef}>
@@ -177,8 +177,8 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                           unoptimized
                         />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-[#FFBB00] flex items-center justify-center">
-                          <span className="text-sm font-bold" style={{ color: '#404040' }}>
+                        <div className="w-8 h-8 rounded-full bg-(--brand-primary) flex items-center justify-center">
+                          <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
                             {profile?.display_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
                           </span>
                         </div>
@@ -193,11 +193,11 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                         style={{ borderColor: '#cdcdcd', zIndex: 9999 }}
                       >
                         <div className="px-4 py-2 border-b" style={{ borderColor: '#e5e5e5' }}>
-                          <p className="text-sm font-medium" style={{ color: '#404040' }}>
+                          <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                             {profile?.display_name || user.email}
                           </p>
                           {profile?.display_name && (
-                            <p className="text-xs" style={{ color: '#808080' }}>
+                            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                               {user.email}
                             </p>
                           )}
@@ -208,7 +208,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                             setIsUserMenuOpen(false)
                           }}
                           className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
-                          style={{ color: '#808080' }}
+                          style={{ color: 'var(--text-secondary)' }}
                         >
                           登出
                         </button>
@@ -219,7 +219,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                   <button
                     onClick={() => setIsAuthModalOpen(true)}
                     className="px-4 py-2 text-sm font-medium rounded hover:bg-[#FFCC33] transition-colors"
-                    style={{ backgroundColor: '#FFBB00', color: '#404040' }}
+                    style={{ backgroundColor: 'var(--brand-primary)', color: 'var(--text-primary)' }}
                   >
                     登入
                   </button>
@@ -254,7 +254,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                   <button
                     onClick={() => setIsSearchOpen(true)}
                     className="p-2 hover:bg-gray-100 rounded"
-                    style={{ color: '#404040' }}
+                    style={{ color: 'var(--text-primary)' }}
                     aria-label="搜尋"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -265,7 +265,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                   {/* 會員按鈕 - 收合模式 */}
                   {loading ? (
                     <div className="w-8 h-8 flex items-center justify-center">
-                      <div className="w-4 h-4 border-2 border-gray-300 border-t-[#FFBB00] rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-gray-300 border-t-(--brand-primary) rounded-full animate-spin" />
                     </div>
                   ) : user ? (
                     <div className="relative" ref={collapsedUserMenuRef}>
@@ -284,8 +284,8 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                             unoptimized
                           />
                         ) : (
-                          <div className="w-7 h-7 rounded-full bg-[#FFBB00] flex items-center justify-center">
-                            <span className="text-xs font-bold" style={{ color: '#404040' }}>
+                          <div className="w-7 h-7 rounded-full bg-(--brand-primary) flex items-center justify-center">
+                            <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>
                               {profile?.display_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
                             </span>
                           </div>
@@ -299,11 +299,11 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                           style={{ borderColor: '#cdcdcd', zIndex: 9999 }}
                         >
                           <div className="px-4 py-2 border-b" style={{ borderColor: '#e5e5e5' }}>
-                            <p className="text-sm font-medium" style={{ color: '#404040' }}>
+                            <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                               {profile?.display_name || user.email}
                             </p>
                             {profile?.display_name && (
-                              <p className="text-xs" style={{ color: '#808080' }}>
+                              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                                 {user.email}
                               </p>
                             )}
@@ -314,7 +314,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                               setIsUserMenuOpen(false)
                             }}
                             className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
-                            style={{ color: '#808080' }}
+                            style={{ color: 'var(--text-secondary)' }}
                           >
                             登出
                           </button>
@@ -325,7 +325,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                     <button
                       onClick={() => setIsAuthModalOpen(true)}
                       className="px-3 py-1.5 text-xs font-medium rounded hover:bg-[#FFCC33] transition-colors"
-                      style={{ backgroundColor: '#FFBB00', color: '#404040' }}
+                      style={{ backgroundColor: 'var(--brand-primary)', color: 'var(--text-primary)' }}
                     >
                       登入
                     </button>
@@ -349,10 +349,10 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                     prefetch={false}
                     className={`py-4 px-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                       currentPath === '/latest'
-                        ? 'border-[#FFBB00]'
+                        ? 'border-(--brand-primary)'
                         : 'border-transparent hover:border-gray-300'
                     }`}
-                    style={{ color: currentPath === '/latest' ? '#FFBB00' : '#808080' }}
+                    style={{ color: currentPath === '/latest' ? 'var(--brand-primary)' : 'var(--text-secondary)' }}
                   >
                     最新
                   </Link>
@@ -363,10 +363,10 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                       prefetch={false}
                       className={`py-4 px-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                         currentPath === `/category/${category.slug}`
-                          ? 'border-[#FFBB00]'
+                          ? 'border-(--brand-primary)'
                           : 'border-transparent hover:border-gray-300'
                       }`}
-                      style={{ color: currentPath === `/category/${category.slug}` ? '#FFBB00' : '#808080' }}
+                      style={{ color: currentPath === `/category/${category.slug}` ? 'var(--brand-primary)' : 'var(--text-secondary)' }}
                     >
                       {category.name}
                     </Link>
@@ -411,7 +411,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                           unoptimized
                         />
                       </div>
-                      <span className="text-xs font-medium" style={{ color: '#808080' }}>
+                      <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                         {brand.name}
                       </span>
                     </Link>
@@ -420,7 +420,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                 <button
                   onClick={scrollBrandsRight}
                   className="hidden flex-shrink-0 p-2 hover:bg-gray-100 rounded transition-colors"
-                  style={{ color: '#808080' }}
+                  style={{ color: 'var(--text-secondary)' }}
                   aria-label="向右滾動更多品牌"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -451,7 +451,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
             <button
               onClick={() => setIsSidebarOpen(false)}
               className="p-2 hover:bg-gray-100 rounded"
-              style={{ color: '#404040' }}
+              style={{ color: 'var(--text-primary)' }}
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -468,7 +468,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                 className={`block px-4 py-3 text-sm font-medium rounded transition-colors ${
                   currentPath === '/latest' ? 'bg-[#FFF3CC]' : 'hover:bg-gray-100'
                 }`}
-                style={{ color: currentPath === '/latest' ? '#FFBB00' : '#808080' }}
+                style={{ color: currentPath === '/latest' ? 'var(--brand-primary)' : 'var(--text-secondary)' }}
                 onClick={() => setIsSidebarOpen(false)}
               >
                 最新
@@ -481,7 +481,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                   className={`block px-4 py-3 text-sm font-medium rounded transition-colors ${
                     currentPath === `/category/${category.slug}` ? 'bg-[#FFF3CC]' : 'hover:bg-gray-100'
                   }`}
-                  style={{ color: currentPath === `/category/${category.slug}` ? '#FFBB00' : '#808080' }}
+                  style={{ color: currentPath === `/category/${category.slug}` ? 'var(--brand-primary)' : 'var(--text-secondary)' }}
                   onClick={() => setIsSidebarOpen(false)}
                 >
                   {category.name}
@@ -490,7 +490,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
             </div>
 
             <div className="mt-8 pt-8 border-t" style={{ borderColor: '#cdcdcd' }}>
-              <h3 className="px-4 mb-3 text-xs font-bold" style={{ color: '#808080' }}>
+              <h3 className="px-4 mb-3 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
                 熱門品牌
               </h3>
               <div className="space-y-2">
@@ -501,12 +501,12 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                       onClick={() => toggleCountry(countryGroup.country)}
                       className="w-full flex items-center justify-between px-4 py-2 hover:bg-gray-100 rounded transition-colors"
                     >
-                      <span className="text-sm font-medium" style={{ color: '#404040' }}>
+                      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                         {countryGroup.country}
                       </span>
                       <svg
                         className={`w-4 h-4 transition-transform ${expandedCountries.has(countryGroup.country) ? 'rotate-180' : ''}`}
-                        style={{ color: '#808080' }}
+                        style={{ color: 'var(--text-secondary)' }}
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -536,7 +536,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                                 unoptimized
                               />
                             </div>
-                            <span className="text-sm" style={{ color: '#404040' }}>
+                            <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
                               {brand.name}
                             </span>
                           </Link>

@@ -127,13 +127,13 @@ function CommentFormInner({ articleId, isLoggedIn = false, onLoginRequired }: Co
     <>
       <form onSubmit={handleSubmit} className="mb-6">
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-(--brand-red) text-sm">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-(--brand-green) text-sm">
             評論已提交！正在刷新頁面...
           </div>
         )}
@@ -148,7 +148,7 @@ function CommentFormInner({ articleId, isLoggedIn = false, onLoginRequired }: Co
           maxLength={2000}
           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-transparent resize-none text-base"
           style={{ outline: 'none' }}
-          onFocus={(e) => e.currentTarget.style.boxShadow = '0 0 0 2px #FFBB00'}
+          onFocus={(e) => e.currentTarget.style.boxShadow = '0 0 0 2px #FDB90B'}
           onBlur={(e) => e.currentTarget.style.boxShadow = 'none'}
           placeholder="寫下你的評論..."
           disabled={isSubmitting}
@@ -162,9 +162,9 @@ function CommentFormInner({ articleId, isLoggedIn = false, onLoginRequired }: Co
             type="submit"
             disabled={isSubmitting}
             className="px-6 py-2 text-white font-medium rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-            style={{ backgroundColor: isSubmitting ? '#9CA3AF' : '#FFBB00' }}
-            onMouseEnter={(e) => !isSubmitting && (e.currentTarget.style.backgroundColor = '#E5A800')}
-            onMouseLeave={(e) => !isSubmitting && (e.currentTarget.style.backgroundColor = '#FFBB00')}
+            style={{ backgroundColor: isSubmitting ? 'var(--text-disabled)' : 'var(--brand-primary)' }}
+            onMouseEnter={(e) => !isSubmitting && (e.currentTarget.style.backgroundColor = 'var(--brand-primary-hover)')}
+            onMouseLeave={(e) => !isSubmitting && (e.currentTarget.style.backgroundColor = 'var(--brand-primary)')}
           >
             {isSubmitting ? '提交中...' : '提交評論'}
           </button>

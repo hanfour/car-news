@@ -100,7 +100,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
         {/* 錯誤訊息 */}
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-(--brand-red) text-sm">
             {error}
           </div>
         )}
@@ -134,9 +134,9 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
           <button
             type="submit"
             className="w-full py-3 text-white font-semibold rounded-lg transition-colors"
-            style={{ backgroundColor: '#FFBB00' }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#E5A800'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FFBB00'}
+            style={{ backgroundColor: 'var(--brand-primary)' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--brand-primary-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--brand-primary)'}
             onClick={(e) => {
               e.preventDefault()
               alert('登入功能即將開放')
@@ -180,9 +180,9 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
           還沒有帳號？
           <button
             className="font-medium ml-1"
-            style={{ color: '#FFBB00' }}
+            style={{ color: 'var(--brand-primary)' }}
             onMouseEnter={(e) => e.currentTarget.style.color = '#E5A800'}
-            onMouseLeave={(e) => e.currentTarget.style.color = '#FFBB00'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#FDB90B'}
           >
             立即註冊
           </button>

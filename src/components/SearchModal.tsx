@@ -95,7 +95,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
         <div className="max-w-[1440px] mx-auto px-4 sm:px-12 py-4 sm:py-6">
           <div className="flex items-center gap-2 sm:gap-4">
             {/* Search Icon */}
-            <svg className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" style={{ color: '#404040' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" style={{ color: 'var(--text-primary)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
 
@@ -107,7 +107,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
               onChange={(e) => setSearchQuery(e.target.value)}
               autoFocus
               className="flex-1 text-base sm:text-xl outline-none min-w-0"
-              style={{ color: '#404040' }}
+              style={{ color: 'var(--text-primary)' }}
             />
 
             {/* Search Button - Hidden on mobile, visible on larger screens */}
@@ -117,7 +117,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
               }}
               className="hidden sm:block px-6 py-2 rounded transition-colors flex-shrink-0"
               style={{
-                backgroundColor: '#FFBB00',
+                backgroundColor: 'var(--brand-primary)',
                 color: '#333'
               }}
             >
@@ -128,7 +128,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
             <button
               onClick={onClose}
               className="p-1.5 sm:p-2 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
-              style={{ color: '#404040' }}
+              style={{ color: 'var(--text-primary)' }}
               aria-label="關閉搜尋"
             >
               <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -193,7 +193,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                   {/* Category Tag */}
                   {article.categories && article.categories.length > 0 && (
                     <div className="mb-2">
-                      <span className="text-xs font-medium" style={{ color: '#FFBB00' }}>
+                      <span className="text-xs font-medium" style={{ color: '#FDB90B' }}>
                         {article.categories[0]}
                       </span>
                     </div>
