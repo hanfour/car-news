@@ -158,21 +158,21 @@ async function getTodayArticles(): Promise<ArticleWithBrands[]> {
   return data || []
 }
 
-async function getTodayTopArticles(): Promise<ArticleWithContent[]> {
+async function getWeeklyTopArticles(): Promise<ArticleWithContent[]> {
   const supabase = createClient()
-  const today = getStartOfToday()
+  const weekAgo = getDaysAgo(7)
 
   const { data, error } = await supabase
     .from('generated_articles')
     .select(`${ARTICLE_WITH_STATS}, content_zh`)
     .eq('published', true)
-    .gte('published_at', today.toISOString())
-    .order('share_count', { ascending: false, nullsFirst: false })
+    .gte('published_at', weekAgo.toISOString())
+    .order('view_count', { ascending: false, nullsFirst: false })
     .order('published_at', { ascending: false })
     .limit(6)
 
   if (error) {
-    console.error('Failed to fetch today top articles:', error)
+    console.error('Failed to fetch weekly top articles:', error)
     return []
   }
 
@@ -221,10 +221,10 @@ async function getFeaturedArticles(): Promise<ArticleWithBrands[]> {
 
 export default async function Home() {
   // 並行執行所有數據查詢以提升性能
-  const [articles, todayArticles, todayTopArticles, recentPopularArticles, allTags] = await Promise.all([
+  const [articles, todayArticles, weeklyTopArticles, recentPopularArticles, allTags] = await Promise.all([
     getPublishedArticles(),
     getTodayArticles(),
-    getTodayTopArticles(),
+    getWeeklyTopArticles(),
     getRecentPopularArticles(),
     getAllTags(),
   ])
@@ -238,8 +238,8 @@ export default async function Home() {
       <TodayArticlesCarousel articles={todayArticles} />
 
       <div className="w-full flex flex-col justify-center items-center">
-          {/* 今日焦點區塊 - 最大區塊+小列表 */}
-          <TodayFeaturedSection articles={todayTopArticles} />
+          {/* 本週焦點區塊 - 最大區塊+小列表 */}
+          <TodayFeaturedSection articles={weeklyTopArticles} />
 
           {/* 熱門話題輪播 - 過去三天熱門文章 */}
           <PopularArticlesCarousel articles={recentPopularArticles} />

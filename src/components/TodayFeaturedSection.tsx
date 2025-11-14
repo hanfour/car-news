@@ -43,12 +43,12 @@ export function TodayFeaturedSection({ articles }: TodayFeaturedSectionProps) {
       <div className="w-full px-4 sm:px-6 lg:px-12 py-12">
         {/* Section Title */}
         <h2 className="text-2xl font-bold mb-8" style={{ color: '#404040', fontFamily: 'Merriweather, Noto Sans TC, serif' }}>
-          今日焦點
+          本週焦點
         </h2>
 
         {articles.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
-            今日焦點文章即將推出，敬請期待
+            本週焦點文章即將推出，敬請期待
           </div>
         ) : (
         <>
@@ -122,10 +122,10 @@ export function TodayFeaturedSection({ articles }: TodayFeaturedSectionProps) {
                     <span>{featuredArticle.primary_brand}</span>
                   </>
                 )}
-                {featuredArticle.share_count !== null && featuredArticle.share_count > 0 && (
+                {featuredArticle.view_count !== null && featuredArticle.view_count > 0 && (
                   <>
                     <span>·</span>
-                    <span>{featuredArticle.share_count.toLocaleString()} 次分享</span>
+                    <span>{featuredArticle.view_count.toLocaleString()} 次觀看</span>
                   </>
                 )}
               </div>
