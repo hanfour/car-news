@@ -547,7 +547,7 @@ export default async function ArticlePage({ params }: PageProps) {
                             />
                           ) : (
                             <div className="absolute inset-0 flex items-center justify-center">
-                              <svg className="w-10 h-10 opacity-30" className="text-(--brand-primary)" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                              <svg className="w-10 h-10 opacity-30" style={{ color: 'var(--brand-primary)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
                               </svg>
                             </div>
