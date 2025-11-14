@@ -15,6 +15,7 @@ interface Article {
   primary_brand: string | null
   car_models: string[] | null
   view_count: number | null
+  share_count: number | null
 }
 
 interface TodayFeaturedSectionProps {
@@ -83,7 +84,7 @@ export function TodayFeaturedSection({ articles }: TodayFeaturedSectionProps) {
               {/* Category Tag */}
               {featuredArticle.categories && featuredArticle.categories.length > 0 && (
                 <div className="mb-3">
-                  <span className="text-sm font-medium" style={{ color: '#FFBB00' }}>
+                  <span className="text-sm font-medium" style={{ color: '#FDB90B' }}>
                     {featuredArticle.categories[0]}
                   </span>
                 </div>
@@ -121,10 +122,10 @@ export function TodayFeaturedSection({ articles }: TodayFeaturedSectionProps) {
                     <span>{featuredArticle.primary_brand}</span>
                   </>
                 )}
-                {featuredArticle.view_count !== null && featuredArticle.view_count > 0 && (
+                {featuredArticle.share_count !== null && featuredArticle.share_count > 0 && (
                   <>
                     <span>·</span>
-                    <span>{featuredArticle.view_count.toLocaleString()} 次觀看</span>
+                    <span>{featuredArticle.share_count.toLocaleString()} 次分享</span>
                   </>
                 )}
               </div>
@@ -171,7 +172,7 @@ export function TodayFeaturedSection({ articles }: TodayFeaturedSectionProps) {
                       {/* Category */}
                       {article.categories && article.categories.length > 0 && (
                         <div className="mb-1">
-                          <span className="text-xs font-medium" style={{ color: '#FFBB00' }}>
+                          <span className="text-xs font-medium" style={{ color: '#FDB90B' }}>
                             {article.categories[0]}
                           </span>
                         </div>

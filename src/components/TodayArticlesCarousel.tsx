@@ -13,6 +13,7 @@ interface Article {
   cover_image: string | null
   categories: string[] | null
   brands: string[] | null
+  view_count: number | null
 }
 
 interface TodayArticlesCarouselProps {
@@ -110,7 +111,7 @@ export function TodayArticlesCarousel({ articles }: TodayArticlesCarouselProps) 
                   <div className="p-4">
                     {article.categories && article.categories.length > 0 && (
                       <div className="mb-2">
-                        <span className="text-xs font-normal" style={{ color: '#FFBB00', lineHeight: '1.33' }}>
+                        <span className="text-xs font-normal" style={{ color: '#FDB90B', lineHeight: '1.33' }}>
                           {article.categories[0]}
                         </span>
                       </div>
@@ -139,6 +140,12 @@ export function TodayArticlesCarousel({ articles }: TodayArticlesCarouselProps) 
                         <>
                           <span>·</span>
                           <span className="line-clamp-1">{article.brands.slice(0, 1).join(', ')}</span>
+                        </>
+                      )}
+                      {article.view_count !== null && article.view_count > 0 && (
+                        <>
+                          <span>·</span>
+                          <span>{article.view_count.toLocaleString()} 觀看</span>
                         </>
                       )}
                     </div>

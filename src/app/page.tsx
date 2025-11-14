@@ -146,6 +146,7 @@ async function getTodayArticles(): Promise<ArticleWithBrands[]> {
     .select(`${ARTICLE_WITH_STATS}, brands`)
     .eq('published', true)
     .gte('published_at', today.toISOString())
+    .order('view_count', { ascending: false, nullsFirst: false })
     .order('published_at', { ascending: false })
     .limit(12)
 
@@ -166,7 +167,7 @@ async function getTodayTopArticles(): Promise<ArticleWithContent[]> {
     .select(`${ARTICLE_WITH_STATS}, content_zh`)
     .eq('published', true)
     .gte('published_at', today.toISOString())
-    .order('view_count', { ascending: false, nullsFirst: false })
+    .order('share_count', { ascending: false, nullsFirst: false })
     .order('published_at', { ascending: false })
     .limit(6)
 
