@@ -16,14 +16,14 @@ export function BrandTag({ brand }: BrandTagProps) {
       href={`/brand/${brand}`}
       className="px-3 py-1 text-xs font-medium rounded-full transition-colors"
       style={{
-        backgroundColor: '#FFF9E6',
-        color: '#CC9600'
+        backgroundColor: 'var(--brand-primary-lighter)',
+        color: 'var(--brand-primary-dark)'
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = '#FFF3CC'
+        e.currentTarget.style.backgroundColor = 'var(--brand-primary-light)'
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = '#FFF9E6'
+        e.currentTarget.style.backgroundColor = 'var(--brand-primary-lighter)'
       }}
     >
       {brand}

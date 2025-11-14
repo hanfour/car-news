@@ -377,8 +377,8 @@ export default async function ArticlePage({ params }: PageProps) {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-sm hover:underline break-all"
-                        baseColor="#FDB90B"
-                        hoverColor="#CC9600"
+                        baseColor="var(--brand-primary)"
+                        hoverColor="var(--brand-primary-dark)"
                       >
                         {url}
                       </HoverLink>
@@ -407,7 +407,7 @@ export default async function ArticlePage({ params }: PageProps) {
               <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-200">
                 <button
                   className="text-sm font-medium pb-1 border-b-2"
-                  style={{ color: '#FDB90B', borderColor: '#FDB90B' }}
+                  style={{ color: 'var(--brand-primary)', borderColor: 'var(--brand-primary)' }}
                 >
                   按時間排序
                 </button>
