@@ -557,7 +557,7 @@ export default async function ArticlePage({ params }: PageProps) {
                         {/* 文字內容 */}
                         <div className="flex-1 min-w-0">
                           <h4
-                            className="text-sm font-medium transition-colors line-clamp-2 mb-2 leading-snug block group-hover:text-(--brand-primary)"
+                            className="text-sm font-medium transition-colors line-clamp-2 mb-2 leading-snug block group-hover:text-[var(--brand-primary)]"
                             style={{ color: '#111827' }}
                           >
                             {related.title_zh}
@@ -589,7 +589,7 @@ export default async function ArticlePage({ params }: PageProps) {
       </main>
 
       {/* Footer */}
-      <footer className="bg-(--foreground)">
+      <footer className="bg-[var(--foreground)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="text-center md:text-left">
@@ -598,7 +598,7 @@ export default async function ArticlePage({ params }: PageProps) {
             </div>
             <div className="text-center md:text-right">
               <p className="text-gray-400 text-sm">
-                © 2025 WANT CAR · Powered by <span className="text-(--brand-primary)">AI</span>
+                © 2025 WANT CAR · Powered by <span className="text-[var(--brand-primary)]">AI</span>
               </p>
             </div>
           </div>

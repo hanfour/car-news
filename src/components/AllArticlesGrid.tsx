@@ -128,7 +128,7 @@ export function AllArticlesGrid({ articles }: AllArticlesGridProps) {
                 {/* Category Tag */}
                 {article.categories && article.categories.length > 0 && (
                   <div className="mb-2">
-                    <span className="text-xs font-medium text-(--brand-primary)">
+                    <span className="text-xs font-medium text-[var(--brand-primary)]">
                       {article.categories[0]}
                     </span>
                   </div>
@@ -173,7 +173,7 @@ export function AllArticlesGrid({ articles }: AllArticlesGridProps) {
           <div className="flex justify-center">
             <button
               onClick={() => setShowAll(true)}
-              className="px-8 py-3 text-sm font-medium transition-colors border-none rounded bg-(--brand-primary) text-(--foreground) hover:bg-(--foreground) hover:text-white"
+              className="px-8 py-3 text-sm font-medium transition-colors border-none rounded bg-[var(--brand-primary)] text-[var(--foreground)] hover:bg-[var(--foreground)] hover:text-white"
             >
               更多文章
             </button>

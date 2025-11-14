@@ -184,13 +184,13 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-(--brand-red)">{error}</p>
+              <p className="text-sm text-[var(--brand-red)]">{error}</p>
             </div>
           )}
 
           {message && (
             <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-sm text-(--brand-green)">{message}</p>
+              <p className="text-sm text-[var(--brand-green)]">{message}</p>
             </div>
           )}
 

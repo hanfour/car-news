@@ -44,7 +44,7 @@ export function WantCarLogo({ className = '', size = 40 }: WantCarLogoProps) {
         }}
       >
         <div
-          className="font-bold text-(--brand-primary)"
+          className="font-bold text-[var(--brand-primary)]"
           style={{
             fontSize: `${size * 0.4}px`,
             fontFamily: "'PT Serif', serif",
@@ -55,7 +55,7 @@ export function WantCarLogo({ className = '', size = 40 }: WantCarLogoProps) {
           WANT
         </div>
         <div
-          className="font-bold text-(--brand-primary)"
+          className="font-bold text-[var(--brand-primary)]"
           style={{
             fontSize: `${size * 0.3}px`,
             fontFamily: "'PT Serif', serif",

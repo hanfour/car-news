@@ -253,7 +253,7 @@ export default async function Home() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-(--foreground)">
+      <footer className="bg-[var(--foreground)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="text-center md:text-left">
@@ -262,7 +262,7 @@ export default async function Home() {
             </div>
             <div className="text-center md:text-right">
               <p className="text-gray-400 text-sm">
-                © 2025 WANT CAR · Powered by <span className="text-(--brand-primary)">AI</span>
+                © 2025 WANT CAR · Powered by <span className="text-[var(--brand-primary)]">AI</span>
               </p>
             </div>
           </div>

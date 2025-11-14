@@ -53,7 +53,7 @@ export function TodayArticlesCarousel({ articles }: TodayArticlesCarouselProps) 
   // if (articles.length === 0) return null
 
   return (
-    <div className="bg-(--background)">
+    <div className="bg-[var(--background)]">
       <div className="w-full px-4 sm:px-6 lg:px-12 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

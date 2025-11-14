@@ -122,7 +122,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
 
   return (
     <>
-      <header className="bg-(--background) sticky top-0 z-30">
+      <header className="bg-[var(--background)] sticky top-0 z-30">
         {/* 展開狀態 - 第1行：Logo + Slogan | 搜尋 */}
         <div
           className="border-b"
@@ -177,7 +177,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                           unoptimized
                         />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-(--brand-primary) flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-full bg-[var(--brand-primary)] flex items-center justify-center">
                           <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
                             {profile?.display_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
                           </span>
@@ -284,7 +284,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                             unoptimized
                           />
                         ) : (
-                          <div className="w-7 h-7 rounded-full bg-(--brand-primary) flex items-center justify-center">
+                          <div className="w-7 h-7 rounded-full bg-[var(--brand-primary)] flex items-center justify-center">
                             <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>
                               {profile?.display_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
                             </span>
@@ -349,7 +349,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                     prefetch={false}
                     className={`py-4 px-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                       currentPath === '/latest'
-                        ? 'border-(--brand-primary)'
+                        ? 'border-[var(--brand-primary)]'
                         : 'border-transparent hover:border-gray-300'
                     }`}
                     style={{ color: currentPath === '/latest' ? 'var(--brand-primary)' : 'var(--text-secondary)' }}
@@ -363,7 +363,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                       prefetch={false}
                       className={`py-4 px-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                         currentPath === `/category/${category.slug}`
-                          ? 'border-(--brand-primary)'
+                          ? 'border-[var(--brand-primary)]'
                           : 'border-transparent hover:border-gray-300'
                       }`}
                       style={{ color: currentPath === `/category/${category.slug}` ? 'var(--brand-primary)' : 'var(--text-secondary)' }}
@@ -380,7 +380,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
         {/* 展開狀態 - 第3行：品牌 Logo 滾動列表 */}
         {showBrands && (
           <div
-            className="bg-(--background) border-b"
+            className="bg-[var(--background)] border-b"
             style={{
               borderColor: '#cdcdcd',
               height: isScrolled ? '0' : '121px',
@@ -436,7 +436,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
 
       {/* Sidebar */}
       <div
-        className={`fixed top-0 left-0 bottom-0 w-[85vw] sm:w-80 max-w-sm pb-10 bg-(--background) z-50 transform transition-transform duration-300 ${
+        className={`fixed top-0 left-0 bottom-0 w-[85vw] sm:w-80 max-w-sm pb-10 bg-[var(--background)] z-50 transform transition-transform duration-300 ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
         style={{

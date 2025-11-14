@@ -69,7 +69,7 @@ export function PopularArticlesCarousel({ articles }: PopularArticlesCarouselPro
   }
 
   return (
-    <div className="bg-(--background)">
+    <div className="bg-[var(--background)]">
       <div className="w-full px-4 sm:px-6 lg:px-12 py-12">
         {/* Section Title */}
         <h2 className="text-2xl font-bold mb-8" style={{ color: 'var(--text-primary)', fontFamily: 'Merriweather, Noto Sans TC, serif' }}>

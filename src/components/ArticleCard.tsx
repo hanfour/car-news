@@ -77,7 +77,7 @@ export function ArticleCard({ article, gradient }: ArticleCardProps) {
             </div>
           )}
 
-          <h2 className="text-base font-semibold text-gray-900 group-hover:text-(--brand-primary) line-clamp-2 leading-snug mb-3 transition-colors duration-200">
+          <h2 className="text-base font-semibold text-gray-900 group-hover:text-[var(--brand-primary)] line-clamp-2 leading-snug mb-3 transition-colors duration-200">
             {article.title_zh}
           </h2>
 

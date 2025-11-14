@@ -100,7 +100,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
         {/* 錯誤訊息 */}
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-(--brand-red) text-sm">
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-[var(--brand-red)] text-sm">
             {error}
           </div>
         )}

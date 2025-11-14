@@ -127,13 +127,13 @@ function CommentFormInner({ articleId, isLoggedIn = false, onLoginRequired }: Co
     <>
       <form onSubmit={handleSubmit} className="mb-6">
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-(--brand-red) text-sm">
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-[var(--brand-red)] text-sm">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-(--brand-green) text-sm">
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-[var(--brand-green)] text-sm">
             評論已提交！正在刷新頁面...
           </div>
         )}
