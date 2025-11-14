@@ -133,10 +133,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
           <button
             type="submit"
-            className="w-full py-3 text-white font-semibold rounded-lg transition-colors"
-            style={{ backgroundColor: 'var(--brand-primary)' }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--brand-primary-hover)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--brand-primary)'}
+            className="w-full py-3 text-white font-semibold rounded-lg transition-colors bg-brand-primary hover:bg-brand-primary-hover"
             onClick={(e) => {
               e.preventDefault()
               alert('登入功能即將開放')

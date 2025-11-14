@@ -30,7 +30,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Merriweather:wght@400;700&display=swap" />
       </head>
-      <body className="antialiased" style={{ fontFamily: "'Noto Sans TC', 'jf-openhuninn-2.0', sans-serif" }}>
+      <body className="antialiased">
         <LoadingScreen />
         <NavigationProgress />
         <AuthProvider>

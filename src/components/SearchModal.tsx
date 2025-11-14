@@ -106,8 +106,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               autoFocus
-              className="flex-1 text-base sm:text-xl outline-none min-w-0"
-              style={{ color: 'var(--text-primary)' }}
+              className="flex-1 text-base sm:text-xl outline-none min-w-0 text-text-primary"
             />
 
             {/* Search Button - Hidden on mobile, visible on larger screens */}
@@ -127,8 +126,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
             {/* Close Button */}
             <button
               onClick={onClose}
-              className="p-1.5 sm:p-2 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
-              style={{ color: 'var(--text-primary)' }}
+              className="p-1.5 sm:p-2 hover:bg-gray-100 rounded transition-colors flex-shrink-0 text-text-primary"
               aria-label="關閉搜尋"
             >
               <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -201,12 +199,10 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
                   {/* Title */}
                   <h3
-                    className="line-clamp-2 mb-2"
+                    className="line-clamp-2 mb-2 text-text-primary font-heading"
                     style={{
                       fontSize: '18px',
                       fontWeight: 700,
-                      fontFamily: 'Merriweather, Noto Sans TC, serif',
-                      color: '#404040',
                       lineHeight: '1.4'
                     }}
                   >

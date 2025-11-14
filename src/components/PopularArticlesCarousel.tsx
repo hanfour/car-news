@@ -72,7 +72,7 @@ export function PopularArticlesCarousel({ articles }: PopularArticlesCarouselPro
     <div className="bg-[var(--background)]">
       <div className="w-full px-4 sm:px-6 lg:px-12 py-12">
         {/* Section Title */}
-        <h2 className="text-2xl font-bold mb-8" style={{ color: 'var(--text-primary)', fontFamily: 'Merriweather, Noto Sans TC, serif' }}>
+        <h2 className="text-2xl font-bold mb-8 text-text-primary font-heading">
           熱門話題
         </h2>
 
@@ -120,7 +120,7 @@ export function PopularArticlesCarousel({ articles }: PopularArticlesCarouselPro
                   {/* Category Tag */}
                   {article.categories && article.categories.length > 0 && (
                     <div className="mb-2">
-                      <span className="text-sm font-medium" style={{ color: 'var(--brand-primary)' }}>
+                      <span className="text-sm font-medium text-brand-primary">
                         {article.categories[0]}
                       </span>
                     </div>
@@ -128,12 +128,10 @@ export function PopularArticlesCarousel({ articles }: PopularArticlesCarouselPro
 
                   {/* Title */}
                   <h3
-                    className="mb-3"
+                    className="mb-3 text-text-primary font-heading"
                     style={{
                       fontSize: '22px',
                       fontWeight: 700,
-                      fontFamily: 'Merriweather, Noto Sans TC, serif',
-                      color: 'var(--text-primary)',
                       lineHeight: '1.4'
                     }}
                   >
@@ -141,7 +139,7 @@ export function PopularArticlesCarousel({ articles }: PopularArticlesCarouselPro
                   </h3>
 
                   {/* Metadata */}
-                  <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  <div className="flex items-center gap-2 text-sm text-text-secondary">
                     <span>
                       {article.published_at
                         ? format(new Date(article.published_at), 'yyyy.MM.dd', { locale: zhTW })

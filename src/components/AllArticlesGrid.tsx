@@ -49,7 +49,7 @@ export function AllArticlesGrid({ articles }: AllArticlesGridProps) {
       <div className="w-full px-4 sm:px-6 lg:px-12 py-12">
         {/* Section Header with Filter */}
         <div className="flex items-center justify-between mb-8">
-          <h2 className="hidden text-2xl font-bold" style={{ color: 'var(--text-primary)', fontFamily: 'Merriweather, Noto Sans TC, serif' }}>
+          <h2 className="hidden text-2xl font-bold text-text-primary font-heading">
             所有文章
           </h2>
 
@@ -136,12 +136,10 @@ export function AllArticlesGrid({ articles }: AllArticlesGridProps) {
 
                 {/* Title */}
                 <h3
-                  className="line-clamp-2 mb-2"
+                  className="line-clamp-2 mb-2 text-text-primary font-heading"
                   style={{
                     fontSize: '18px',
                     fontWeight: 700,
-                    fontFamily: 'Merriweather, Noto Sans TC, serif',
-                    color: 'var(--text-primary)',
                     lineHeight: '1.4'
                   }}
                 >
@@ -149,7 +147,7 @@ export function AllArticlesGrid({ articles }: AllArticlesGridProps) {
                 </h3>
 
                 {/* Metadata */}
-                <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                <div className="flex items-center gap-2 text-xs text-text-secondary">
                   <span>
                     {article.published_at
                       ? format(new Date(article.published_at), 'MM.dd', { locale: zhTW })

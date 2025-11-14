@@ -197,8 +197,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-lg font-medium transition-colors disabled:opacity-50"
-            style={{ backgroundColor: 'var(--brand-primary)', color: 'var(--text-primary)' }}
+            className="w-full py-3 rounded-lg font-medium transition-colors disabled:opacity-50 bg-brand-primary text-text-primary hover:bg-brand-primary-hover"
           >
             {loading ? '處理中...' : mode === 'signin' ? '登入' : '註冊'}
           </button>
@@ -214,8 +213,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 setError('')
                 setMessage('')
               }}
-              className="ml-2 font-medium hover:underline"
-              style={{ color: 'var(--brand-primary)' }}
+              className="ml-2 font-medium hover:underline text-brand-primary hover:text-brand-primary-hover"
             >
               {mode === 'signin' ? '立即註冊' : '立即登入'}
             </button>

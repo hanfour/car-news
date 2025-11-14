@@ -23,7 +23,7 @@ export function TagCloud({ tags }: TagCloudProps) {
     <div className="bg-[var(--brand-primary)] w-full">
       <div className="w-full px-4 sm:px-6 lg:px-12 py-12">
         {/* Section Title */}
-        <h2 className="text-2xl font-bold mb-8" style={{ color: 'var(--text-primary)', fontFamily: 'Merriweather, Noto Sans TC, serif' }}>
+        <h2 className="text-2xl font-bold mb-8 text-text-primary font-heading">
           玩咖熱詞
         </h2>
 

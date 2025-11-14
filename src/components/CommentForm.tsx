@@ -161,10 +161,9 @@ function CommentFormInner({ articleId, isLoggedIn = false, onLoginRequired }: Co
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-6 py-2 text-white font-medium rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-            style={{ backgroundColor: isSubmitting ? 'var(--text-disabled)' : 'var(--brand-primary)' }}
-            onMouseEnter={(e) => !isSubmitting && (e.currentTarget.style.backgroundColor = 'var(--brand-primary-hover)')}
-            onMouseLeave={(e) => !isSubmitting && (e.currentTarget.style.backgroundColor = 'var(--brand-primary)')}
+            className={`px-6 py-2 text-white font-medium rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed ${
+              isSubmitting ? 'bg-text-disabled' : 'bg-brand-primary hover:bg-brand-primary-hover'
+            }`}
           >
             {isSubmitting ? '提交中...' : '提交評論'}
           </button>
