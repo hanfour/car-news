@@ -7,7 +7,9 @@ export async function GET(request: NextRequest) {
   const code = requestUrl.searchParams.get('code')
   const error = requestUrl.searchParams.get('error')
   const errorDescription = requestUrl.searchParams.get('error_description')
-  const origin = requestUrl.origin
+
+  // 使用生產環境 URL，確保不會轉址到 localhost
+  const origin = process.env.NEXT_PUBLIC_SITE_URL || requestUrl.origin
 
   // 檢查 OAuth 錯誤
   if (error) {

@@ -53,10 +53,12 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
       document.cookie = `auth_return_url=${encodeURIComponent(currentPath)}; path=/; max-age=600; SameSite=Lax`
 
       const supabase = createClient()
+      // 使用生產環境 URL，避免轉址到 localhost
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo: `${siteUrl}/auth/callback`
         }
       })
 
