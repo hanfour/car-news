@@ -2,16 +2,25 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase'
+import { createBrowserClient } from '@supabase/ssr'
 
 export default function AuthCallbackPage() {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
+  const [processed, setProcessed] = useState(false)
 
   useEffect(() => {
+    // 防止重複執行
+    if (processed) return
+
     const handleCallback = async () => {
       try {
-        const supabase = createClient()
+        setProcessed(true)
+
+        const supabase = createBrowserClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        )
 
         // 檢查 URL hash 中的 error
         const hashParams = new URLSearchParams(window.location.hash.substring(1))
@@ -69,7 +78,7 @@ export default function AuthCallbackPage() {
     }
 
     handleCallback()
-  }, [router])
+  }, [router, processed])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
