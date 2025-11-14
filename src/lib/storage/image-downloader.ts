@@ -44,6 +44,48 @@ function generateFilename(url: string, articleId: string): string {
 }
 
 /**
+ * 嘗試將圖片 URL 轉換為壓縮版本
+ */
+function tryCompressUrl(url: string): string {
+  try {
+    const urlObj = new URL(url)
+
+    // The Verge / Vox Media 圖片服務
+    if (urlObj.hostname.includes('theverge.com') || urlObj.hostname.includes('vox-cdn.com')) {
+      // 將 quality=90 降低到 quality=60，並限制寬度
+      urlObj.searchParams.set('quality', '60')
+      urlObj.searchParams.set('w', '1200')
+      return urlObj.toString()
+    }
+
+    // Electrek 圖片服務
+    if (urlObj.hostname.includes('electrek.co')) {
+      urlObj.searchParams.set('quality', '70')
+      urlObj.searchParams.set('w', '1200')
+      return urlObj.toString()
+    }
+
+    // Autocar 圖片服務
+    if (urlObj.hostname.includes('autocar.co.uk')) {
+      // 如果有 itok 參數，移除並添加壓縮參數
+      urlObj.searchParams.delete('itok')
+      return urlObj.toString()
+    }
+
+    // 通用降級：如果有 quality 參數，降低它
+    if (urlObj.searchParams.has('quality')) {
+      const currentQuality = parseInt(urlObj.searchParams.get('quality') || '90')
+      urlObj.searchParams.set('quality', Math.min(60, currentQuality - 20).toString())
+      return urlObj.toString()
+    }
+
+    return url
+  } catch {
+    return url
+  }
+}
+
+/**
  * 下載圖片並存儲到 Supabase Storage
  *
  * @param imageUrl 外部圖片 URL
@@ -83,13 +125,22 @@ export async function downloadAndStoreImage(
     const blob = await response.blob()
     const size = blob.size
 
+    console.log(`[Image Storage] Downloaded ${size} bytes, type: ${contentType}`)
+
     // 檢查文件大小（限制 10MB）
     if (size > 10 * 1024 * 1024) {
-      console.error(`[Image Storage] File too large: ${size} bytes`)
+      console.warn(`[Image Storage] File too large (${size} bytes), attempting to fetch compressed version...`)
+
+      // 嘗試從 URL 參數降低品質
+      const compressedUrl = tryCompressUrl(imageUrl)
+      if (compressedUrl !== imageUrl) {
+        console.log(`[Image Storage] Retrying with compressed URL: ${compressedUrl}`)
+        return downloadAndStoreImage(compressedUrl, articleId, credit)
+      }
+
+      console.error(`[Image Storage] File too large after compression attempt: ${size} bytes`)
       return null
     }
-
-    console.log(`[Image Storage] Downloaded ${size} bytes, type: ${contentType}`)
 
     // 3. 生成文件名
     const filename = generateFilename(imageUrl, articleId)
