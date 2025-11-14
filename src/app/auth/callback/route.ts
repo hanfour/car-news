@@ -30,8 +30,18 @@ export async function GET(request: NextRequest) {
 
     if (data.session) {
       console.log('Auth successful:', data.user?.email)
-      // 成功登入，重定向到首頁
-      return NextResponse.redirect(`${origin}/?auth=success`)
+
+      // 從 cookie 中讀取登入前的頁面路徑
+      const returnUrl = request.cookies.get('auth_return_url')?.value
+
+      // 成功登入後重定向回原頁面，或回首頁
+      const redirectUrl = returnUrl ? `${origin}${returnUrl}?auth=success` : `${origin}/?auth=success`
+
+      // 建立 response 並清除 return_url cookie
+      const response = NextResponse.redirect(redirectUrl)
+      response.cookies.delete('auth_return_url')
+
+      return response
     }
   }
 

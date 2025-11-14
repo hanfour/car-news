@@ -48,6 +48,10 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
     setError(null)
 
     try {
+      // 保存當前頁面路徑到 cookie，登入後返回此頁面
+      const currentPath = window.location.pathname + window.location.search
+      document.cookie = `auth_return_url=${encodeURIComponent(currentPath)}; path=/; max-age=600; SameSite=Lax`
+
       const supabase = createClient()
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',

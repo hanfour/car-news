@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { LoginModal } from './LoginModal'
 
 interface CommentFormProps {
@@ -10,19 +10,62 @@ interface CommentFormProps {
   onLoginRequired?: () => void
 }
 
-export function CommentForm({ articleId, isLoggedIn = false, onLoginRequired }: CommentFormProps) {
+function CommentFormInner({ articleId, isLoggedIn = false, onLoginRequired }: CommentFormProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [content, setContent] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
 
+  // localStorage key for draft comment
+  const draftKey = `comment_draft_${articleId}`
+
+  // 載入草稿內容
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const draft = localStorage.getItem(draftKey)
+      if (draft) {
+        setContent(draft)
+      }
+    }
+  }, [draftKey])
+
+  // 檢查登入成功後自動提交
+  useEffect(() => {
+    const authSuccess = searchParams?.get('auth')
+    if (authSuccess === 'success' && isLoggedIn && content.trim()) {
+      // 登入成功後，如果有草稿內容，自動提交
+      console.log('Auto-submitting comment after login')
+      handleSubmit(new Event('submit') as any)
+    }
+  }, [searchParams, isLoggedIn])
+
+  // 保存草稿到 localStorage
+  const saveDraft = (text: string) => {
+    if (typeof window !== 'undefined') {
+      if (text.trim()) {
+        localStorage.setItem(draftKey, text)
+      } else {
+        localStorage.removeItem(draftKey)
+      }
+    }
+  }
+
+  // 清除草稿
+  const clearDraft = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(draftKey)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // 如果未登錄，顯示登入 Modal
+    // 如果未登錄，保存草稿並顯示登入 Modal
     if (!isLoggedIn) {
+      saveDraft(content)
       setShowLoginModal(true)
       if (onLoginRequired) onLoginRequired()
       return
@@ -65,6 +108,7 @@ export function CommentForm({ articleId, isLoggedIn = false, onLoginRequired }: 
 
       setSuccess(true)
       setContent('')
+      clearDraft() // 清除草稿
 
       // Refresh the page to show new comment
       setTimeout(() => {
@@ -96,7 +140,10 @@ export function CommentForm({ articleId, isLoggedIn = false, onLoginRequired }: 
 
         <textarea
           value={content}
-          onChange={(e) => setContent(e.target.value)}
+          onChange={(e) => {
+            setContent(e.target.value)
+            saveDraft(e.target.value) // 即時保存草稿
+          }}
           rows={4}
           maxLength={2000}
           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-transparent resize-none text-base"
@@ -127,5 +174,21 @@ export function CommentForm({ articleId, isLoggedIn = false, onLoginRequired }: 
       {/* Login Modal */}
       <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
     </>
+  )
+}
+
+export function CommentForm(props: CommentFormProps) {
+  return (
+    <Suspense fallback={
+      <div className="mb-6 animate-pulse">
+        <div className="w-full h-32 bg-gray-200 rounded-lg mb-3"></div>
+        <div className="flex justify-between">
+          <div className="w-16 h-4 bg-gray-200 rounded"></div>
+          <div className="w-24 h-10 bg-gray-200 rounded-lg"></div>
+        </div>
+      </div>
+    }>
+      <CommentFormInner {...props} />
+    </Suspense>
   )
 }
