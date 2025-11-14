@@ -8,18 +8,41 @@ export default function LoadingScreen() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    const startTime = Date.now()
+    const MIN_LOADING_TIME = 1200 // 最少顯示 1.2 秒
+    let pageLoaded = false
+
     // 監聽頁面載入完成
     const checkNavigation = () => {
       if (document.readyState === 'complete') {
+        pageLoaded = true
+        checkIfCanHide()
+      }
+    }
+
+    const checkIfCanHide = () => {
+      const elapsedTime = Date.now() - startTime
+      const remainingTime = MIN_LOADING_TIME - elapsedTime
+
+      if (remainingTime > 0) {
+        // 如果還沒到最小顯示時間，等待剩餘時間
+        setTimeout(() => setIsLoading(false), remainingTime)
+      } else {
+        // 已經超過最小時間，直接隱藏
         setIsLoading(false)
       }
     }
 
+    const handleLoad = () => {
+      pageLoaded = true
+      checkIfCanHide()
+    }
+
     checkNavigation()
-    window.addEventListener('load', () => setIsLoading(false))
+    window.addEventListener('load', handleLoad)
 
     return () => {
-      window.removeEventListener('load', () => setIsLoading(false))
+      window.removeEventListener('load', handleLoad)
     }
   }, [])
 
