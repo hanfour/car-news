@@ -4,7 +4,7 @@ import { clusterArticles } from '@/lib/ai/clustering'
 import { generateArticle, decidePublish } from '@/lib/generator'
 import { generateShortId } from '@/lib/utils/short-id'
 import { generateTopicHash } from '@/lib/utils/topic-hash'
-import { groupArticlesByBrand, filterOutMotorcycleArticles } from '@/lib/utils/brand-extractor'
+import { groupArticlesByBrand, filterCarArticles } from '@/lib/utils/brand-extractor'
 import { generateAndSaveCoverImage } from '@/lib/ai/image-generation'
 import { downloadAndStoreImage, downloadAndStoreImages } from '@/lib/storage/image-downloader'
 import { generateEmbedding } from '@/lib/ai/embeddings'
@@ -77,18 +77,18 @@ async function handleCronJob(request: NextRequest) {
 
     console.log(`Found ${rawArticles.length} articles`)
 
-    // 1.5 過濾機車相關文章（網站專注於汽車）
-    const carArticles = filterOutMotorcycleArticles(rawArticles as RawArticle[])
+    // 1.5 過濾機車和不相關文章（網站專注於汽車）
+    const carArticles = filterCarArticles(rawArticles as RawArticle[])
     const filteredCount = rawArticles.length - carArticles.length
 
     if (filteredCount > 0) {
-      console.log(`🏍️  Filtered out ${filteredCount} motorcycle articles`)
+      console.log(`🚫 Filtered out ${filteredCount} motorcycle/irrelevant articles`)
     }
 
     if (carArticles.length < 3) {
       return NextResponse.json({
         success: true,
-        message: 'Not enough car articles after filtering motorcycles',
+        message: 'Not enough car articles after filtering',
         total: rawArticles.length,
         filtered: filteredCount,
         remaining: carArticles.length

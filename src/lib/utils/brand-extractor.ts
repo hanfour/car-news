@@ -52,7 +52,23 @@ const MOTORCYCLE_BRANDS = [
 const MOTORCYCLE_KEYWORDS = [
   '機車', '摩托車', '重機', '檔車', '速克達', 'motorcycle', 'bike', 'motorbike',
   '騎士', '二輪', '125cc', '150cc', '250cc', '600cc', '1000cc', 'cc',
-  '排氣量', 'MotoGP', '賽車手', '摩托', '電動機車', '油車'
+  '排氣量', 'MotoGP', '賽車手', '摩托', '電動機車', '油車', 'EICMA'
+]
+
+// 完全不相關的關鍵詞（用於過濾非汽車內容）
+const IRRELEVANT_KEYWORDS = [
+  // 政府/政治
+  '政府停擺', 'government shutdown', 'FAA', '航班取消', 'flight cancel',
+  // 能源/太陽能（非汽車相關）
+  '太陽能', 'solar', '稅收抵免', 'tax credit', '光伏', 'photovoltaic',
+  // 駕照考試（非汽車新聞）
+  '駕照考試', 'driving test', '路考', 'road test', '考官',
+  // 一般能源（非汽車）
+  'IEA', '國際能源署', '再生能源', 'renewable energy',
+  // 電池儲存（非汽車）
+  'Powerwall', '家用電池', 'home battery',
+  // 航空
+  '機場', 'airport', '航空業', 'aviation', '飛機', 'aircraft',
 ]
 
 // 品牌別名映射（用於標準化）
@@ -158,6 +174,22 @@ export function isMotorcycleContent(title: string, content: string): boolean {
 }
 
 /**
+ * 檢測是否為不相關內容（非汽車新聞）
+ */
+export function isIrrelevantContent(title: string, content: string): boolean {
+  const text = (title + ' ' + content.slice(0, 500)).toLowerCase()
+
+  // 檢查不相關關鍵詞
+  for (const keyword of IRRELEVANT_KEYWORDS) {
+    if (text.includes(keyword.toLowerCase())) {
+      return true
+    }
+  }
+
+  return false
+}
+
+/**
  * 過濾機車相關文章
  */
 export function filterOutMotorcycleArticles<T extends { title: string; content: string }>(
@@ -169,6 +201,29 @@ export function filterOutMotorcycleArticles<T extends { title: string; content: 
       console.log(`🏍️  Filtered out motorcycle article: ${article.title.slice(0, 100)}`)
     }
     return !isMotorcycle
+  })
+}
+
+/**
+ * 過濾汽車相關文章（排除機車和不相關內容）
+ */
+export function filterCarArticles<T extends { title: string; content: string }>(
+  articles: T[]
+): T[] {
+  return articles.filter(article => {
+    // 檢查機車內容
+    if (isMotorcycleContent(article.title, article.content)) {
+      console.log(`🏍️  Filtered: motorcycle - ${article.title.slice(0, 100)}`)
+      return false
+    }
+
+    // 檢查不相關內容
+    if (isIrrelevantContent(article.title, article.content)) {
+      console.log(`🚫 Filtered: irrelevant - ${article.title.slice(0, 100)}`)
+      return false
+    }
+
+    return true
   })
 }
 
