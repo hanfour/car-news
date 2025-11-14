@@ -15,9 +15,10 @@ export const maxDuration = 300 // Vercel Pro限制：最长5分钟
 // 配置参数：防止超时的保守策略
 const TIMEOUT_CONFIG = {
   MAX_DURATION_MS: 270_000,      // 270秒 (4.5分钟) - 留30秒缓冲
-  MAX_ARTICLES_PER_RUN: 8,       // 每次最多处理8篇文章
+  MAX_ARTICLES_PER_RUN: 10,      // 每次最多处理10篇文章（提高吞吐量）
   TIME_CHECK_INTERVAL: 1000,     // 每1秒检查一次时间
-  ESTIMATED_TIME_PER_ARTICLE: 30_000  // 估计每篇文章需要30秒
+  ESTIMATED_TIME_PER_ARTICLE: 35_000,  // 估计每篇文章需要35秒（根據實際數據調整）
+  MIN_TIME_BUFFER: 45_000        // 最小時間緩衝 45 秒（確保安全停止）
 }
 
 async function handleCronJob(request: NextRequest) {
@@ -44,9 +45,11 @@ async function handleCronJob(request: NextRequest) {
       return false
     }
 
-    // 条件2: 剩余时间不足以处理下一篇
-    if (remainingTime < estimatedTimeForNext) {
-      console.log(`⏸️  Insufficient time remaining (${Math.round(remainingTime/1000)}s), stopping gracefully`)
+    // 条件2: 剩余时间不足以安全处理下一篇
+    // 需要預留：1篇文章時間 + 最小緩衝時間
+    const minRequiredTime = estimatedTimeForNext + TIMEOUT_CONFIG.MIN_TIME_BUFFER
+    if (remainingTime < minRequiredTime) {
+      console.log(`⏸️  Insufficient time remaining (${Math.round(remainingTime/1000)}s < ${Math.round(minRequiredTime/1000)}s required), stopping gracefully`)
       return false
     }
 
@@ -126,7 +129,46 @@ async function handleCronJob(request: NextRequest) {
 
     console.log(`Found ${brandGroups.size} brand groups:`)
     for (const [brand, articles] of brandGroups.entries()) {
-      console.log(`  - ${brand}: ${articles.length} articles`)
+      console.log(`- ${brand}: ${articles.length} articles`)
+    }
+
+    // 2.5 智能排序：品牌優先級處理
+    // 策略：
+    // 1. 高價值品牌優先（Tesla, BMW, Mercedes, Porsche 等）
+    // 2. 文章數量多的品牌優先（有新聞價值）
+    // 3. "Other" 類別最後處理（避免消耗過多時間）
+    const PRIORITY_BRANDS = [
+      'Tesla', 'BMW', 'Mercedes', 'Mercedes-Benz', 'Audi', 'Porsche',
+      'Ferrari', 'Lamborghini', 'Ford', 'Toyota', 'Volkswagen',
+      'Nissan', 'Honda', 'Hyundai', 'Kia', 'Volvo', 'Polestar',
+      'Rivian', 'Lucid', 'BYD', 'XPeng', 'NIO'
+    ]
+
+    const sortedBrands = Array.from(brandGroups.entries()).sort((a, b) => {
+      const [brandA, articlesA] = a
+      const [brandB, articlesB] = b
+
+      // 1. "Other" 永遠最後
+      if (brandA === 'Other') return 1
+      if (brandB === 'Other') return -1
+
+      // 2. 優先品牌排前面
+      const isPriorityA = PRIORITY_BRANDS.includes(brandA)
+      const isPriorityB = PRIORITY_BRANDS.includes(brandB)
+      if (isPriorityA && !isPriorityB) return -1
+      if (!isPriorityA && isPriorityB) return 1
+
+      // 3. 文章數量多的優先（有新聞價值）
+      return articlesB.length - articlesA.length
+    })
+
+    console.log('\n📊 Processing order (by priority):')
+    sortedBrands.slice(0, 10).forEach(([brand, articles], idx) => {
+      const isPriority = PRIORITY_BRANDS.includes(brand)
+      console.log(`  ${idx + 1}. ${brand}: ${articles.length} articles ${isPriority ? '⭐' : ''}`)
+    })
+    if (sortedBrands.length > 10) {
+      console.log(`  ... and ${sortedBrands.length - 10} more brands\n`)
     }
 
     const results = []
@@ -134,12 +176,13 @@ async function handleCronJob(request: NextRequest) {
     let totalProcessed = 0
     let skippedDueToTimeout = 0
 
-    // 3. 對每個品牌進行聚類和生成
-    for (const [brand, brandArticles] of brandGroups.entries()) {
+    // 3. 對每個品牌進行聚類和生成（使用排序後的順序）
+    for (const [brand, brandArticles] of sortedBrands) {
       // 在处理每个品牌前检查时间
       if (!shouldContinueProcessing(totalProcessed)) {
-        skippedDueToTimeout++
-        console.log(`⏭️  Skipping remaining brands (${Array.from(brandGroups.keys()).length - results.length} left) to avoid timeout`)
+        const remainingBrands = sortedBrands.length - (sortedBrands.findIndex(([b]) => b === brand))
+        skippedDueToTimeout = remainingBrands
+        console.log(`⏭️  Skipping remaining brands (${remainingBrands} left) to avoid timeout`)
         break
       }
 
