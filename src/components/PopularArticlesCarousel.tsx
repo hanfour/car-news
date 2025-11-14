@@ -13,6 +13,8 @@ interface Article {
   cover_image: string | null
   categories: string[] | null
   primary_brand: string | null
+  comments_count: number | null
+  view_count: number | null
 }
 
 interface PopularArticlesCarouselProps {
@@ -70,7 +72,7 @@ export function PopularArticlesCarousel({ articles }: PopularArticlesCarouselPro
     <div className="bg-(--background)">
       <div className="w-full px-4 sm:px-6 lg:px-12 py-12">
         {/* Section Title */}
-        <h2 className="hidden text-2xl font-bold mb-8" style={{ color: '#404040', fontFamily: 'Merriweather, Noto Sans TC, serif' }}>
+        <h2 className="text-2xl font-bold mb-8" style={{ color: '#404040', fontFamily: 'Merriweather, Noto Sans TC, serif' }}>
           熱門話題
         </h2>
 
@@ -118,7 +120,7 @@ export function PopularArticlesCarousel({ articles }: PopularArticlesCarouselPro
                   {/* Category Tag */}
                   {article.categories && article.categories.length > 0 && (
                     <div className="mb-2">
-                      <span className="text-sm font-medium" style={{ color: '#FFBB00' }}>
+                      <span className="text-sm font-medium" style={{ color: '#FDB90B' }}>
                         {article.categories[0]}
                       </span>
                     </div>
@@ -151,6 +153,18 @@ export function PopularArticlesCarousel({ articles }: PopularArticlesCarouselPro
                         <span>{article.primary_brand}</span>
                       </>
                     )}
+                    {article.comments_count !== null && article.comments_count > 0 && (
+                      <>
+                        <span>·</span>
+                        <span>{article.comments_count} 則評論</span>
+                      </>
+                    )}
+                    {article.view_count !== null && article.view_count > 0 && (
+                      <>
+                        <span>·</span>
+                        <span>{article.view_count.toLocaleString()} 次觀看</span>
+                      </>
+                    )}
                   </div>
                 </article>
               </Link>
@@ -167,7 +181,7 @@ export function PopularArticlesCarousel({ articles }: PopularArticlesCarouselPro
                   onClick={() => setCurrentIndex(index)}
                   className="w-2 h-2 rounded-full transition-all duration-200"
                   style={{
-                    backgroundColor: index === currentIndex ? '#FFBB00' : '#cdcdcd'
+                    backgroundColor: index === currentIndex ? '#FDB90B' : '#cdcdcd'
                   }}
                   aria-label={`跳到第 ${index + 1} 組文章`}
                 />

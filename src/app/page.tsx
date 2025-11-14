@@ -70,7 +70,7 @@ function getDaysAgo(days: number): Date {
 
 // Common field selection to avoid duplication - includes all required Article fields
 const ARTICLE_LIST_FIELDS = 'id, title_zh, published_at, cover_image, categories, primary_brand, car_models'
-const ARTICLE_WITH_STATS = `${ARTICLE_LIST_FIELDS}, view_count, share_count`
+const ARTICLE_WITH_STATS = `${ARTICLE_LIST_FIELDS}, view_count, share_count, comments_count`
 
 async function getPublishedArticles(): Promise<Article[]> {
   const supabase = createClient()
@@ -179,21 +179,22 @@ async function getWeeklyTopArticles(): Promise<ArticleWithContent[]> {
   return data || []
 }
 
-async function getRecentPopularArticles(): Promise<Article[]> {
+async function getWeeklyPopularArticles(): Promise<Article[]> {
   const supabase = createClient()
-  const threeDaysAgo = getDaysAgo(3)
+  const weekAgo = getDaysAgo(7)
 
   const { data, error } = await supabase
     .from('generated_articles')
     .select(ARTICLE_WITH_STATS)
     .eq('published', true)
-    .gte('published_at', threeDaysAgo.toISOString())
+    .gte('published_at', weekAgo.toISOString())
+    .order('comments_count', { ascending: false, nullsFirst: false })
     .order('view_count', { ascending: false, nullsFirst: false })
     .order('published_at', { ascending: false })
     .limit(6)
 
   if (error) {
-    console.error('Failed to fetch recent popular articles:', error)
+    console.error('Failed to fetch weekly popular articles:', error)
     return []
   }
 
@@ -205,7 +206,7 @@ async function getFeaturedArticles(): Promise<ArticleWithBrands[]> {
 
   const { data, error } = await supabase
     .from('generated_articles')
-    .select('id, title_zh, published_at, brands, categories, cover_image, view_count, share_count, primary_brand, car_models')
+    .select('id, title_zh, published_at, brands, categories, cover_image, view_count, share_count, comments_count, primary_brand, car_models')
     .eq('published', true)
     .eq('is_featured', true)
     .order('published_at', { ascending: false })
@@ -221,11 +222,11 @@ async function getFeaturedArticles(): Promise<ArticleWithBrands[]> {
 
 export default async function Home() {
   // 並行執行所有數據查詢以提升性能
-  const [articles, todayArticles, weeklyTopArticles, recentPopularArticles, allTags] = await Promise.all([
+  const [articles, todayArticles, weeklyTopArticles, weeklyPopularArticles, allTags] = await Promise.all([
     getPublishedArticles(),
     getTodayArticles(),
     getWeeklyTopArticles(),
-    getRecentPopularArticles(),
+    getWeeklyPopularArticles(),
     getAllTags(),
   ])
 
@@ -241,8 +242,8 @@ export default async function Home() {
           {/* 本週焦點區塊 - 最大區塊+小列表 */}
           <TodayFeaturedSection articles={weeklyTopArticles} />
 
-          {/* 熱門話題輪播 - 過去三天熱門文章 */}
-          <PopularArticlesCarousel articles={recentPopularArticles} />
+          {/* 熱門話題輪播 - 本週評論數最多的文章 */}
+          <PopularArticlesCarousel articles={weeklyPopularArticles} />
 
           {/* 所有文章網格 - 9則+篩選+更多按鈕 */}
           <AllArticlesGrid articles={articles} />

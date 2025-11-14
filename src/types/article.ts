@@ -8,6 +8,7 @@ export interface Article {
   published_at: string | null
   view_count: number | null
   share_count: number | null
+  comments_count: number | null
   cover_image: string | null
   categories: string[] | null
   primary_brand: string | null
