@@ -48,12 +48,12 @@ export function ArticleCard({ article, gradient }: ArticleCardProps) {
           ) : (
             <>
               <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '20px 20px'}}></div>
-              <svg className="w-20 h-20 opacity-30" style={{ color: '#FFD966' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg className="w-20 h-20 opacity-30" className="text-(--brand-primary)" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
               </svg>
             </>
           )}
-          <div className="absolute top-3 left-3 text-white text-xs font-bold px-2.5 py-1 rounded-md flex items-center gap-1.5 z-10" style={{ background: 'linear-gradient(to right, #FFBB00, #FFED4E)' }}>
+          <div className="absolute top-3 left-3 text-white text-xs font-bold px-2.5 py-1 rounded-md flex items-center gap-1.5 z-10" style={{ background: 'linear-gradient(to right, var(--brand-primary), #FFED4E)' }}>
             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
             </svg>
@@ -65,7 +65,7 @@ export function ArticleCard({ article, gradient }: ArticleCardProps) {
           {(article.categories || article.brands) && (
             <div className="flex flex-wrap gap-1.5 mb-2">
               {article.categories?.slice(0, 1).map((cat: string) => (
-                <span key={cat} className="text-[10px] font-semibold px-2 py-0.5 rounded" style={{ color: '#CC9600', backgroundColor: '#FFF3CC' }}>
+                <span key={cat} className="text-[10px] font-semibold px-2 py-0.5 rounded" style={{ color: 'var(--brand-primary-dark)', backgroundColor: 'var(--brand-primary-light)' }}>
                   {cat}
                 </span>
               ))}
@@ -77,7 +77,7 @@ export function ArticleCard({ article, gradient }: ArticleCardProps) {
             </div>
           )}
 
-          <h2 className="text-base font-semibold text-gray-900 group-hover:text-[#FFBB00] line-clamp-2 leading-snug mb-3 transition-colors duration-200">
+          <h2 className="text-base font-semibold text-gray-900 group-hover:text-(--brand-primary) line-clamp-2 leading-snug mb-3 transition-colors duration-200">
             {article.title_zh}
           </h2>
 

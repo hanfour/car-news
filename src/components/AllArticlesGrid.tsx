@@ -49,7 +49,7 @@ export function AllArticlesGrid({ articles }: AllArticlesGridProps) {
       <div className="w-full px-4 sm:px-6 lg:px-12 py-12">
         {/* Section Header with Filter */}
         <div className="flex items-center justify-between mb-8">
-          <h2 className="hidden text-2xl font-bold" style={{ color: '#404040', fontFamily: 'Merriweather, Noto Sans TC, serif' }}>
+          <h2 className="hidden text-2xl font-bold" style={{ color: 'var(--text-primary)', fontFamily: 'Merriweather, Noto Sans TC, serif' }}>
             所有文章
           </h2>
 
@@ -59,9 +59,9 @@ export function AllArticlesGrid({ articles }: AllArticlesGridProps) {
               onClick={() => setSortBy('latest')}
               className="px-4 py-2 text-sm font-medium transition-colors rounded cursor-pointer"
               style={{
-                color: sortBy === 'latest' ? '#333' : '#808080',
-                backgroundColor: sortBy === 'latest' ? '#FFBB00' : 'transparent',
-                border: sortBy === 'latest' ? 'none' : '1px solid #cdcdcd'
+                color: sortBy === 'latest' ? 'var(--foreground)' : 'var(--text-secondary)',
+                backgroundColor: sortBy === 'latest' ? 'var(--brand-primary)' : 'transparent',
+                border: sortBy === 'latest' ? 'none' : '1px solid var(--border-color)'
               }}
             >
               最新
@@ -70,9 +70,9 @@ export function AllArticlesGrid({ articles }: AllArticlesGridProps) {
               onClick={() => setSortBy('most_viewed')}
               className="px-4 py-2 text-sm font-medium transition-colors rounded cursor-pointer"
               style={{
-                color: sortBy === 'most_viewed' ? '#333' : '#808080',
-                backgroundColor: sortBy === 'most_viewed' ? '#FFBB00' : 'transparent',
-                border: sortBy === 'most_viewed' ? 'none' : '1px solid #cdcdcd'
+                color: sortBy === 'most_viewed' ? 'var(--foreground)' : 'var(--text-secondary)',
+                backgroundColor: sortBy === 'most_viewed' ? 'var(--brand-primary)' : 'transparent',
+                border: sortBy === 'most_viewed' ? 'none' : '1px solid var(--border-color)'
               }}
             >
               觀看最多
@@ -81,9 +81,9 @@ export function AllArticlesGrid({ articles }: AllArticlesGridProps) {
               onClick={() => setSortBy('most_shared')}
               className="px-4 py-2 text-sm font-medium transition-colors rounded cursor-pointer"
               style={{
-                color: sortBy === 'most_shared' ? '#333' : '#808080',
-                backgroundColor: sortBy === 'most_shared' ? '#FFBB00' : 'transparent',
-                border: sortBy === 'most_shared' ? 'none' : '1px solid #cdcdcd'
+                color: sortBy === 'most_shared' ? 'var(--foreground)' : 'var(--text-secondary)',
+                backgroundColor: sortBy === 'most_shared' ? 'var(--brand-primary)' : 'transparent',
+                border: sortBy === 'most_shared' ? 'none' : '1px solid var(--border-color)'
               }}
             >
               分享最多
@@ -128,7 +128,7 @@ export function AllArticlesGrid({ articles }: AllArticlesGridProps) {
                 {/* Category Tag */}
                 {article.categories && article.categories.length > 0 && (
                   <div className="mb-2">
-                    <span className="text-xs font-medium" style={{ color: '#FFBB00' }}>
+                    <span className="text-xs font-medium text-(--brand-primary)">
                       {article.categories[0]}
                     </span>
                   </div>
@@ -141,7 +141,7 @@ export function AllArticlesGrid({ articles }: AllArticlesGridProps) {
                     fontSize: '18px',
                     fontWeight: 700,
                     fontFamily: 'Merriweather, Noto Sans TC, serif',
-                    color: '#404040',
+                    color: 'var(--text-primary)',
                     lineHeight: '1.4'
                   }}
                 >
@@ -149,7 +149,7 @@ export function AllArticlesGrid({ articles }: AllArticlesGridProps) {
                 </h3>
 
                 {/* Metadata */}
-                <div className="flex items-center gap-2 text-xs" style={{ color: '#808080' }}>
+                <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
                   <span>
                     {article.published_at
                       ? format(new Date(article.published_at), 'MM.dd', { locale: zhTW })
@@ -173,12 +173,7 @@ export function AllArticlesGrid({ articles }: AllArticlesGridProps) {
           <div className="flex justify-center">
             <button
               onClick={() => setShowAll(true)}
-              className="px-8 py-3 text-sm font-medium transition-colors rounded"
-              style={{
-                color: '#333',
-                backgroundColor: '#FFBB00',
-                border: 'none'
-              }}
+              className="px-8 py-3 text-sm font-medium transition-colors border-none rounded bg-(--brand-primary) text-(--foreground) hover:bg-(--foreground) hover:text-white"
             >
               更多文章
             </button>

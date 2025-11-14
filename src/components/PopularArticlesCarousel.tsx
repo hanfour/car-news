@@ -72,7 +72,7 @@ export function PopularArticlesCarousel({ articles }: PopularArticlesCarouselPro
     <div className="bg-(--background)">
       <div className="w-full px-4 sm:px-6 lg:px-12 py-12">
         {/* Section Title */}
-        <h2 className="text-2xl font-bold mb-8" style={{ color: '#404040', fontFamily: 'Merriweather, Noto Sans TC, serif' }}>
+        <h2 className="text-2xl font-bold mb-8" style={{ color: 'var(--text-primary)', fontFamily: 'Merriweather, Noto Sans TC, serif' }}>
           熱門話題
         </h2>
 
@@ -120,7 +120,7 @@ export function PopularArticlesCarousel({ articles }: PopularArticlesCarouselPro
                   {/* Category Tag */}
                   {article.categories && article.categories.length > 0 && (
                     <div className="mb-2">
-                      <span className="text-sm font-medium" style={{ color: '#FDB90B' }}>
+                      <span className="text-sm font-medium" style={{ color: 'var(--brand-primary)' }}>
                         {article.categories[0]}
                       </span>
                     </div>
@@ -133,7 +133,7 @@ export function PopularArticlesCarousel({ articles }: PopularArticlesCarouselPro
                       fontSize: '22px',
                       fontWeight: 700,
                       fontFamily: 'Merriweather, Noto Sans TC, serif',
-                      color: '#404040',
+                      color: 'var(--text-primary)',
                       lineHeight: '1.4'
                     }}
                   >
@@ -141,7 +141,7 @@ export function PopularArticlesCarousel({ articles }: PopularArticlesCarouselPro
                   </h3>
 
                   {/* Metadata */}
-                  <div className="flex items-center gap-2 text-sm" style={{ color: '#808080' }}>
+                  <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
                     <span>
                       {article.published_at
                         ? format(new Date(article.published_at), 'yyyy.MM.dd', { locale: zhTW })
@@ -181,7 +181,7 @@ export function PopularArticlesCarousel({ articles }: PopularArticlesCarouselPro
                   onClick={() => setCurrentIndex(index)}
                   className="w-2 h-2 rounded-full transition-all duration-200"
                   style={{
-                    backgroundColor: index === currentIndex ? '#FDB90B' : '#cdcdcd'
+                    backgroundColor: index === currentIndex ? 'var(--brand-primary)' : 'var(--border-color)'
                   }}
                   aria-label={`跳到第 ${index + 1} 組文章`}
                 />

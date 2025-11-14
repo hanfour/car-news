@@ -20,10 +20,10 @@ export function TagCloud({ tags }: TagCloudProps) {
   }
 
   return (
-    <div className="bg-[#FFBB00] w-full">
+    <div className="bg-(--brand-primary) w-full">
       <div className="w-full px-4 sm:px-6 lg:px-12 py-12">
         {/* Section Title */}
-        <h2 className="text-2xl font-bold mb-8" style={{ color: '#404040', fontFamily: 'Merriweather, Noto Sans TC, serif' }}>
+        <h2 className="text-2xl font-bold mb-8" style={{ color: 'var(--text-primary)', fontFamily: 'Merriweather, Noto Sans TC, serif' }}>
           玩咖熱詞
         </h2>
 
@@ -34,7 +34,7 @@ export function TagCloud({ tags }: TagCloudProps) {
               key={tag.name}
               href={`/tag/${encodeURIComponent(tag.name)}`}
               prefetch={false}
-              className="inline-block px-4 py-2 transition-all duration-200 text-[#333] hover:bg-[#333] hover:text-white rounded-full border border-[#333]"
+              className="inline-block px-4 py-2 transition-all duration-200 text-(--foreground) hover:bg-(--foreground) hover:text-white rounded-full border border-(--foreground)"
               style={{
                 fontSize: `${getFontSize(tag.count)}px`,
                 fontWeight: tag.count > maxCount * 0.7 ? 700 : 500,

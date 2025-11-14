@@ -22,11 +22,10 @@ export function WantCarLogo({ className = '', size = 40 }: WantCarLogoProps) {
     >
       {/* 左側：橫排中文「玩咖」（左右排列）*/}
       <div
-        className="font-bold text-[#333]"
+        className="font-bold text-[#28292B] tracking-tight"
         style={{
           fontSize: `${size * 0.85}px`,
           fontFamily: "'jf-openhuninn-2.0', sans-serif",
-          letterSpacing: '0.05em',
           lineHeight: '1',
           whiteSpace: 'nowrap',
           display: 'inline-block'
@@ -45,7 +44,7 @@ export function WantCarLogo({ className = '', size = 40 }: WantCarLogoProps) {
         }}
       >
         <div
-          className="font-bold text-[#FFBB00]"
+          className="font-bold text-(--brand-primary)"
           style={{
             fontSize: `${size * 0.4}px`,
             fontFamily: "'PT Serif', serif",
@@ -56,7 +55,7 @@ export function WantCarLogo({ className = '', size = 40 }: WantCarLogoProps) {
           WANT
         </div>
         <div
-          className="font-bold text-[#FFBB00]"
+          className="font-bold text-(--brand-primary)"
           style={{
             fontSize: `${size * 0.3}px`,
             fontFamily: "'PT Serif', serif",

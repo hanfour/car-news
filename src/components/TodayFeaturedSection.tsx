@@ -42,7 +42,7 @@ export function TodayFeaturedSection({ articles }: TodayFeaturedSectionProps) {
     <div className="bg-white w-full">
       <div className="w-full px-4 sm:px-6 lg:px-12 py-12">
         {/* Section Title */}
-        <h2 className="text-2xl font-bold mb-8" style={{ color: '#404040', fontFamily: 'Merriweather, Noto Sans TC, serif' }}>
+        <h2 className="text-2xl font-bold mb-8" style={{ color: 'var(--text-primary)', fontFamily: 'Merriweather, Noto Sans TC, serif' }}>
           本週焦點
         </h2>
 
@@ -84,7 +84,7 @@ export function TodayFeaturedSection({ articles }: TodayFeaturedSectionProps) {
               {/* Category Tag */}
               {featuredArticle.categories && featuredArticle.categories.length > 0 && (
                 <div className="mb-3">
-                  <span className="text-sm font-medium" style={{ color: '#FDB90B' }}>
+                  <span className="text-sm font-medium" style={{ color: 'var(--brand-primary)' }}>
                     {featuredArticle.categories[0]}
                   </span>
                 </div>
@@ -97,7 +97,7 @@ export function TodayFeaturedSection({ articles }: TodayFeaturedSectionProps) {
                   fontSize: '28px',
                   fontWeight: 700,
                   fontFamily: 'Merriweather, Noto Sans TC, serif',
-                  color: '#404040',
+                  color: 'var(--text-primary)',
                   lineHeight: '1.4'
                 }}
               >
@@ -105,12 +105,12 @@ export function TodayFeaturedSection({ articles }: TodayFeaturedSectionProps) {
               </h3>
 
               {/* Excerpt */}
-              <p className="mb-3 leading-relaxed" style={{ fontSize: '16px', color: '#808080', lineHeight: '1.75' }}>
+              <p className="mb-3 leading-relaxed" style={{ fontSize: '16px', color: 'var(--text-secondary)', lineHeight: '1.75' }}>
                 {getExcerpt(featuredArticle.content_zh)}
               </p>
 
               {/* Metadata */}
-              <div className="flex items-center gap-3 text-sm" style={{ color: '#808080' }}>
+              <div className="flex items-center gap-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
                 <span>
                   {featuredArticle.published_at
                     ? format(new Date(featuredArticle.published_at), 'yyyy.MM.dd HH:mm', { locale: zhTW })
@@ -172,7 +172,7 @@ export function TodayFeaturedSection({ articles }: TodayFeaturedSectionProps) {
                       {/* Category */}
                       {article.categories && article.categories.length > 0 && (
                         <div className="mb-1">
-                          <span className="text-xs font-medium" style={{ color: '#FDB90B' }}>
+                          <span className="text-xs font-medium" style={{ color: 'var(--brand-primary)' }}>
                             {article.categories[0]}
                           </span>
                         </div>
@@ -185,7 +185,7 @@ export function TodayFeaturedSection({ articles }: TodayFeaturedSectionProps) {
                           fontSize: '16px',
                           fontWeight: 700,
                           fontFamily: 'Merriweather, Noto Sans TC, serif',
-                          color: '#404040',
+                          color: 'var(--text-primary)',
                           lineHeight: '1.5'
                         }}
                       >
@@ -193,7 +193,7 @@ export function TodayFeaturedSection({ articles }: TodayFeaturedSectionProps) {
                       </h4>
 
                       {/* Metadata */}
-                      <div className="flex items-center gap-2 text-xs" style={{ color: '#808080' }}>
+                      <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
                         <span>
                           {article.published_at
                             ? format(new Date(article.published_at), 'MM.dd HH:mm', { locale: zhTW })

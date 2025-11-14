@@ -74,7 +74,7 @@ export default async function LatestPage() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-[#333] mt-12">
+      <footer className="bg-(--foreground) mt-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="text-center md:text-left">
@@ -83,7 +83,7 @@ export default async function LatestPage() {
             </div>
             <div className="text-center md:text-right">
               <p className="text-gray-400 text-sm">
-                © 2025 WANT CAR · Powered by <span style={{ color: '#FFD966' }}>AI</span>
+                © 2025 WANT CAR · Powered by <span className="text-(--brand-primary)">AI</span>
               </p>
             </div>
           </div>

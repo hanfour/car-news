@@ -57,7 +57,7 @@ export function TodayArticlesCarousel({ articles }: TodayArticlesCarouselProps) 
       <div className="w-full px-4 sm:px-6 lg:px-12 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold" style={{ color: '#404040', fontFamily: 'Merriweather, Noto Sans TC, serif' }}>
+          <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)', fontFamily: 'Merriweather, Noto Sans TC, serif' }}>
             今日最新
           </h2>
         </div>
@@ -111,7 +111,7 @@ export function TodayArticlesCarousel({ articles }: TodayArticlesCarouselProps) 
                   <div className="p-4">
                     {article.categories && article.categories.length > 0 && (
                       <div className="mb-2">
-                        <span className="text-xs font-normal" style={{ color: '#FDB90B', lineHeight: '1.33' }}>
+                        <span className="text-xs font-normal" style={{ color: 'var(--brand-primary)', lineHeight: '1.33' }}>
                           {article.categories[0]}
                         </span>
                       </div>
@@ -123,14 +123,14 @@ export function TodayArticlesCarousel({ articles }: TodayArticlesCarouselProps) 
                         fontSize: '18px',
                         fontWeight: 700,
                         fontFamily: 'Merriweather, Noto Sans TC, serif',
-                        color: '#404040',
+                        color: 'var(--text-primary)',
                         lineHeight: '1.5'
                       }}
                     >
                       {article.title_zh}
                     </h3>
 
-                    <div className="flex items-center gap-2 text-xs" style={{ color: '#808080' }}>
+                    <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
                       <span>
                         {article.published_at
                           ? format(new Date(article.published_at), 'MM.dd HH:mm', { locale: zhTW })
@@ -162,7 +162,7 @@ export function TodayArticlesCarousel({ articles }: TodayArticlesCarouselProps) 
             <button
               onClick={scrollRight}
               className="absolute right-0 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-3 rounded-full shadow-lg transition-all"
-              style={{ color: '#404040' }}
+              style={{ color: 'var(--text-primary)' }}
               aria-label="查看更多今日文章"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -377,7 +377,7 @@ export default async function ArticlePage({ params }: PageProps) {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-sm hover:underline break-all"
-                        baseColor="#FFBB00"
+                        baseColor="#FDB90B"
                         hoverColor="#CC9600"
                       >
                         {url}
@@ -407,7 +407,7 @@ export default async function ArticlePage({ params }: PageProps) {
               <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-200">
                 <button
                   className="text-sm font-medium pb-1 border-b-2"
-                  style={{ color: '#FFBB00', borderColor: '#FFBB00' }}
+                  style={{ color: '#FDB90B', borderColor: '#FDB90B' }}
                 >
                   按時間排序
                 </button>
@@ -547,7 +547,7 @@ export default async function ArticlePage({ params }: PageProps) {
                             />
                           ) : (
                             <div className="absolute inset-0 flex items-center justify-center">
-                              <svg className="w-10 h-10 opacity-30" style={{ color: '#FFD966' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                              <svg className="w-10 h-10 opacity-30" className="text-(--brand-primary)" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
                               </svg>
                             </div>
@@ -557,7 +557,7 @@ export default async function ArticlePage({ params }: PageProps) {
                         {/* 文字內容 */}
                         <div className="flex-1 min-w-0">
                           <h4
-                            className="text-sm font-medium transition-colors line-clamp-2 mb-2 leading-snug block group-hover:text-[#FFBB00]"
+                            className="text-sm font-medium transition-colors line-clamp-2 mb-2 leading-snug block group-hover:text-(--brand-primary)"
                             style={{ color: '#111827' }}
                           >
                             {related.title_zh}
@@ -589,7 +589,7 @@ export default async function ArticlePage({ params }: PageProps) {
       </main>
 
       {/* Footer */}
-      <footer className="bg-[#333]">
+      <footer className="bg-(--foreground)">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="text-center md:text-left">
@@ -598,7 +598,7 @@ export default async function ArticlePage({ params }: PageProps) {
             </div>
             <div className="text-center md:text-right">
               <p className="text-gray-400 text-sm">
-                © 2025 WANT CAR · Powered by <span style={{ color: '#FFD966' }}>AI</span>
+                © 2025 WANT CAR · Powered by <span className="text-(--brand-primary)">AI</span>
               </p>
             </div>
           </div>

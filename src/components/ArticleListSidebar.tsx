@@ -101,7 +101,7 @@ export async function ArticleListSidebar() {
               <span
                 className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-xs font-bold"
                 style={{
-                  color: index < 3 ? '#FFBB00' : '#999'
+                  color: index < 3 ? '#FDB90B' : '#999'
                 }}
               >
                 {index + 1}
