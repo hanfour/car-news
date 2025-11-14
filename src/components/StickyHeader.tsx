@@ -218,8 +218,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                 ) : (
                   <button
                     onClick={() => setIsAuthModalOpen(true)}
-                    className="px-4 py-2 text-sm font-medium rounded hover:bg-[#FFCC33] transition-colors"
-                    style={{ backgroundColor: 'var(--brand-primary)', color: 'var(--text-primary)' }}
+                    className="btn-primary"
                   >
                     登入
                   </button>
@@ -324,8 +323,7 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                   ) : (
                     <button
                       onClick={() => setIsAuthModalOpen(true)}
-                      className="px-3 py-1.5 text-xs font-medium rounded hover:bg-[#FFCC33] transition-colors"
-                      style={{ backgroundColor: 'var(--brand-primary)', color: 'var(--text-primary)' }}
+                      className="px-3 py-1.5 text-xs font-medium rounded bg-brand-primary text-text-primary hover:bg-brand-primary-hover transition-colors"
                     >
                       登入
                     </button>

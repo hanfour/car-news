@@ -39,10 +39,75 @@
 }
 
 @theme inline {
+  /* ===== 背景色系 ===== */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-background-secondary: var(--background-secondary);
+
+  /* ===== 邊框色 ===== */
+  --color-border: var(--border-color);
+  --color-border-light: #e5e5e5;
+
+  /* ===== 文字色系 ===== */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-disabled: var(--text-disabled);
+
+  /* ===== 品牌色系 ===== */
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-primary-hover: var(--brand-primary-hover);
+  --color-brand-primary-light: var(--brand-primary-light);
+  --color-brand-primary-lighter: var(--brand-primary-lighter);
+  --color-brand-primary-dark: var(--brand-primary-dark);
+
+  /* ===== 狀態色 ===== */
+  --color-brand-red: var(--brand-red);
+  --color-brand-red-hover: var(--brand-red-hover);
+  --color-brand-green: var(--brand-green);
+
+  /* ===== 功能色 ===== */
+  --color-accent-secondary: var(--accent-secondary);
+
+  /* ===== 中性灰度 ===== */
+  --color-gray-50: #F9FAFB;
+  --color-gray-100: #F3F4F6;
+  --color-gray-400: #9CA3AF;
+  --color-gray-500: #6B7280;
+  --color-gray-600: #4B5563;
+  --color-gray-900: #111827;
+
+  /* ===== 字體系統 ===== */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: 'Merriweather, Noto Sans TC, serif';
+  --font-body: "'Noto Sans TC', 'jf-openhuninn-2.0', sans-serif";
+}
+
+@layer components {
+  /* 按鈕樣式 */
+  .btn-primary {
+    @apply px-4 py-2 text-sm font-medium rounded transition-colors;
+    background-color: var(--brand-primary);
+    color: var(--text-primary);
+  }
+
+  .btn-primary:hover {
+    background-color: var(--brand-primary-hover);
+  }
+
+  .btn-icon {
+    @apply p-2 rounded transition-colors hover:bg-gray-100;
+  }
+
+  /* 常用布局 */
+  .flex-center {
+    @apply flex items-center;
+  }
+
+  .flex-between {
+    @apply flex items-center justify-between;
+  }
 }
 
 /* 移除深色模式媒體查詢，統一使用深色主題 */
