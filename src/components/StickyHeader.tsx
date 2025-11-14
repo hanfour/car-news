@@ -188,8 +188,9 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                     {/* 用戶下拉選單 */}
                     {isUserMenuOpen && (
                       <div
-                        className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border py-1 z-50"
-                        style={{ borderColor: '#cdcdcd' }}
+                        ref={expandedUserMenuRef}
+                        className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border py-1"
+                        style={{ borderColor: '#cdcdcd', zIndex: 9999 }}
                       >
                         <div className="px-4 py-2 border-b" style={{ borderColor: '#e5e5e5' }}>
                           <p className="text-sm font-medium" style={{ color: '#404040' }}>
@@ -294,8 +295,8 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                       {/* 用戶下拉選單 */}
                       {isUserMenuOpen && (
                         <div
-                          className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border py-1 z-50"
-                          style={{ borderColor: '#cdcdcd' }}
+                          className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border py-1"
+                          style={{ borderColor: '#cdcdcd', zIndex: 9999 }}
                         >
                           <div className="px-4 py-2 border-b" style={{ borderColor: '#e5e5e5' }}>
                             <p className="text-sm font-medium" style={{ color: '#404040' }}>
