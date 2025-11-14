@@ -10,17 +10,32 @@
 }
 
 :root {
+  /* === 背景色系 === */
   --background: #f5f5f5;
-  --foreground: #404040;
+  --foreground: #1B1D1C;
   --background-secondary: #ffffff;
   --border-color: #cdcdcd;
-  --text-primary: #404040;
+
+  /* === 文字色系 === */
+  --text-primary: #321913;
   --text-secondary: #808080;
   --text-tertiary: #9c9c9c;
-  --accent-primary: #f2ba1f;
+  --text-disabled: #9CA3AF;
+
+  /* === 品牌色系 === */
+  --brand-primary: #FDB90B;
+  --brand-primary-hover: #E5A800;
+  --brand-primary-light: #FFF3CC;
+  --brand-primary-lighter: #FFF9E6;
+  --brand-primary-dark: #CC9600;
+
+  /* === 狀態色 === */
+  --brand-red: #EA1821;
+  --brand-red-hover: #9C2525;
+  --brand-green: #26CB4D;
+
+  /* === 功能色 === */
   --accent-secondary: #FFBB00;
-  --brand-red: #FFBB00;
-  --brand-red-hover: #9b051e;
 }
 
 @theme inline {
