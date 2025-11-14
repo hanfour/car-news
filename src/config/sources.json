@@ -77,5 +77,77 @@
     "url": "https://www.autoexpress.co.uk/rss",
     "type": "rss",
     "enabled": true
+  },
+  {
+    "id": "toyota-newsroom",
+    "name": "Toyota USA Newsroom",
+    "url": "https://pressroom.toyota.com/feed/atom",
+    "type": "rss",
+    "enabled": true,
+    "brand": "Toyota",
+    "category": "official"
+  },
+  {
+    "id": "honda-news",
+    "name": "Honda News",
+    "url": "https://feeds.feedburner.com/honda/news",
+    "type": "rss",
+    "enabled": true,
+    "brand": "Honda",
+    "category": "official"
+  },
+  {
+    "id": "porsche-newsroom",
+    "name": "Porsche Newsroom",
+    "url": "https://newsroom.porsche.com/rss/en/",
+    "type": "rss",
+    "enabled": true,
+    "brand": "Porsche",
+    "category": "official"
+  },
+  {
+    "id": "bmwblog",
+    "name": "BMWBlog",
+    "url": "https://www.bmwblog.com/feed",
+    "type": "rss",
+    "enabled": true,
+    "brand": "BMW",
+    "category": "blog"
+  },
+  {
+    "id": "teslarati",
+    "name": "Teslarati",
+    "url": "https://www.teslarati.com/feed",
+    "type": "rss",
+    "enabled": true,
+    "brand": "Tesla",
+    "category": "blog"
+  },
+  {
+    "id": "electrek-tesla",
+    "name": "Electrek - Tesla Guide",
+    "url": "https://electrek.co/guides/tesla/feed",
+    "type": "rss",
+    "enabled": true,
+    "brand": "Tesla",
+    "category": "blog"
+  },
+  {
+    "id": "benzinsider",
+    "name": "BenzInsider",
+    "url": "https://www.benzinsider.com/feed",
+    "type": "rss",
+    "enabled": true,
+    "brand": "Mercedes-Benz",
+    "category": "blog"
+  },
+  {
+    "id": "quattrodaily",
+    "name": "QuattroDaily",
+    "url": "https://quattrodaily.com/feed",
+    "type": "rss",
+    "enabled": true,
+    "brand": "Audi",
+    "category": "blog"
   }
 ]
