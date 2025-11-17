@@ -100,16 +100,26 @@
 
           // 重定向（不帶 hash）
           setTimeout(() => {
-            window.location.href = returnUrl;
+            window.location.replace(returnUrl);
           }, 500);
         } else {
           console.error('[Auth] Missing tokens in hash');
-          window.location.href = '/auth/error';
+          window.location.replace('/auth/error?reason=missing_tokens');
         }
       } else {
-        // 沒有 hash，可能是 PKCE flow 或直接訪問
-        console.log('[Auth] No hash fragment, redirecting to home');
-        window.location.href = '/';
+        // 沒有 hash，可能是重定向後再次訪問或直接訪問
+        // 檢查是否已有 session，如果有就返回首頁
+        const projectRef = 'daubcanyykdfyptntfco';
+        const storageKey = `sb-${projectRef}-auth-token`;
+        const existingSession = localStorage.getItem(storageKey);
+
+        if (existingSession) {
+          console.log('[Auth] Session exists, redirecting to home');
+          window.location.replace('/');
+        } else {
+          console.log('[Auth] No session and no hash, redirect to home');
+          window.location.replace('/');
+        }
       }
     })();
   </script>

@@ -79,6 +79,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut()
+
+    // 清除靜態 HTML 寫入的 localStorage session
+    // 這是 auth-callback.html 寫入的 session
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+    const projectRef = supabaseUrl.split('//')[1]?.split('.')[0] || ''
+    if (projectRef) {
+      const storageKey = `sb-${projectRef}-auth-token`
+      localStorage.removeItem(storageKey)
+    }
+
     setUser(null)
     setProfile(null)
     setSession(null)
