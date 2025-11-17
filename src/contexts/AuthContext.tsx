@@ -78,20 +78,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const signOut = async () => {
+    console.log('[Auth] Starting sign out...')
+
+    // 先清除所有 Supabase localStorage keys
+    // 這樣可以確保即使 supabase.auth.signOut() 失敗，用戶也會被登出
+    const projectRef = 'daubcanyykdfyptntfco'
+    const storageKeys = [
+      `sb-${projectRef}-auth-token`,           // 我們寫入的格式
+      `sb-${projectRef}-auth-token-code-verifier`,
+      `supabase.auth.token`,                   // Supabase 預設格式
+    ]
+
+    console.log('[Auth] Clearing localStorage keys:', storageKeys)
+    storageKeys.forEach(key => {
+      const before = localStorage.getItem(key)
+      if (before) {
+        console.log(`[Auth] Found key "${key}", removing...`)
+        localStorage.removeItem(key)
+      }
+    })
+
+    // 呼叫 Supabase 登出 API
     await supabase.auth.signOut()
 
-    // 清除靜態 HTML 寫入的 localStorage session
-    // 這是 auth-callback.html 寫入的 session
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-    const projectRef = supabaseUrl.split('//')[1]?.split('.')[0] || ''
-    if (projectRef) {
-      const storageKey = `sb-${projectRef}-auth-token`
-      localStorage.removeItem(storageKey)
-    }
-
+    // 清除 React state
     setUser(null)
     setProfile(null)
     setSession(null)
+
+    console.log('[Auth] Sign out completed')
+
+    // 強制重新整理頁面以確保所有狀態清除
+    if (typeof window !== 'undefined') {
+      setTimeout(() => {
+        window.location.href = '/'
+      }, 100)
+    }
   }
 
   return (
