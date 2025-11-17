@@ -91,10 +91,22 @@ function CommentFormInner({ articleId, onLoginRequired }: CommentFormProps) {
     setIsSubmitting(true)
 
     try {
+      // 獲取 access token 並加入 header
+      const { createClient } = await import('@/lib/supabase')
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+
+      if (!session?.access_token) {
+        setError('認證失效，請重新登入')
+        setIsSubmitting(false)
+        return
+      }
+
       const response = await fetch('/api/comments', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           article_id: articleId,

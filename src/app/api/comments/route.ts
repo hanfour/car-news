@@ -75,7 +75,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 獲取當前用戶（從 cookies 讀取 session）
+    // 獲取當前用戶（從 Authorization header 讀取 token）
+    const authHeader = request.headers.get('Authorization')
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('[Comments API] No auth header')
+      return NextResponse.json(
+        { error: '請先登入' },
+        { status: 401 }
+      )
+    }
+
+    const token = authHeader.replace('Bearer ', '')
+
     const cookieStore = await cookies()
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -103,9 +115,11 @@ export async function POST(request: NextRequest) {
       }
     )
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    // 使用 token 驗證用戶
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
 
     console.log('[Comments API] Auth check:', {
+      hasAuthHeader: !!authHeader,
       hasUser: !!user,
       userId: user?.id,
       authError: authError?.message
