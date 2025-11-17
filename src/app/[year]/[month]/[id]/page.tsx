@@ -185,11 +185,6 @@ export default async function ArticlePage({ params }: PageProps) {
     notFound()
   }
 
-  // Check if user is logged in
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const isLoggedIn = !!user
-
   const comments = await getComments(id)
   const relatedArticles = await getRelatedArticles(id, article.brands || [], article.categories || [])
 
@@ -401,7 +396,7 @@ export default async function ArticlePage({ params }: PageProps) {
               <h2 className="text-xl font-semibold text-gray-900 mb-6">評論 ({comments.length})</h2>
 
               {/* Comment Form */}
-              <CommentForm articleId={id} isLoggedIn={isLoggedIn} />
+              <CommentForm articleId={id} />
 
               {/* Sort Options */}
               <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-200">

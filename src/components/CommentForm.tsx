@@ -3,14 +3,17 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { LoginModal } from './LoginModal'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface CommentFormProps {
   articleId: string
-  isLoggedIn?: boolean
   onLoginRequired?: () => void
 }
 
-function CommentFormInner({ articleId, isLoggedIn = false, onLoginRequired }: CommentFormProps) {
+function CommentFormInner({ articleId, onLoginRequired }: CommentFormProps) {
+  // 使用 client-side auth context 檢查登入狀態
+  const { user } = useAuth()
+  const isLoggedIn = !!user
   const router = useRouter()
   const searchParams = useSearchParams()
   const [content, setContent] = useState('')
