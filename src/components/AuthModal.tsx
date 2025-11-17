@@ -19,8 +19,6 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
 
-  const supabase = createClient()
-
   if (!isOpen) return null
 
   const handleEmailAuth = async (e: React.FormEvent) => {
@@ -28,6 +26,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setLoading(true)
     setError('')
     setMessage('')
+
+    const supabase = createClient()
 
     try {
       if (mode === 'signup') {
@@ -79,6 +79,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const handleSocialAuth = async (provider: 'google' | 'facebook') => {
     setLoading(true)
     setError('')
+
+    const supabase = createClient()
 
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({

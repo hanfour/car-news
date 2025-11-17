@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase'
 import type { User, Session } from '@supabase/supabase-js'
 
@@ -29,7 +29,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const supabase = createClient()
+  // 使用 useMemo 确保只创建一次客户端实例
+  const supabase = useMemo(() => createClient(), [])
 
   const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase
