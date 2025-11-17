@@ -2,12 +2,13 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase'
 
 export default function AuthCallbackPage() {
   const router = useRouter()
 
   useEffect(() => {
-    const handleCallback = () => {
+    const handleCallback = async () => {
       // 檢查是否有 hash fragment (Implicit Flow)
       const hash = window.location.hash
 
@@ -19,30 +20,24 @@ export default function AuthCallbackPage() {
         const accessToken = params.get('access_token')
         const refreshToken = params.get('refresh_token')
         const expiresIn = params.get('expires_in')
-        const tokenType = params.get('token_type')
 
         if (accessToken && refreshToken) {
-          // 構建 session object
-          const session = {
+          // 使用 Supabase client 的 setSession() 來正確設置 session
+          // 這會自動處理 localStorage 和 cookies
+          const supabase = createClient()
+
+          const { error } = await supabase.auth.setSession({
             access_token: accessToken,
-            refresh_token: refreshToken,
-            expires_in: parseInt(expiresIn || '3600'),
-            token_type: tokenType || 'bearer',
-            expires_at: Math.floor(Date.now() / 1000) + parseInt(expiresIn || '3600')
+            refresh_token: refreshToken
+          })
+
+          if (error) {
+            console.error('[Auth] Failed to set session:', error)
+            router.replace('/auth/error?reason=session_error')
+            return
           }
 
-          // 儲存到 localStorage (Supabase 格式)
-          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-          const projectRef = supabaseUrl.split('//')[1]?.split('.')[0] || ''
-          if (projectRef) {
-            const storageKey = `sb-${projectRef}-auth-token`
-            try {
-              localStorage.setItem(storageKey, JSON.stringify(session))
-              console.log('[Auth] Session stored to localStorage')
-            } catch (e) {
-              console.error('[Auth] Failed to store session:', e)
-            }
-          }
+          console.log('[Auth] Session set successfully')
 
           // 讀取返回 URL
           const cookies = document.cookie.split(';')

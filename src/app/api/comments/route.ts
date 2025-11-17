@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient, createServiceClient } from '@/lib/supabase'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+import { createServiceClient } from '@/lib/supabase'
 import { moderateComment } from '@/lib/ai/claude'
 
 // GET: 获取文章评论列表
@@ -15,7 +17,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createClient()
+    const supabase = createServiceClient()
 
     const { data, error } = await supabase
       .from('comments')
@@ -73,9 +75,41 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 獲取當前用戶
-    const supabase = createClient()
+    // 獲取當前用戶（從 cookies 讀取 session）
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+          set(name: string, value: string, options: CookieOptions) {
+            try {
+              cookieStore.set({ name, value, ...options })
+            } catch (error) {
+              // Ignore errors in API routes
+            }
+          },
+          remove(name: string, options: CookieOptions) {
+            try {
+              cookieStore.set({ name, value: '', ...options })
+            } catch (error) {
+              // Ignore errors in API routes
+            }
+          },
+        },
+      }
+    )
+
     const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    console.log('[Comments API] Auth check:', {
+      hasUser: !!user,
+      userId: user?.id,
+      authError: authError?.message
+    })
 
     if (authError || !user) {
       return NextResponse.json(
