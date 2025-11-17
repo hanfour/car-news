@@ -58,10 +58,9 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${siteUrl}/auth/callback`,
-          // 使用 PKCE flow，不使用 implicit flow
+          // 使用靜態 HTML 處理 implicit flow 的 hash fragment
+          redirectTo: `${siteUrl}/auth-callback.html`,
           skipBrowserRedirect: false,
-          // 確保使用 code exchange
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',

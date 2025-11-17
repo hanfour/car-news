@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>登入中...</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: #f9fafb;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    .container {
+      text-center;
+    }
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #FDB90B;
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #111827;
+      margin: 0 0 0.5rem;
+    }
+    p {
+      color: #6b7280;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="spinner"></div>
+    <h2>登入中...</h2>
+    <p>請稍候，正在完成認證</p>
+  </div>
+
+  <script>
+    (function() {
+      // 檢查是否有 hash fragment (Implicit Flow)
+      const hash = window.location.hash;
+
+      if (hash && hash.length > 1) {
+        console.log('[Auth] Implicit flow detected');
+
+        // 解析 hash
+        const params = new URLSearchParams(hash.substring(1));
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        const expiresIn = params.get('expires_in');
+        const tokenType = params.get('token_type');
+
+        if (accessToken && refreshToken) {
+          // 構建 session object
+          const session = {
+            access_token: accessToken,
+            refresh_token: refreshToken,
+            expires_in: parseInt(expiresIn || '3600'),
+            token_type: tokenType || 'bearer',
+            expires_at: Math.floor(Date.now() / 1000) + parseInt(expiresIn || '3600')
+          };
+
+          // 儲存到 localStorage (Supabase 格式)
+          const supabaseUrl = document.querySelector('meta[name="supabase-url"]')?.content || '';
+          const projectRef = supabaseUrl.split('//')[1]?.split('.')[0] || '';
+          const storageKey = `sb-${projectRef}-auth-token`;
+
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(session));
+            console.log('[Auth] Session stored to localStorage');
+          } catch (e) {
+            console.error('[Auth] Failed to store session:', e);
+          }
+
+          // 讀取返回 URL
+          const cookies = document.cookie.split(';');
+          const returnUrlCookie = cookies.find(c => c.trim().startsWith('auth_return_url='));
+          const returnUrl = returnUrlCookie
+            ? decodeURIComponent(returnUrlCookie.split('=')[1])
+            : '/';
+
+          // 清除 cookie
+          document.cookie = 'auth_return_url=; path=/; max-age=0';
+
+          console.log('[Auth] Redirecting to:', returnUrl);
+
+          // 重定向（不帶 hash）
+          setTimeout(() => {
+            window.location.href = returnUrl;
+          }, 500);
+        } else {
+          console.error('[Auth] Missing tokens in hash');
+          window.location.href = '/auth/error';
+        }
+      } else {
+        // 沒有 hash，可能是 PKCE flow 或直接訪問
+        console.log('[Auth] No hash fragment, redirecting to home');
+        window.location.href = '/';
+      }
+    })();
+  </script>
+
+  <!-- Supabase URL for localStorage key -->
+  <meta name="supabase-url" content="https://daubcanyykdfyptntfco.supabase.co">
+</body>
+</html>
