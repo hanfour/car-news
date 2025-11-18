@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase'
+import { createServiceClient } from '@/lib/supabase'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { zhTW } from 'date-fns/locale'
@@ -24,7 +24,7 @@ interface PageProps {
 }
 
 async function getArticle(id: string) {
-  const supabase = createClient()
+  const supabase = createServiceClient()
 
   const { data, error } = await supabase
     .from('generated_articles')
@@ -43,7 +43,7 @@ async function getArticle(id: string) {
 }
 
 async function getComments(articleId: string) {
-  const supabase = createClient()
+  const supabase = createServiceClient()
 
   const { data, error } = await supabase
     .from('comments')
@@ -52,7 +52,7 @@ async function getComments(articleId: string) {
       content,
       created_at,
       user_id,
-      profiles!user_id (
+      profiles (
         display_name,
         avatar_url
       )
@@ -63,15 +63,17 @@ async function getComments(articleId: string) {
     .order('created_at', { ascending: false })
 
   if (error) {
+    console.error('[Page getComments] Error:', error)
     // Comments table might not exist yet or error fetching - silently return empty array
     return []
   }
 
+  console.log('[Page getComments] Success:', { count: data?.length })
   return data || []
 }
 
 async function getRelatedArticles(articleId: string, brands: string[], categories: string[]) {
-  const supabase = createClient()
+  const supabase = createServiceClient()
 
   const { data, error } = await supabase
     .from('generated_articles')
