@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { createServiceClient } from '@/lib/supabase'
 
 // POST: Toggle like on a comment
 export async function POST(
@@ -22,9 +23,9 @@ export async function POST(
 
     const token = authHeader.replace('Bearer ', '')
 
-    // Create Supabase client
+    // Create auth client to verify user
     const cookieStore = await cookies()
-    const supabase = createServerClient(
+    const authClient = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
@@ -51,7 +52,10 @@ export async function POST(
     )
 
     // Verify user
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    const { data: { user }, error: authError } = await authClient.auth.getUser(token)
+
+    // Use service client for database operations (bypasses RLS)
+    const supabase = createServiceClient()
 
     if (authError || !user) {
       return NextResponse.json(
@@ -151,36 +155,12 @@ export async function GET(
   try {
     const { id: commentId } = await params
 
+    // Use service client for database reads (no RLS issues)
+    const supabase = createServiceClient()
+
     // Get auth token from header (optional for GET)
     const authHeader = request.headers.get('Authorization')
     const token = authHeader?.replace('Bearer ', '')
-
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            try {
-              cookieStore.set({ name, value, ...options })
-            } catch (error) {
-              // Ignore errors
-            }
-          },
-          remove(name: string, options: CookieOptions) {
-            try {
-              cookieStore.set({ name, value: '', ...options })
-            } catch (error) {
-              // Ignore errors
-            }
-          },
-        },
-      }
-    )
 
     // Get like count
     const { data: comment } = await supabase
@@ -193,7 +173,23 @@ export async function GET(
 
     // Check if user has liked (if authenticated)
     if (token) {
-      const { data: { user } } = await supabase.auth.getUser(token)
+      // Need auth client to verify token
+      const cookieStore = await cookies()
+      const authClient = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            get(name: string) {
+              return cookieStore.get(name)?.value
+            },
+            set() {},
+            remove() {}
+          }
+        }
+      )
+
+      const { data: { user } } = await authClient.auth.getUser(token)
 
       if (user) {
         const { data: like } = await supabase

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { moderateComment } from '@/lib/ai/claude'
+import { createServiceClient } from '@/lib/supabase'
 
 // GET: Fetch replies for a comment
 export async function GET(
@@ -11,32 +12,8 @@ export async function GET(
   try {
     const { id: parentId } = await params
 
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            try {
-              cookieStore.set({ name, value, ...options })
-            } catch (error) {
-              // Ignore errors
-            }
-          },
-          remove(name: string, options: CookieOptions) {
-            try {
-              cookieStore.set({ name, value: '', ...options })
-            } catch (error) {
-              // Ignore errors
-            }
-          },
-        },
-      }
-    )
+    // Use service client for database reads
+    const supabase = createServiceClient()
 
     // Fetch replies
     const { data: replies, error } = await supabase
@@ -119,8 +96,9 @@ export async function POST(
 
     const token = authHeader.replace('Bearer ', '')
 
+    // Create auth client to verify user
     const cookieStore = await cookies()
-    const supabase = createServerClient(
+    const authClient = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
@@ -147,7 +125,10 @@ export async function POST(
     )
 
     // Verify user
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    const { data: { user }, error: authError } = await authClient.auth.getUser(token)
+
+    // Use service client for database operations
+    const supabase = createServiceClient()
 
     if (authError || !user) {
       return NextResponse.json(
