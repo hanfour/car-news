@@ -406,6 +406,7 @@ export default async function ArticlePage({ params }: PageProps) {
               title={article.title_zh}
               viewCount={article.view_count}
               commentCount={comments.length}
+              initialLikeCount={article.likes_count || 0}
             />
 
             {/* Comments Section */}

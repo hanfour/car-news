@@ -187,7 +187,7 @@ export function ArticleActionBar({ articleId, title, viewCount, commentCount, in
     setShowShareMenu(false)
   }
 
-  const handleShare = (platform: string) => {
+  const handleShare = async (platform: string) => {
     const encodedTitle = encodeURIComponent(title)
     const encodedUrl = encodeURIComponent(currentUrl)
 
@@ -198,6 +198,35 @@ export function ArticleActionBar({ articleId, title, viewCount, commentCount, in
       instagram: '',
     }
 
+    // Record share event in database
+    try {
+      // Get session if user is logged in
+      let token = null
+      if (user) {
+        const { createClient } = await import('@/lib/supabase')
+        const supabase = createClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        token = session?.access_token
+      }
+
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      }
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
+      // Record share (fire and forget - don't block the share action)
+      fetch(`/api/articles/${articleId}/share`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ platform })
+      }).catch(err => console.error('Failed to record share:', err))
+    } catch (error) {
+      console.error('Failed to record share:', error)
+    }
+
+    // Perform share action
     if (platform === 'copy') {
       navigator.clipboard.writeText(currentUrl)
       alert('連結已複製！')
