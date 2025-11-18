@@ -19,31 +19,10 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createServiceClient()
 
-    // 先嘗試簡單查詢看評論是否存在
-    const { data: simpleData, error: simpleError } = await supabase
+    // 1. 先查評論
+    const { data: comments, error } = await supabase
       .from('comments')
-      .select('*')
-      .eq('article_id', articleId)
-
-    console.log('[Comments GET] Simple query:', {
-      articleId,
-      count: simpleData?.length,
-      error: simpleError?.message
-    })
-
-    // 然後嘗試帶 profiles 的查詢
-    const { data, error } = await supabase
-      .from('comments')
-      .select(`
-        id,
-        content,
-        created_at,
-        user_id,
-        profiles (
-          display_name,
-          avatar_url
-        )
-      `)
+      .select('id, content, created_at, user_id')
       .eq('article_id', articleId)
       .eq('is_approved', true)
       .is('parent_id', null)
@@ -57,12 +36,30 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    if (!comments || comments.length === 0) {
+      return NextResponse.json({ comments: [] })
+    }
+
+    // 2. 批量查詢所有用戶的 profiles
+    const userIds = [...new Set(comments.map(c => c.user_id))]
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, display_name, avatar_url')
+      .in('id', userIds)
+
+    // 3. 手動組合資料
+    const profilesMap = new Map(profiles?.map(p => [p.id, p]) || [])
+
+    const commentsWithProfiles = comments.map(comment => ({
+      ...comment,
+      profiles: profilesMap.get(comment.user_id) || null
+    }))
+
     console.log('[Comments GET] Success:', {
-      count: data?.length,
-      comments: data
+      count: commentsWithProfiles.length
     })
 
-    return NextResponse.json({ comments: data || [] })
+    return NextResponse.json({ comments: commentsWithProfiles })
   } catch (error) {
     console.error('Unexpected error:', error)
     return NextResponse.json(

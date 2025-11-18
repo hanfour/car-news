@@ -45,18 +45,10 @@ async function getArticle(id: string) {
 async function getComments(articleId: string) {
   const supabase = createServiceClient()
 
-  const { data, error } = await supabase
+  // 1. 先查評論
+  const { data: comments, error } = await supabase
     .from('comments')
-    .select(`
-      id,
-      content,
-      created_at,
-      user_id,
-      profiles (
-        display_name,
-        avatar_url
-      )
-    `)
+    .select('id, content, created_at, user_id')
     .eq('article_id', articleId)
     .eq('is_approved', true)
     .is('parent_id', null)
@@ -64,12 +56,34 @@ async function getComments(articleId: string) {
 
   if (error) {
     console.error('[Page getComments] Error:', error)
-    // Comments table might not exist yet or error fetching - silently return empty array
     return []
   }
 
-  console.log('[Page getComments] Success:', { count: data?.length })
-  return data || []
+  if (!comments || comments.length === 0) {
+    return []
+  }
+
+  // 2. 批量查詢所有用戶的 profiles
+  const userIds = [...new Set(comments.map(c => c.user_id))]
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, display_name, avatar_url')
+    .in('id', userIds)
+
+  // 3. 手動組合資料
+  const profilesMap = new Map(profiles?.map(p => [p.id, p]) || [])
+
+  const commentsWithProfiles = comments.map(comment => ({
+    ...comment,
+    profiles: profilesMap.get(comment.user_id) || null
+  }))
+
+  console.log('[Page getComments] Success:', {
+    count: commentsWithProfiles.length,
+    hasProfiles: commentsWithProfiles.every(c => c.profiles)
+  })
+
+  return commentsWithProfiles
 }
 
 async function getRelatedArticles(articleId: string, brands: string[], categories: string[]) {
@@ -426,10 +440,10 @@ export default async function ArticlePage({ params }: PageProps) {
                     profiles: {
                       display_name: string
                       avatar_url: string | null
-                    }[]
+                    } | null
                   }) => {
                     // 提取作者信息
-                    const authorName = comment.profiles[0]?.display_name || '匿名用戶'
+                    const authorName = comment.profiles?.display_name || '匿名用戶'
 
                     // 計算相對時間
                     const getRelativeTime = (dateString: string) => {
