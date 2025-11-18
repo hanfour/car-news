@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { LoginModal } from '@/components/LoginModal'
+import { ReportModal } from '@/components/ReportModal'
 
 interface ArticleActionBarProps {
   articleId: string
@@ -24,6 +25,7 @@ export function ArticleActionBar({ articleId, title, viewCount, commentCount, in
   const [isLiking, setIsLiking] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
+  const [showReportModal, setShowReportModal] = useState(false)
 
   const shareMenuRef = useRef<HTMLDivElement>(null)
   const moreMenuRef = useRef<HTMLDivElement>(null)
@@ -237,29 +239,16 @@ export function ArticleActionBar({ articleId, title, viewCount, commentCount, in
     setShowShareMenu(false)
   }
 
-  const handleReport = async () => {
+  const handleReport = () => {
     if (!user) {
       setShowLoginModal(true)
       return
     }
+    setShowMoreMenu(false)
+    setShowReportModal(true)
+  }
 
-    // Show report dialog
-    const reason = prompt('請選擇檢舉原因:\n1 = 垃圾內容\n2 = 錯誤資訊\n3 = 不當內容\n4 = 侵權\n5 = 其他')
-
-    const reasonMap: { [key: string]: string } = {
-      '1': 'spam',
-      '2': 'misinformation',
-      '3': 'inappropriate',
-      '4': 'copyright',
-      '5': 'other'
-    }
-
-    if (!reason || !reasonMap[reason]) {
-      return
-    }
-
-    const description = prompt('請描述問題（選填）：') || ''
-
+  const handleSubmitReport = async (reason: string, description: string) => {
     try {
       const { createClient } = await import('@/lib/supabase')
       const supabase = createClient()
@@ -268,7 +257,7 @@ export function ArticleActionBar({ articleId, title, viewCount, commentCount, in
 
       if (!token) {
         setShowLoginModal(true)
-        return
+        throw new Error('未登入')
       }
 
       const response = await fetch(`/api/articles/${articleId}/report`, {
@@ -277,10 +266,7 @@ export function ArticleActionBar({ articleId, title, viewCount, commentCount, in
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          reason: reasonMap[reason],
-          description
-        })
+        body: JSON.stringify({ reason, description })
       })
 
       const data = await response.json()
@@ -293,9 +279,8 @@ export function ArticleActionBar({ articleId, title, viewCount, commentCount, in
     } catch (error) {
       console.error('Failed to report:', error)
       alert('檢舉失敗，請稍後再試。')
+      throw error
     }
-
-    setShowMoreMenu(false)
   }
 
   return (
@@ -435,6 +420,15 @@ export function ArticleActionBar({ articleId, title, viewCount, commentCount, in
 
       {/* Login Modal */}
       <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
+
+      {/* Report Modal */}
+      <ReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        onSubmit={handleSubmitReport}
+        type="article"
+        title={title}
+      />
     </>
   )
 }

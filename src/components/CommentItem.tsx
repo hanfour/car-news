@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { isValidImageUrl } from '@/lib/security'
 import { useAuth } from '@/contexts/AuthContext'
 import { LoginModal } from './LoginModal'
+import { ReportModal } from './ReportModal'
 
 interface CommentItemProps {
   comment: {
@@ -45,6 +46,7 @@ export function CommentItem({ comment }: CommentItemProps) {
   const [showReplies, setShowReplies] = useState(false)
   const [isLoadingReplies, setIsLoadingReplies] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
+  const [showReportModal, setShowReportModal] = useState(false)
 
   const authorName = comment.profiles?.display_name || '匿名用戶'
   const avatarUrl = comment.profiles?.avatar_url
@@ -262,29 +264,15 @@ export function CommentItem({ comment }: CommentItemProps) {
   }
 
   // Handle report
-  const handleReport = async () => {
+  const handleReport = () => {
     if (!user) {
       setShowLoginModal(true)
       return
     }
+    setShowReportModal(true)
+  }
 
-    const reason = prompt('請選擇檢舉原因:\n1 = 垃圾內容\n2 = 騷擾\n3 = 仇恨言論\n4 = 錯誤資訊\n5 = 不當內容\n6 = 其他')
-
-    const reasonMap: { [key: string]: string } = {
-      '1': 'spam',
-      '2': 'harassment',
-      '3': 'hate_speech',
-      '4': 'misinformation',
-      '5': 'inappropriate',
-      '6': 'other'
-    }
-
-    if (!reason || !reasonMap[reason]) {
-      return
-    }
-
-    const description = prompt('請描述問題（選填）：') || ''
-
+  const handleSubmitReport = async (reason: string, description: string) => {
     try {
       const { createClient } = await import('@/lib/supabase')
       const supabase = createClient()
@@ -293,7 +281,7 @@ export function CommentItem({ comment }: CommentItemProps) {
 
       if (!token) {
         setShowLoginModal(true)
-        return
+        throw new Error('未登入')
       }
 
       const response = await fetch(`/api/comments/${comment.id}/report`, {
@@ -302,10 +290,7 @@ export function CommentItem({ comment }: CommentItemProps) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          reason: reasonMap[reason],
-          description
-        })
+        body: JSON.stringify({ reason, description })
       })
 
       const data = await response.json()
@@ -318,6 +303,7 @@ export function CommentItem({ comment }: CommentItemProps) {
     } catch (error) {
       console.error('Failed to report comment:', error)
       alert('檢舉失敗，請稍後再試。')
+      throw error
     }
   }
 
@@ -500,6 +486,15 @@ export function CommentItem({ comment }: CommentItemProps) {
 
       {/* Login Modal */}
       <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
+
+      {/* Report Modal */}
+      <ReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        onSubmit={handleSubmitReport}
+        type="comment"
+        title={comment.content.slice(0, 100)}
+      />
     </>
   )
 }
