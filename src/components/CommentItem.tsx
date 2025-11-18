@@ -85,6 +85,27 @@ export function CommentItem({ comment }: CommentItemProps) {
     fetchLikeStatus()
   }, [comment.id, user])
 
+  // Auto-load replies on mount if they exist
+  useEffect(() => {
+    const loadInitialReplies = async () => {
+      try {
+        const response = await fetch(`/api/comments/${comment.id}/replies`)
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.replies && data.replies.length > 0) {
+            setReplies(data.replies)
+            setShowReplies(true)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load initial replies:', error)
+      }
+    }
+
+    loadInitialReplies()
+  }, [comment.id])
+
   // Calculate relative time
   const getRelativeTime = (dateString: string) => {
     const now = new Date()
@@ -308,13 +329,10 @@ export function CommentItem({ comment }: CommentItemProps) {
               </svg>
               舉報
             </button>
-            {replies.length > 0 && !showReplies && (
-              <button
-                onClick={loadReplies}
-                className="hover:text-gray-700 flex items-center gap-1 transition-colors"
-              >
-                查看 {replies.length} 則回覆
-              </button>
+            {replies.length > 0 && (
+              <span className="text-gray-400">
+                {replies.length} 則回覆
+              </span>
             )}
           </div>
 
