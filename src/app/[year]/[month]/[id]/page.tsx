@@ -433,81 +433,9 @@ export default async function ArticlePage({ params }: PageProps) {
                 {comments.length === 0 ? (
                   <p className="text-center text-gray-500 py-8">尚無評論，成為第一個留言的人吧！</p>
                 ) : (
-                  comments.map((comment: {
-                    id: string
-                    content: string
-                    created_at: string
-                    user_id: string
-                    profiles: {
-                      display_name: string
-                      avatar_url: string | null
-                    } | null
-                  }) => {
-                    // 提取作者信息
-                    const authorName = comment.profiles?.display_name || '匿名用戶'
-
-                    // 計算相對時間
-                    const getRelativeTime = (dateString: string) => {
-                      const now = new Date()
-                      const commentDate = new Date(dateString)
-                      const diffMs = now.getTime() - commentDate.getTime()
-                      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-                      const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-                      const diffMinutes = Math.floor(diffMs / (1000 * 60))
-
-                      if (diffDays > 0) return `${diffDays}天前`
-                      if (diffHours > 0) return `${diffHours}小時前`
-                      if (diffMinutes > 0) return `${diffMinutes}分鐘前`
-                      return '剛剛'
-                    }
-
-                    return (
-                      <div key={comment.id} className="flex items-start gap-3">
-                        {/* 頭像 */}
-                        <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                          {authorName.charAt(0).toUpperCase()}
-                        </div>
-
-                        {/* 內容 */}
-                        <div className="flex-1 min-w-0">
-                          {/* 用戶名 */}
-                          <h4 className="font-medium text-gray-900 mb-1">{authorName}</h4>
-
-                          {/* 評論內容 */}
-                          <p className="text-gray-700 text-sm leading-relaxed mb-2 whitespace-pre-wrap">
-                            {comment.content}
-                          </p>
-
-                          {/* 操作列 */}
-                          <div className="flex items-center gap-4 text-xs text-gray-500">
-                            <span>{getRelativeTime(comment.created_at)}</span>
-                            <button className="hover:text-gray-700 flex items-center gap-1">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                              </svg>
-                              回覆
-                            </button>
-                            <button className="hover:text-gray-700 flex items-center gap-1">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                              </svg>
-                              舉報
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* 點贊 */}
-                        <div className="flex-shrink-0 flex flex-col items-center gap-1">
-                          <button className="hover:bg-gray-100 p-1.5 rounded transition-colors">
-                            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                            </svg>
-                          </button>
-                          <span className="text-xs text-gray-500">5人</span>
-                        </div>
-                      </div>
-                    )
-                  })
+                  comments.map((comment) => (
+                    <CommentItem key={comment.id} comment={comment} />
+                  ))
                 )}
               </div>
             </div>
