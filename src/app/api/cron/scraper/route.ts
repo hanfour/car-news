@@ -61,12 +61,19 @@ async function handleCronJob(request: NextRequest) {
 
     // 2. 批次檢查重複（優化：一次查詢所有URL）
     const urls = articles.map(a => a.url)
-    const { data: existingArticles } = await supabase
+    console.log(`Checking ${urls.length} URLs for duplicates...`)
+
+    const { data: existingArticles, error: checkError } = await supabase
       .from('raw_articles')
       .select('url')
       .in('url', urls)
 
+    if (checkError) {
+      console.error('Error checking duplicates:', checkError)
+    }
+
     const existingUrls = new Set(existingArticles?.map(a => a.url) || [])
+    console.log(`Found ${existingUrls.size} existing articles to skip`)
 
     // 3. 準備要保存的文章（過濾重複）
     const articlesToSave = []
@@ -101,6 +108,8 @@ async function handleCronJob(request: NextRequest) {
     }
 
     // 4. 批次保存到數據庫
+    console.log(`Preparing to save ${articlesToSave.length} articles...`)
+
     if (articlesToSave.length > 0) {
       const { error: bulkInsertError } = await supabase
         .from('raw_articles')
@@ -112,6 +121,8 @@ async function handleCronJob(request: NextRequest) {
         savedCount = articlesToSave.length
         console.log(`✓ Saved ${savedCount} articles`)
       }
+    } else {
+      console.log('No articles to save (all were duplicates or filtered out)')
     }
 
     // 3. 清理过期文章
