@@ -19,6 +19,19 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createServiceClient()
 
+    // 先嘗試簡單查詢看評論是否存在
+    const { data: simpleData, error: simpleError } = await supabase
+      .from('comments')
+      .select('*')
+      .eq('article_id', articleId)
+
+    console.log('[Comments GET] Simple query:', {
+      articleId,
+      count: simpleData?.length,
+      error: simpleError?.message
+    })
+
+    // 然後嘗試帶 profiles 的查詢
     const { data, error } = await supabase
       .from('comments')
       .select(`
@@ -26,23 +39,28 @@ export async function GET(request: NextRequest) {
         content,
         created_at,
         user_id,
-        profiles!user_id (
+        profiles (
           display_name,
           avatar_url
         )
       `)
       .eq('article_id', articleId)
       .eq('is_approved', true)
-      .is('parent_id', null)  // 只獲取頂層評論
+      .is('parent_id', null)
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Failed to fetch comments:', error)
+      console.error('[Comments GET] Failed to fetch comments:', error)
       return NextResponse.json(
-        { error: 'Failed to fetch comments' },
+        { error: 'Failed to fetch comments', details: error.message },
         { status: 500 }
       )
     }
+
+    console.log('[Comments GET] Success:', {
+      count: data?.length,
+      comments: data
+    })
 
     return NextResponse.json({ comments: data || [] })
   } catch (error) {
