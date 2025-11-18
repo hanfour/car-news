@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     // 1. 先查評論
     const { data: comments, error } = await supabase
       .from('comments')
-      .select('id, content, created_at, user_id')
+      .select('id, content, created_at, user_id, likes_count')
       .eq('article_id', articleId)
       .eq('is_approved', true)
       .is('parent_id', null)
