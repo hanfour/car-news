@@ -4,7 +4,7 @@ import { format } from 'date-fns'
 import { zhTW } from 'date-fns/locale'
 import { WantCarLogo } from '@/components/WantCarLogo'
 import { CommentForm } from '@/components/CommentForm'
-import { CommentItem } from '@/components/CommentItem'
+import { CommentsList } from '@/components/CommentsList'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import { Metadata } from 'next'
@@ -415,29 +415,8 @@ export default async function ArticlePage({ params }: PageProps) {
               {/* Comment Form */}
               <CommentForm articleId={id} />
 
-              {/* Sort Options */}
-              <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-200">
-                <button
-                  className="text-sm font-medium pb-1 border-b-2"
-                  style={{ color: 'var(--brand-primary)', borderColor: 'var(--brand-primary)' }}
-                >
-                  按時間排序
-                </button>
-                <button className="text-sm text-gray-600 hover:text-gray-900 pb-1">
-                  按點讚排序
-                </button>
-              </div>
-
-              {/* Comments List */}
-              <div className="space-y-6">
-                {comments.length === 0 ? (
-                  <p className="text-center text-gray-500 py-8">尚無評論，成為第一個留言的人吧！</p>
-                ) : (
-                  comments.map((comment) => (
-                    <CommentItem key={comment.id} comment={comment} />
-                  ))
-                )}
-              </div>
+              {/* Comments List with Sorting */}
+              <CommentsList initialComments={comments} />
             </div>
           </article>
 
