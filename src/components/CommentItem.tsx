@@ -49,22 +49,27 @@ export function CommentItem({ comment }: CommentItemProps) {
   const authorName = comment.profiles?.display_name || '匿名用戶'
   const avatarUrl = comment.profiles?.avatar_url
 
-  // Fetch initial like status
+  // Fetch initial like status and count (always, even for anonymous users)
   useEffect(() => {
     const fetchLikeStatus = async () => {
-      if (!user) return
-
       try {
-        const { createClient } = await import('@/lib/supabase')
-        const supabase = createClient()
-        const { data: { session } } = await supabase.auth.getSession()
+        // Get session if user is logged in
+        let token = null
+        if (user) {
+          const { createClient } = await import('@/lib/supabase')
+          const supabase = createClient()
+          const { data: { session } } = await supabase.auth.getSession()
+          token = session?.access_token
+        }
 
-        if (!session?.access_token) return
+        // Fetch like status (with or without auth)
+        const headers: HeadersInit = {}
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`
+        }
 
         const response = await fetch(`/api/comments/${comment.id}/like`, {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`
-          }
+          headers
         })
 
         if (response.ok) {
