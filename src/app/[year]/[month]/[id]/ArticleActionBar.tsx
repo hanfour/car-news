@@ -237,14 +237,64 @@ export function ArticleActionBar({ articleId, title, viewCount, commentCount, in
     setShowShareMenu(false)
   }
 
-  const handleReport = () => {
+  const handleReport = async () => {
     if (!user) {
       setShowLoginModal(true)
       return
     }
 
-    // TODO: Implement report functionality
-    alert('感謝您的回報，我們會盡快處理。')
+    // Show report dialog
+    const reason = prompt('請選擇檢舉原因:\n1 = 垃圾內容\n2 = 錯誤資訊\n3 = 不當內容\n4 = 侵權\n5 = 其他')
+
+    const reasonMap: { [key: string]: string } = {
+      '1': 'spam',
+      '2': 'misinformation',
+      '3': 'inappropriate',
+      '4': 'copyright',
+      '5': 'other'
+    }
+
+    if (!reason || !reasonMap[reason]) {
+      return
+    }
+
+    const description = prompt('請描述問題（選填）：') || ''
+
+    try {
+      const { createClient } = await import('@/lib/supabase')
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+
+      if (!token) {
+        setShowLoginModal(true)
+        return
+      }
+
+      const response = await fetch(`/api/articles/${articleId}/report`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          reason: reasonMap[reason],
+          description
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        alert(data.message || '檢舉已提交，我們會盡快處理。')
+      } else {
+        alert(data.error || '檢舉失敗，請稍後再試。')
+      }
+    } catch (error) {
+      console.error('Failed to report:', error)
+      alert('檢舉失敗，請稍後再試。')
+    }
+
     setShowMoreMenu(false)
   }
 

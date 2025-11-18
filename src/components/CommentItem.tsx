@@ -262,16 +262,62 @@ export function CommentItem({ comment }: CommentItemProps) {
   }
 
   // Handle report
-  const handleReport = () => {
+  const handleReport = async () => {
     if (!user) {
       setShowLoginModal(true)
       return
     }
 
-    if (confirm('確定要舉報這則評論嗎？')) {
-      // TODO: Implement reporting API
-      console.log('Report comment:', comment.id)
-      alert('感謝您的舉報，我們會盡快審核')
+    const reason = prompt('請選擇檢舉原因:\n1 = 垃圾內容\n2 = 騷擾\n3 = 仇恨言論\n4 = 錯誤資訊\n5 = 不當內容\n6 = 其他')
+
+    const reasonMap: { [key: string]: string } = {
+      '1': 'spam',
+      '2': 'harassment',
+      '3': 'hate_speech',
+      '4': 'misinformation',
+      '5': 'inappropriate',
+      '6': 'other'
+    }
+
+    if (!reason || !reasonMap[reason]) {
+      return
+    }
+
+    const description = prompt('請描述問題（選填）：') || ''
+
+    try {
+      const { createClient } = await import('@/lib/supabase')
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+
+      if (!token) {
+        setShowLoginModal(true)
+        return
+      }
+
+      const response = await fetch(`/api/comments/${comment.id}/report`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          reason: reasonMap[reason],
+          description
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        alert(data.message || '檢舉已提交，我們會盡快處理。')
+      } else {
+        alert(data.error || '檢舉失敗，請稍後再試。')
+      }
+    } catch (error) {
+      console.error('Failed to report comment:', error)
+      alert('檢舉失敗，請稍後再試。')
     }
   }
 
