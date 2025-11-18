@@ -3,7 +3,7 @@ import { createServiceClient } from '@/lib/supabase'
 import { scrapeAllSources } from '@/lib/scraper'
 import { generateEmbedding } from '@/lib/ai/embeddings'
 
-export const maxDuration = 60 // Vercel Pro限制：最长60秒
+export const maxDuration = 300 // Vercel Pro限制：最长5分钟（与generator一致）
 
 async function handleCronJob(request: NextRequest) {
   // 验证 Vercel Cron 或手动触发
@@ -59,24 +59,25 @@ async function handleCronJob(request: NextRequest) {
     let savedCount = 0
     let skippedCount = 0
 
-    // 2. 批次處理文章（先保存，稍後生成 embedding）
+    // 2. 批次檢查重複（優化：一次查詢所有URL）
+    const urls = articles.map(a => a.url)
+    const { data: existingArticles } = await supabase
+      .from('raw_articles')
+      .select('url')
+      .in('url', urls)
+
+    const existingUrls = new Set(existingArticles?.map(a => a.url) || [])
+
+    // 3. 準備要保存的文章（過濾重複）
     const articlesToSave = []
+    const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
+
     for (const article of articles) {
       try {
-        // 检查URL是否已存在
-        const { data: existing } = await supabase
-          .from('raw_articles')
-          .select('id')
-          .eq('url', article.url)
-          .single()
-
-        if (existing) {
+        if (existingUrls.has(article.url)) {
           skippedCount++
           continue
         }
-
-        // 计算过期时间（72小时后）
-        const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
 
         articlesToSave.push({
           url: article.url,
@@ -99,7 +100,7 @@ async function handleCronJob(request: NextRequest) {
       }
     }
 
-    // 3. 批次保存到數據庫
+    // 4. 批次保存到數據庫
     if (articlesToSave.length > 0) {
       const { error: bulkInsertError } = await supabase
         .from('raw_articles')
