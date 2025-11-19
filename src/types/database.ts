@@ -4,7 +4,7 @@ export interface RawArticle {
   title: string
   content: string
   scraped_at: string
-  published_at?: string  // 來源文章的原始發布時間
+  source_published_at?: string  // 來源文章的原始發布時間（UTC）
   expires_at: string
   embedding: number[]
   image_url?: string
@@ -23,8 +23,8 @@ export interface GeneratedArticle {
   reasoning?: string
   style_version: string
   published: boolean
-  published_at?: string  // AI 生成文章的發布時間
-  source_date?: string   // 來源文章的原始發布時間（最早）
+  published_at?: string  // 發布日期（台灣時區），格式：YYYY-MM-DD
+  source_published_at?: string  // 來源文章的原始發布時間（UTC，取最早的一篇）
   created_at: string
   view_count: number
   share_count: number

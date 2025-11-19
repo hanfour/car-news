@@ -91,7 +91,7 @@ async function handleCronJob(request: NextRequest) {
           title: article.title,
           content: article.content,
           scraped_at: new Date().toISOString(),
-          published_at: article.publishedAt?.toISOString() || new Date().toISOString(),
+          source_published_at: article.publishedAt?.toISOString() || null,
           expires_at: expiresAt,
           embedding: null, // 延遲生成 embedding（generator 中處理）
           image_url: article.imageUrl || null,

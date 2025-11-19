@@ -396,14 +396,22 @@ async function handleCronJob(request: NextRequest) {
           }
         }
 
-        // 3.5 计算来源文章的最早发布时间
+        // 3.5 计算来源文章的最早发布时间（UTC）
         const sourceDates = cluster.articles
-          .map(a => a.published_at)
+          .map(a => a.source_published_at)
           .filter((date): date is string => !!date)
           .map(date => new Date(date))
-        const earliestSourceDate = sourceDates.length > 0
-          ? new Date(Math.min(...sourceDates.map(d => d.getTime()))).toISOString()
-          : today
+        const earliestSourceDateUTC = sourceDates.length > 0
+          ? new Date(Math.min(...sourceDates.map(d => d.getTime())))
+          : null
+
+        // 3.5.1 將 UTC 時間轉換為台灣時區日期（YYYY-MM-DD）
+        let publishedAtTaiwan: string | null = null
+        if (earliestSourceDateUTC) {
+          // 台灣時區是 UTC+8
+          const taiwanDate = new Date(earliestSourceDateUTC.getTime() + 8 * 60 * 60 * 1000)
+          publishedAtTaiwan = taiwanDate.toISOString().split('T')[0]
+        }
 
         // 3.6 质量检查和发布决策
         const decision = decidePublish(generated)
@@ -437,8 +445,8 @@ async function handleCronJob(request: NextRequest) {
             reasoning: generated.reasoning,
             style_version: 'v1.0',
             published: decision.shouldPublish,
-            published_at: decision.shouldPublish ? today : null,
-            source_date: earliestSourceDate,
+            published_at: decision.shouldPublish ? publishedAtTaiwan : null,
+            source_published_at: earliestSourceDateUTC?.toISOString() || null,
             brands: filteredBrands,
             car_models: generated.car_models || [],
             categories: generated.categories || [],
