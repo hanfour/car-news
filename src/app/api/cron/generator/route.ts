@@ -255,16 +255,22 @@ async function handleCronJob(request: NextRequest) {
         // 3.1 计算主题hash（防重复）
         const topicHash = generateTopicHash(cluster.centroid)
 
-        // 3.2 检查今天是否已生成相似主题
-        const { data: existingLock } = await supabase
-          .from('daily_topic_locks')
-          .select('article_id')
-          .eq('date', today)
-          .eq('topic_hash', topicHash)
-          .single()
+        // 3.2 检查最近3天是否已生成相似主題（避免連續幾天重複相同主題）
+        const threeDaysAgo = new Date()
+        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
+        const threeDaysAgoStr = threeDaysAgo.toISOString().split('T')[0]
 
-        if (existingLock) {
-          console.log(`  → Topic already generated today: ${topicHash.slice(0, 8)}`)
+        const { data: existingLocks } = await supabase
+          .from('daily_topic_locks')
+          .select('article_id, date')
+          .gte('date', threeDaysAgoStr)
+          .eq('topic_hash', topicHash)
+          .order('date', { ascending: false })
+          .limit(1)
+
+        if (existingLocks && existingLocks.length > 0) {
+          const lastGeneratedDate = existingLocks[0].date
+          console.log(`  → Topic already generated on ${lastGeneratedDate}: ${topicHash.slice(0, 8)}`)
           continue
         }
 

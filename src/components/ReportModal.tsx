@@ -104,7 +104,7 @@ export function ReportModal({ isOpen, onClose, onSubmit, type, title }: ReportMo
               <label
                 key={reason.value}
                 className={`
-                  flex items-center gap-3 p-2 rounded-xl border-2 cursor-pointer transition-all
+                  flex items-center gap-3 p-2 text-sm rounded-xl border-2 cursor-pointer transition-all
                   ${selectedReason === reason.value
                     ? 'border-red-500 bg-red-50'
                     : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
