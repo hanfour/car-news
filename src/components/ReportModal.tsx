@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useToast } from '@/components/ToastContainer'
 
 interface ReportModalProps {
   isOpen: boolean
@@ -28,6 +29,7 @@ const COMMENT_REASONS = [
 ]
 
 export function ReportModal({ isOpen, onClose, onSubmit, type, title }: ReportModalProps) {
+  const { showToast } = useToast()
   const [selectedReason, setSelectedReason] = useState<string>('')
   const [description, setDescription] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -38,7 +40,7 @@ export function ReportModal({ isOpen, onClose, onSubmit, type, title }: ReportMo
     e.preventDefault()
 
     if (!selectedReason) {
-      alert('請選擇檢舉原因')
+      showToast('請選擇檢舉原因', 'warning')
       return
     }
 
@@ -67,7 +69,7 @@ export function ReportModal({ isOpen, onClose, onSubmit, type, title }: ReportMo
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/80 backdrop-blur-sm animate-fadeIn">
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl">
@@ -102,7 +104,7 @@ export function ReportModal({ isOpen, onClose, onSubmit, type, title }: ReportMo
               <label
                 key={reason.value}
                 className={`
-                  flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all
+                  flex items-center gap-3 p-2 rounded-xl border-2 cursor-pointer transition-all
                   ${selectedReason === reason.value
                     ? 'border-red-500 bg-red-50'
                     : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'

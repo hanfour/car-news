@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { ToastProvider } from '@/components/ToastContainer';
 import LoadingScreen from '@/components/LoadingScreen';
 import NavigationProgress from '@/components/NavigationProgress';
 import "./globals.css";
@@ -33,9 +34,11 @@ export default function RootLayout({
       <body className="antialiased">
         <LoadingScreen />
         <NavigationProgress />
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <ToastProvider>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </ToastProvider>
         <Analytics />
       </body>
     </html>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
+import { useToast } from '@/components/ToastContainer'
 
 interface LoginModalProps {
   isOpen: boolean
@@ -9,6 +10,7 @@ interface LoginModalProps {
 }
 
 export function LoginModal({ isOpen, onClose }: LoginModalProps) {
+  const { showToast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -87,7 +89,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* 背景遮罩 */}
       <div
-        className="absolute inset-0 bg-black/25 bg-opacity-50"
+        className="absolute inset-0 bg-white/80 backdrop-blur-sm"
         onClick={onClose}
       />
 
@@ -173,7 +175,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
             className="w-full py-3 text-white font-semibold rounded-lg transition-colors bg-brand-primary hover:bg-brand-primary-hover"
             onClick={(e) => {
               e.preventDefault()
-              alert('Email 登入功能即將開放')
+              showToast('Email 登入功能即將開放', 'info')
             }}
           >
             登入

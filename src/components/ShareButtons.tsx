@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useToast } from '@/components/ToastContainer'
 
 interface ShareButtonsProps {
   articleId: string
@@ -9,6 +10,7 @@ interface ShareButtonsProps {
 }
 
 export function ShareButtons({ articleId, title, url }: ShareButtonsProps) {
+  const { showToast } = useToast()
   const [copied, setCopied] = useState(false)
 
   const handleShare = async (platform: 'facebook' | 'twitter' | 'line' | 'copy') => {
@@ -63,9 +65,10 @@ export function ShareButtons({ articleId, title, url }: ShareButtonsProps) {
           await navigator.clipboard.writeText(shareUrl)
           setCopied(true)
           setTimeout(() => setCopied(false), 2000)
+          showToast('連結已複製！', 'success')
         } catch (error) {
           console.error('Failed to copy:', error)
-          alert('複製失敗，請手動複製網址')
+          showToast('複製失敗，請手動複製網址', 'error')
         }
         break
     }

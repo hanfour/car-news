@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useToast } from '@/components/ToastContainer'
 import { LoginModal } from '@/components/LoginModal'
 import { ReportModal } from '@/components/ReportModal'
 
@@ -15,6 +16,7 @@ interface ArticleActionBarProps {
 
 export function ArticleActionBar({ articleId, title, viewCount, commentCount, initialLikeCount = 0 }: ArticleActionBarProps) {
   const { user } = useAuth()
+  const { showToast } = useToast()
   const [isLiked, setIsLiked] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
   const [showShareMenu, setShowShareMenu] = useState(false)
@@ -231,7 +233,7 @@ export function ArticleActionBar({ articleId, title, viewCount, commentCount, in
     // Perform share action
     if (platform === 'copy') {
       navigator.clipboard.writeText(currentUrl)
-      alert('連結已複製！')
+      showToast('連結已複製！', 'success')
     } else if (shareUrls[platform]) {
       window.open(shareUrls[platform], '_blank', 'width=600,height=400')
     }
@@ -272,13 +274,13 @@ export function ArticleActionBar({ articleId, title, viewCount, commentCount, in
       const data = await response.json()
 
       if (response.ok) {
-        alert(data.message || '檢舉已提交，我們會盡快處理。')
+        showToast(data.message || '檢舉已提交，我們會盡快處理。', 'success')
       } else {
-        alert(data.error || '檢舉失敗，請稍後再試。')
+        showToast(data.error || '檢舉失敗，請稍後再試。', 'error')
       }
     } catch (error) {
       console.error('Failed to report:', error)
-      alert('檢舉失敗，請稍後再試。')
+      showToast('檢舉失敗，請稍後再試。', 'error')
       throw error
     }
   }

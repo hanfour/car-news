@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { isValidImageUrl } from '@/lib/security'
 import { useAuth } from '@/contexts/AuthContext'
+import { useToast } from '@/components/ToastContainer'
 import { LoginModal } from './LoginModal'
 import { ReportModal } from './ReportModal'
 
@@ -35,6 +36,7 @@ interface Reply {
 
 export function CommentItem({ comment }: CommentItemProps) {
   const { user } = useAuth()
+  const { showToast } = useToast()
   const [isLiked, setIsLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(comment.likes_count || 0)
   const [isLiking, setIsLiking] = useState(false)
@@ -296,13 +298,13 @@ export function CommentItem({ comment }: CommentItemProps) {
       const data = await response.json()
 
       if (response.ok) {
-        alert(data.message || '檢舉已提交，我們會盡快處理。')
+        showToast(data.message || '檢舉已提交，我們會盡快處理。', 'success')
       } else {
-        alert(data.error || '檢舉失敗，請稍後再試。')
+        showToast(data.error || '檢舉失敗，請稍後再試。', 'error')
       }
     } catch (error) {
       console.error('Failed to report comment:', error)
-      alert('檢舉失敗，請稍後再試。')
+      showToast('檢舉失敗，請稍後再試。', 'error')
       throw error
     }
   }
