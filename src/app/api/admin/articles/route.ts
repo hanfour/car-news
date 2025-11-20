@@ -12,14 +12,33 @@ if (!ADMIN_API_KEY || ADMIN_API_KEY === 'admin-secret-key-change-me' || ADMIN_AP
   )
 }
 
-function verifyAuth(request: NextRequest): boolean {
+async function verifyAuth(request: NextRequest): Promise<boolean> {
+  // 方式 1: Bearer token (用於 API 調用)
   const authHeader = request.headers.get('authorization')
-  return authHeader === `Bearer ${ADMIN_API_KEY}`
+  if (authHeader === `Bearer ${ADMIN_API_KEY}`) {
+    return true
+  }
+
+  // 方式 2: Cookie session (用於 Web UI)
+  const sessionCookie = request.cookies.get('admin_session')
+  if (sessionCookie?.value) {
+    // 驗證這個 userId 確實是 admin
+    const supabase = createServiceClient()
+    const { data } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', sessionCookie.value)
+      .single()
+
+    return data?.is_admin === true
+  }
+
+  return false
 }
 
 // GET /api/admin/articles - 列出所有文章
 export async function GET(request: NextRequest) {
-  if (!verifyAuth(request)) {
+  if (!(await verifyAuth(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
