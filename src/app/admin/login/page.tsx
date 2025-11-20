@@ -76,24 +76,37 @@ export default function AdminLoginPage() {
   }
 
   const handleGoogleLogin = async () => {
+    console.log('[Google Login] Starting...')
     setError('')
     setLoading(true)
 
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      console.log('[Google Login] Supabase client:', {
+        url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+        hasKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      })
+
+      const redirectUrl = `${window.location.origin}/admin/auth/callback`
+      console.log('[Google Login] Redirect URL:', redirectUrl)
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/admin/auth/callback`
+          redirectTo: redirectUrl
         }
       })
 
+      console.log('[Google Login] Response:', { data, error })
+
       if (error) {
-        setError('Google login failed')
+        console.error('[Google Login] Error:', error)
+        setError(`Google login failed: ${error.message}`)
         setLoading(false)
       }
       // 登入成功後會自動跳轉，不需要手動設置 loading = false
     } catch (err) {
-      setError('Google login failed')
+      console.error('[Google Login] Exception:', err)
+      setError(`Google login failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
       setLoading(false)
     }
   }
