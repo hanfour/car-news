@@ -149,5 +149,41 @@
     "enabled": true,
     "brand": "Audi",
     "category": "blog"
+  },
+  {
+    "id": "greencarreports",
+    "name": "Green Car Reports",
+    "url": "https://www.greencarreports.com/rss",
+    "type": "rss",
+    "enabled": true,
+    "category": "green"
+  },
+  {
+    "id": "thecarconnection",
+    "name": "The Car Connection",
+    "url": "https://www.thecarconnection.com/rss",
+    "type": "rss",
+    "enabled": true
+  },
+  {
+    "id": "carbuzz",
+    "name": "CarBuzz",
+    "url": "https://carbuzz.com/feed",
+    "type": "rss",
+    "enabled": true
+  },
+  {
+    "id": "thetruthaboutcars",
+    "name": "The Truth About Cars",
+    "url": "https://www.thetruthaboutcars.com/feed",
+    "type": "rss",
+    "enabled": true
+  },
+  {
+    "id": "torquereport",
+    "name": "The Torque Report",
+    "url": "https://www.thetorquereport.com/feed",
+    "type": "rss",
+    "enabled": true
   }
 ]
