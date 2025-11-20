@@ -98,10 +98,22 @@ export default function AdminLoginPage() {
       })
 
       console.log('[Google Login] Response:', { data, error })
+      console.log('[Google Login] Response data details:', JSON.stringify(data, null, 2))
 
       if (error) {
         console.error('[Google Login] Error:', error)
         setError(`Google login failed: ${error.message}`)
+        setLoading(false)
+        return
+      }
+
+      // Check if we got a redirect URL
+      if (data?.url) {
+        console.log('[Google Login] Redirecting to:', data.url)
+        window.location.href = data.url
+      } else {
+        console.error('[Google Login] No redirect URL in response!')
+        setError('OAuth flow failed - no redirect URL')
         setLoading(false)
       }
       // 登入成功後會自動跳轉，不需要手動設置 loading = false
