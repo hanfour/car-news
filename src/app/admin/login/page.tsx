@@ -77,6 +77,7 @@ export default function AdminLoginPage() {
 
   const handleGoogleLogin = async () => {
     console.log('[Google Login] Starting...')
+    alert('Google Login button clicked!')
     setError('')
     setLoading(true)
 
@@ -125,6 +126,7 @@ export default function AdminLoginPage() {
 
         {/* Google OAuth 登入按鈕 */}
         <button
+          type="button"
           onClick={handleGoogleLogin}
           disabled={loading}
           className="w-full flex items-center justify-center gap-3 px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
