@@ -23,9 +23,10 @@ export async function POST(request: NextRequest) {
     // 2. 獲取用戶信息 (用於 audit log)
     const userId = await verifySessionToken(token)
 
+    const supabase = createServiceClient()
+
     if (userId) {
       // 獲取用戶 email
-      const supabase = createServiceClient()
       const { data: profile } = await supabase
         .from('profiles')
         .select('email')
@@ -42,12 +43,15 @@ export async function POST(request: NextRequest) {
           userAgent,
         })
       }
+
+      // 清除 Supabase auth session (使用 admin API 登出指定用戶的所有 sessions)
+      await supabase.auth.admin.signOut(userId, 'global')
     }
 
-    // 3. 撤銷 session
+    // 3. 撤銷 admin session
     await revokeSession(token)
 
-    // 4. 清除 cookie
+    // 4. 清除 admin_session cookie
     cookieStore.delete('admin_session')
 
     return NextResponse.json({ success: true })
