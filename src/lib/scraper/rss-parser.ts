@@ -35,8 +35,9 @@ export async function parseRSSFeed(source: NewsSource): Promise<ScrapedArticle[]
         content = stripHtml(item.summary)
       }
 
-      // 过滤太短的内容
-      if (content.length < 200) {
+      // 过滤太短的内容（降低門檻以保留更多摘要型 RSS）
+      // 很多 RSS feed 只提供簡短摘要，AI generator 會抓取全文補充
+      if (content.length < 50) {
         continue
       }
 
