@@ -21,27 +21,23 @@ export async function POST(request: NextRequest) {
     const supabase = createServiceClient()
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('is_admin, email')
+      .select('is_admin')
       .eq('id', userId)
       .single()
 
     if (error || !profile?.is_admin) {
-      // 記錄失敗的登入嘗試
-      if (profile?.email) {
-        await recordLoginAttempt(
-          profile.email,
-          false,
-          ipAddress,
-          'Not an admin user'
-        )
-      }
-
       return NextResponse.json({ error: 'Not an admin user' }, { status: 403 })
     }
 
-    const userEmail = profile.email
+    // 2. 從 auth.users 獲取 email
+    const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(userId)
+    if (authError || !authUser?.user?.email) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
 
-    // 2. 檢查 Rate Limiting
+    const userEmail = authUser.user.email
+
+    // 3. 檢查 Rate Limiting
     const rateLimit = await checkLoginRateLimit(userEmail, ipAddress)
     if (!rateLimit.allowed) {
       await recordLoginAttempt(userEmail, false, ipAddress, 'Rate limit exceeded')
@@ -56,7 +52,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 3. 創建 Admin Session
+    // 4. 創建 Admin Session
     const session = await createAdminSession(userId, ipAddress, userAgent)
     if (!session) {
       await recordLoginAttempt(userEmail, false, ipAddress, 'Session creation failed')
@@ -67,7 +63,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 4. 設置 HttpOnly Cookie
+    // 5. 設置 HttpOnly Cookie
     const cookieStore = await cookies()
     cookieStore.set('admin_session', session.token, {
       httpOnly: true,
@@ -77,10 +73,10 @@ export async function POST(request: NextRequest) {
       path: '/',
     })
 
-    // 5. 記錄成功的登入
+    // 6. 記錄成功的登入
     await recordLoginAttempt(userEmail, true, ipAddress)
 
-    // 6. 記錄到審計日誌
+    // 7. 記錄到審計日誌
     await logAdminAction({
       userId,
       userEmail,
