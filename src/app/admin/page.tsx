@@ -215,7 +215,7 @@ export default function AdminDashboard() {
                       <td className="px-6 py-4 text-sm text-gray-900 max-w-md">
                         {article.published && article.published_at ? (
                           <a
-                            href={`/${article.published_at.split('T')[0].replace(/-/g, '/')}/${article.id}`}
+                            href={`/${article.published_at.split('T')[0].slice(0, 7).replace(/-/g, '/')}/${article.id}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="hover:text-blue-600 hover:underline"
