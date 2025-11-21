@@ -11,8 +11,11 @@ export async function middleware(request: NextRequest) {
     // 檢查是否有 admin session cookie
     const adminSession = request.cookies.get('admin_session')
 
-    // 如果沒有 session 且不是登入頁面，重定向到登入
-    if (!adminSession && !request.nextUrl.pathname.startsWith('/admin/login')) {
+    // 如果沒有 session 且不是登入頁面或 OAuth callback，重定向到登入
+    const isLoginPage = request.nextUrl.pathname.startsWith('/admin/login')
+    const isAuthCallback = request.nextUrl.pathname.startsWith('/admin/auth/callback')
+
+    if (!adminSession && !isLoginPage && !isAuthCallback) {
       return NextResponse.redirect(new URL('/admin/login', request.url))
     }
 
