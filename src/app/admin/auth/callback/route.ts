@@ -6,7 +6,20 @@ import type { NextRequest } from 'next/server'
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
+  const error = requestUrl.searchParams.get('error')
+  const errorDescription = requestUrl.searchParams.get('error_description')
   const origin = requestUrl.origin
+
+  console.log('[OAuth Callback] Request URL:', request.url)
+  console.log('[OAuth Callback] Code:', code ? 'present' : 'missing')
+  console.log('[OAuth Callback] Error:', error)
+  console.log('[OAuth Callback] Error description:', errorDescription)
+
+  // Handle OAuth error from provider
+  if (error) {
+    console.error('[OAuth Callback] OAuth error from provider:', error, errorDescription)
+    return NextResponse.redirect(`${origin}/admin/login?error=${encodeURIComponent(error)}&description=${encodeURIComponent(errorDescription || '')}`)
+  }
 
   if (code) {
     const cookieStore = await cookies()
