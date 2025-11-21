@@ -105,21 +105,36 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!(await verifyAuth(request))) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    if (!(await verifyAuth(request))) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { id } = await params
+    const supabase = createServiceClient()
+
+    // 先刪除關聯的圖片記錄（如果有）
+    await supabase
+      .from('article_images')
+      .delete()
+      .eq('article_id', id)
+
+    // 再刪除文章
+    const { error } = await supabase
+      .from('generated_articles')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Delete article error:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, deleted: id })
+  } catch (err) {
+    console.error('DELETE endpoint error:', err)
+    return NextResponse.json({
+      error: err instanceof Error ? err.message : 'Unknown error'
+    }, { status: 500 })
   }
-
-  const { id } = await params
-  const supabase = createServiceClient()
-
-  const { error } = await supabase
-    .from('generated_articles')
-    .delete()
-    .eq('id', id)
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  return NextResponse.json({ success: true, deleted: id })
 }

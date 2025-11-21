@@ -38,6 +38,7 @@ export default function AdminDashboard() {
       })
 
       if (response.status === 401) {
+        setLoading(false)
         router.push('/admin/login')
         return
       }
