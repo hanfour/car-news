@@ -20,17 +20,29 @@ export default function AdminLoginPage() {
   // Check if user already has a valid session
   useEffect(() => {
     const checkExistingSession = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      console.log('[Admin Login] Checking existing session...')
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+      if (userError) {
+        console.log('[Admin Login] getUser error:', userError)
+      }
 
       if (user) {
+        console.log('[Admin Login] Found user:', user.id, user.email)
         // User already has a session, check if admin
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('is_admin')
           .eq('id', user.id)
           .single()
 
+        if (profileError) {
+          console.log('[Admin Login] Profile error:', profileError)
+        }
+        console.log('[Admin Login] Profile:', profile)
+
         if (profile?.is_admin) {
+          console.log('[Admin Login] User is admin, creating session...')
           // Create admin session and redirect
           const response = await fetch('/api/admin/auth/login', {
             method: 'POST',
@@ -38,11 +50,22 @@ export default function AdminLoginPage() {
             body: JSON.stringify({ userId: user.id })
           })
 
+          console.log('[Admin Login] API response status:', response.status)
+          const responseData = await response.json()
+          console.log('[Admin Login] API response:', responseData)
+
           if (response.ok) {
+            console.log('[Admin Login] Session created, redirecting...')
             router.push('/admin')
             return
+          } else {
+            console.log('[Admin Login] Session creation failed')
           }
+        } else {
+          console.log('[Admin Login] User is not admin')
         }
+      } else {
+        console.log('[Admin Login] No user session found')
       }
       setCheckingSession(false)
     }
