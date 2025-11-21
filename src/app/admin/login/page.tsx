@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 
 export default function AdminLoginPage() {
@@ -11,6 +11,22 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false)
   const [checkingSession, setCheckingSession] = useState(true)
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Check for error in URL params
+  useEffect(() => {
+    const urlError = searchParams.get('error')
+    if (urlError) {
+      console.log('[Admin Login] URL error param:', urlError)
+      const errorMessages: Record<string, string> = {
+        'auth_failed': 'Authentication failed. Please try again.',
+        'not_admin': 'Access denied: You are not an admin user.',
+        'session_failed': 'Failed to create admin session.',
+        'no_code': 'OAuth callback missing authorization code.',
+      }
+      setError(errorMessages[urlError] || `Error: ${urlError}`)
+    }
+  }, [searchParams])
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
