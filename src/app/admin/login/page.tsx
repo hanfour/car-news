@@ -133,18 +133,26 @@ export default function AdminLoginPage() {
   }
 
   const handleGoogleLogin = async () => {
+    console.log('[Admin Login] Google login button clicked')
     setError('')
     setLoading(true)
 
     try {
+      console.log('[Admin Login] Calling signInWithOAuth...')
+      const redirectUrl = `${window.location.origin}/admin/auth/callback`
+      console.log('[Admin Login] Redirect URL:', redirectUrl)
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/admin/auth/callback`
+          redirectTo: redirectUrl
         }
       })
 
+      console.log('[Admin Login] OAuth response:', { data, error })
+
       if (error) {
+        console.error('[Admin Login] OAuth error:', error)
         setError(`Google login failed: ${error.message}`)
         setLoading(false)
         return
@@ -152,12 +160,15 @@ export default function AdminLoginPage() {
 
       // Manually trigger redirect if Supabase doesn't auto-redirect
       if (data?.url) {
+        console.log('[Admin Login] Redirecting to:', data.url)
         window.location.href = data.url
       } else {
+        console.error('[Admin Login] No URL in OAuth response')
         setError('OAuth configuration error - please contact support')
         setLoading(false)
       }
     } catch (err) {
+      console.error('[Admin Login] Caught error:', err)
       setError(`Login failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
       setLoading(false)
     }
