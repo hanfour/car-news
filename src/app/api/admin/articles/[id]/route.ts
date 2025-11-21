@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
+import { verifySessionToken } from '@/lib/admin/session'
 
 // Secure authentication - no unsafe defaults
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY
@@ -21,12 +22,18 @@ async function verifyAuth(request: NextRequest): Promise<boolean> {
   // 方式 2: Cookie session (用於 Web UI)
   const sessionCookie = request.cookies.get('admin_session')
   if (sessionCookie?.value) {
+    // 驗證 session token 並獲取 userId
+    const userId = await verifySessionToken(sessionCookie.value)
+    if (!userId) {
+      return false
+    }
+
     // 驗證這個 userId 確實是 admin
     const supabase = createServiceClient()
     const { data } = await supabase
       .from('profiles')
       .select('is_admin')
-      .eq('id', sessionCookie.value)
+      .eq('id', userId)
       .single()
 
     return data?.is_admin === true
