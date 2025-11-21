@@ -59,20 +59,27 @@ async function handleCronJob(request: NextRequest) {
     let savedCount = 0
     let skippedCount = 0
 
-    // 2. 批次檢查重複（優化：一次查詢所有URL）
+    // 2. 批次檢查重複（分批處理避免 Supabase 限制）
     const urls = articles.map(a => a.url)
     console.log(`Checking ${urls.length} URLs for duplicates...`)
 
-    const { data: existingArticles, error: checkError } = await supabase
-      .from('raw_articles')
-      .select('url')
-      .in('url', urls)
+    const existingUrls = new Set<string>()
+    const BATCH_SIZE = 100  // Supabase .in() 限制約 100 個
 
-    if (checkError) {
-      console.error('Error checking duplicates:', checkError)
+    for (let i = 0; i < urls.length; i += BATCH_SIZE) {
+      const batchUrls = urls.slice(i, i + BATCH_SIZE)
+      const { data: existingArticles, error: checkError } = await supabase
+        .from('raw_articles')
+        .select('url')
+        .in('url', batchUrls)
+
+      if (checkError) {
+        console.error(`Error checking duplicates batch ${i}:`, checkError)
+      } else if (existingArticles) {
+        existingArticles.forEach(a => existingUrls.add(a.url))
+      }
     }
 
-    const existingUrls = new Set(existingArticles?.map(a => a.url) || [])
     console.log(`Found ${existingUrls.size} existing articles to skip`)
 
     // 3. 準備要保存的文章（過濾重複）
@@ -107,20 +114,26 @@ async function handleCronJob(request: NextRequest) {
       }
     }
 
-    // 4. 批次保存到數據庫
+    // 4. 批次保存到數據庫（分批避免 Supabase 限制）
     console.log(`Preparing to save ${articlesToSave.length} articles...`)
 
     if (articlesToSave.length > 0) {
-      const { error: bulkInsertError } = await supabase
-        .from('raw_articles')
-        .insert(articlesToSave)
+      const INSERT_BATCH_SIZE = 50  // 每批插入 50 條
 
-      if (bulkInsertError) {
-        console.error('Bulk insert error:', bulkInsertError)
-      } else {
-        savedCount = articlesToSave.length
-        console.log(`✓ Saved ${savedCount} articles`)
+      for (let i = 0; i < articlesToSave.length; i += INSERT_BATCH_SIZE) {
+        const batch = articlesToSave.slice(i, i + INSERT_BATCH_SIZE)
+        const { error: bulkInsertError } = await supabase
+          .from('raw_articles')
+          .insert(batch)
+
+        if (bulkInsertError) {
+          console.error(`Bulk insert error batch ${i}:`, bulkInsertError)
+        } else {
+          savedCount += batch.length
+          console.log(`✓ Saved batch ${i}: ${batch.length} articles`)
+        }
       }
+      console.log(`✓ Total saved: ${savedCount} articles`)
     } else {
       console.log('No articles to save (all were duplicates or filtered out)')
     }
