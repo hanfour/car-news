@@ -25,6 +25,11 @@ function NavigationProgressInner() {
       const link = target.closest('a')
 
       if (link && link.href) {
+        // 忽略新視窗連結 (target="_blank")
+        if (link.target === '_blank') {
+          return
+        }
+
         const url = new URL(link.href)
         const currentUrl = new URL(window.location.href)
 
