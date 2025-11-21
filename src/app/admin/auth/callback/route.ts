@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { createAdminSession } from '@/lib/admin/session'
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
@@ -50,12 +51,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${origin}/admin/login?error=auth_failed`)
     }
 
+    console.log('[OAuth Callback] User authenticated:', user.id, user.email)
+
     // Check if user is admin
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('is_admin')
       .eq('id', user.id)
       .single()
+
+    console.log('[OAuth Callback] Profile:', profile, 'Error:', profileError)
 
     if (profileError || !profile?.is_admin) {
       console.error('[OAuth Callback] Not an admin user:', user.id)
@@ -64,31 +69,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${origin}/admin/login?error=not_admin`)
     }
 
-    // Create admin session cookie
-    const response = await fetch(`${origin}/api/admin/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': request.headers.get('cookie') || '',
-      },
-      body: JSON.stringify({ userId: user.id }),
-    })
+    // Create admin session directly
+    const ipAddress = request.headers.get('x-forwarded-for') || 'unknown'
+    const userAgent = request.headers.get('user-agent') || 'unknown'
+    const session = await createAdminSession(user.id, ipAddress, userAgent)
 
-    if (!response.ok) {
+    if (!session) {
       console.error('[OAuth Callback] Session creation failed')
       return NextResponse.redirect(`${origin}/admin/login?error=session_failed`)
     }
 
-    // Get the session cookie from response
-    const setCookieHeader = response.headers.get('set-cookie')
-    const redirectResponse = NextResponse.redirect(`${origin}/admin`)
+    console.log('[OAuth Callback] Admin session created, redirecting to /admin')
 
-    // Forward the session cookie
-    if (setCookieHeader) {
-      redirectResponse.headers.set('set-cookie', setCookieHeader)
-    }
+    // Set the session cookie directly and redirect
+    cookieStore.set('admin_session', session.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/',
+    })
 
-    return redirectResponse
+    return NextResponse.redirect(`${origin}/admin`)
   }
 
   // No code provided
