@@ -213,14 +213,18 @@ export default function AdminDashboard() {
                         {article.id}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900 max-w-md">
-                        <a
-                          href={`/${article.published_at?.split('T')[0].replace(/-/g, '/')}/${article.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:text-blue-600"
-                        >
-                          {article.title_zh}
-                        </a>
+                        {article.published && article.published_at ? (
+                          <a
+                            href={`/${article.published_at.split('T')[0].replace(/-/g, '/')}/${article.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-blue-600 hover:underline"
+                          >
+                            {article.title_zh}
+                          </a>
+                        ) : (
+                          <span className="text-gray-600">{article.title_zh}</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {article.primary_brand || '-'}
