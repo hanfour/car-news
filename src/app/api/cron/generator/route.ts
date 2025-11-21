@@ -15,7 +15,7 @@ export const maxDuration = 300 // Vercel Pro限制：最长5分钟
 // 配置参数：防止超时的保守策略
 const TIMEOUT_CONFIG = {
   MAX_DURATION_MS: 270_000,      // 270秒 (4.5分钟) - 留30秒缓冲
-  MAX_ARTICLES_PER_RUN: 10,      // 每次最多处理10篇文章（提高吞吐量）
+  MAX_ARTICLES_PER_RUN: 50,      // 每次最多处理50篇文章（不再是主要限制）
   TIME_CHECK_INTERVAL: 1000,     // 每1秒检查一次时间
   ESTIMATED_TIME_PER_ARTICLE: 35_000,  // 估计每篇文章需要35秒（根據實際數據調整）
   MIN_TIME_BUFFER: 45_000        // 最小時間緩衝 45 秒（確保安全停止）
@@ -255,22 +255,16 @@ async function handleCronJob(request: NextRequest) {
         // 3.1 计算主题hash（防重复）
         const topicHash = generateTopicHash(cluster.centroid)
 
-        // 3.2 检查最近3天是否已生成相似主題（避免連續幾天重複相同主題）
-        const threeDaysAgo = new Date()
-        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
-        const threeDaysAgoStr = threeDaysAgo.toISOString().split('T')[0]
-
+        // 3.2 检查今天是否已生成相同主題（只防止當天重複，不阻擋不同天的相似新聞）
         const { data: existingLocks } = await supabase
           .from('daily_topic_locks')
           .select('article_id, date')
-          .gte('date', threeDaysAgoStr)
+          .eq('date', today)
           .eq('topic_hash', topicHash)
-          .order('date', { ascending: false })
           .limit(1)
 
         if (existingLocks && existingLocks.length > 0) {
-          const lastGeneratedDate = existingLocks[0].date
-          console.log(`  → Topic already generated on ${lastGeneratedDate}: ${topicHash.slice(0, 8)}`)
+          console.log(`  → Topic already generated today: ${topicHash.slice(0, 8)}`)
           continue
         }
 
