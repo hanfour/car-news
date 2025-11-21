@@ -34,8 +34,18 @@ function AdminLoginContent() {
   )
 
   // Check if user already has a valid session
+  // Only auto-login if not coming from logout (check URL param)
   useEffect(() => {
     const checkExistingSession = async () => {
+      // If 'logout' param exists, don't auto-login
+      const loggedOut = searchParams.get('logout')
+      if (loggedOut) {
+        console.log('[Admin Login] Just logged out, clearing Supabase session...')
+        await supabase.auth.signOut()
+        setCheckingSession(false)
+        return
+      }
+
       console.log('[Admin Login] Checking existing session...')
       const { data: { user }, error: userError } = await supabase.auth.getUser()
 
@@ -87,7 +97,7 @@ function AdminLoginContent() {
     }
 
     checkExistingSession()
-  }, [supabase, router])
+  }, [supabase, router, searchParams])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()

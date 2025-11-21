@@ -94,7 +94,8 @@ export default function AdminDashboard() {
 
   const handleLogout = async () => {
     await fetch('/api/admin/auth/logout', { method: 'POST', credentials: 'include' })
-    router.push('/admin/login')
+    // Add logout param to tell login page to clear browser-side Supabase session
+    router.push('/admin/login?logout=1')
     router.refresh()
   }
 
