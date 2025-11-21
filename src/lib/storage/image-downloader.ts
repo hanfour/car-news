@@ -203,9 +203,9 @@ export async function downloadAndStoreImages(
         caption: image.caption,
       })
     } else {
-      // 如果下載失敗，保留原 URL 作為降級方案
-      console.warn(`[Image Storage] Falling back to original URL for: ${image.url}`)
-      results.push(image)
+      // 如果下載失敗（例如 403 Forbidden），跳過這張圖片
+      // 不使用原 URL 作為 fallback，因為用戶端也無法訪問
+      console.warn(`[Image Storage] Skipping image (download failed): ${image.url}`)
     }
   }
 

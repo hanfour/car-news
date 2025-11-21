@@ -76,50 +76,32 @@ export default function AdminLoginPage() {
   }
 
   const handleGoogleLogin = async () => {
-    console.log('[Google Login] Starting...')
-    alert('Google Login button clicked!')
     setError('')
     setLoading(true)
 
     try {
-      console.log('[Google Login] Supabase client:', {
-        url: process.env.NEXT_PUBLIC_SUPABASE_URL,
-        hasKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      })
-
-      const redirectUrl = `${window.location.origin}/admin/auth/callback`
-      console.log('[Google Login] Redirect URL:', redirectUrl)
-
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: redirectUrl
+          redirectTo: `${window.location.origin}/admin/auth/callback`
         }
       })
 
-      console.log('[Google Login] Response:', { data, error })
-      console.log('[Google Login] Response data details:', JSON.stringify(data, null, 2))
-
       if (error) {
-        console.error('[Google Login] Error:', error)
         setError(`Google login failed: ${error.message}`)
         setLoading(false)
         return
       }
 
-      // Check if we got a redirect URL
+      // Manually trigger redirect if Supabase doesn't auto-redirect
       if (data?.url) {
-        console.log('[Google Login] Redirecting to:', data.url)
         window.location.href = data.url
       } else {
-        console.error('[Google Login] No redirect URL in response!')
-        setError('OAuth flow failed - no redirect URL')
+        setError('OAuth configuration error - please contact support')
         setLoading(false)
       }
-      // 登入成功後會自動跳轉，不需要手動設置 loading = false
     } catch (err) {
-      console.error('[Google Login] Exception:', err)
-      setError(`Google login failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      setError(`Login failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
       setLoading(false)
     }
   }
