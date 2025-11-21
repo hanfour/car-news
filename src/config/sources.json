@@ -92,18 +92,20 @@
     "name": "Honda News",
     "url": "https://feeds.feedburner.com/honda/news",
     "type": "rss",
-    "enabled": true,
+    "enabled": false,
     "brand": "Honda",
-    "category": "official"
+    "category": "official",
+    "note": "RSS XML parse error - disabled 2025-11-21"
   },
   {
     "id": "porsche-newsroom",
     "name": "Porsche Newsroom",
     "url": "https://newsroom.porsche.com/rss/en/",
     "type": "rss",
-    "enabled": true,
+    "enabled": false,
     "brand": "Porsche",
-    "category": "official"
+    "category": "official",
+    "note": "Server error 500 - disabled 2025-11-21"
   },
   {
     "id": "bmwblog",
@@ -163,7 +165,8 @@
     "name": "The Car Connection",
     "url": "https://www.thecarconnection.com/rss",
     "type": "rss",
-    "enabled": true
+    "enabled": false,
+    "note": "RSS XML parse error - disabled 2025-11-21"
   },
   {
     "id": "carbuzz",
