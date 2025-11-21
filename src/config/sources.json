@@ -185,5 +185,98 @@
     "url": "https://www.thetorquereport.com/feed",
     "type": "rss",
     "enabled": true
+  },
+  {
+    "id": "jalopnik",
+    "name": "Jalopnik",
+    "url": "https://jalopnik.com/rss",
+    "type": "rss",
+    "enabled": false,
+    "note": "RSS feed not responding - disabled 2025-11-21"
+  },
+  {
+    "id": "motor1",
+    "name": "Motor1",
+    "url": "https://www.motor1.com/rss/news/all/",
+    "type": "rss",
+    "enabled": true
+  },
+  {
+    "id": "topgear",
+    "name": "Top Gear",
+    "url": "https://www.topgear.com/rss.xml",
+    "type": "rss",
+    "enabled": false,
+    "note": "RSS feed 404 - disabled 2025-11-21"
+  },
+  {
+    "id": "driving",
+    "name": "Driving.ca",
+    "url": "https://driving.ca/feed",
+    "type": "rss",
+    "enabled": true
+  },
+  {
+    "id": "cleantechnica",
+    "name": "CleanTechnica",
+    "url": "https://cleantechnica.com/feed/",
+    "type": "rss",
+    "enabled": true,
+    "category": "green"
+  },
+  {
+    "id": "evo",
+    "name": "EVO Magazine",
+    "url": "https://www.evo.co.uk/rss",
+    "type": "rss",
+    "enabled": false,
+    "note": "Returns HTML not RSS - disabled 2025-11-21"
+  },
+  {
+    "id": "carmagazine",
+    "name": "CAR Magazine",
+    "url": "https://www.carmagazine.co.uk/rss/",
+    "type": "rss",
+    "enabled": false,
+    "note": "Returns HTML not RSS - disabled 2025-11-21"
+  },
+  {
+    "id": "autobloggreen",
+    "name": "Autoblog Green",
+    "url": "https://www.autoblog.com/rss/green.xml",
+    "type": "rss",
+    "enabled": false,
+    "note": "May have same block as main Autoblog",
+    "category": "green"
+  },
+  {
+    "id": "ford-media",
+    "name": "Ford Media",
+    "url": "https://media.ford.com/content/fordmedia/fna/us/en/_jcr_content.rssfeed",
+    "type": "rss",
+    "enabled": false,
+    "brand": "Ford",
+    "category": "official",
+    "note": "Empty response - disabled 2025-11-21"
+  },
+  {
+    "id": "gm-media",
+    "name": "GM Media",
+    "url": "https://media.gm.com/rss/public/us/en/news.rss",
+    "type": "rss",
+    "enabled": false,
+    "brand": "General Motors",
+    "category": "official",
+    "note": "404 Not Found - disabled 2025-11-21"
+  },
+  {
+    "id": "vw-newsroom",
+    "name": "VW Newsroom",
+    "url": "https://www.volkswagen-newsroom.com/en/rss/press-releases.xml",
+    "type": "rss",
+    "enabled": false,
+    "brand": "Volkswagen",
+    "category": "official",
+    "note": "404 Page not found - disabled 2025-11-21"
   }
 ]
