@@ -294,23 +294,28 @@ async function handleCronJob(request: NextRequest) {
           continue
         }
 
-        // 3.4.2 檢查是否已存在極度相似的文章（相似標題 + 今天生成）
+        // 3.4.2 檢查是否已存在極度相似的文章（相似標題 + 最近 7 天）
         // 提取標題關鍵詞（移除常見詞彙）
         const titleKeywords = generated.title_zh
-          .replace(/與|和|的|年式|登場|推出|售價|美元|起|，/g, ' ')
+          .replace(/與|和|的|年式|登場|推出|售價|美元|起|，|：|、/g, ' ')
           .trim()
           .split(/\s+/)
           .filter(w => w.length > 1)
-          .slice(0, 3)  // 取前 3 個關鍵詞
+          .slice(0, 5)  // 取前 5 個關鍵詞
 
         let shouldSkip = false
+
+        // 檢查最近 7 天的文章以避免重複
+        const sevenDaysAgo = new Date()
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+        const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0]
 
         if (titleKeywords.length > 0) {
           const { data: similarArticles } = await supabase
             .from('generated_articles')
             .select('id, title_zh')
-            .gte('created_at', today)  // 只檢查今天生成的文章
-            .limit(20)
+            .gte('created_at', sevenDaysAgoStr)  // 檢查最近 7 天的文章
+            .limit(100)
 
           if (similarArticles && similarArticles.length > 0) {
             for (const existing of similarArticles) {
