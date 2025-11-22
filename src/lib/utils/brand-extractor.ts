@@ -234,11 +234,11 @@ export function filterCarArticles<T extends { title: string; content: string }>(
   articles: T[]
 ): T[] {
   return articles.filter(article => {
-    // 檢查機車內容
-    if (isMotorcycleContent(article.title, article.content)) {
-      console.log(`🏍️  Filtered: motorcycle - ${article.title.slice(0, 100)}`)
-      return false
-    }
+    // 暫時停用機車過濾器 - 太多誤判，寧可讓少數機車文章通過，也不要過濾掉汽車文章
+    // if (isMotorcycleContent(article.title, article.content)) {
+    //   console.log(`🏍️  Filtered: motorcycle - ${article.title.slice(0, 100)}`)
+    //   return false
+    // }
 
     // 檢查不相關內容
     if (isIrrelevantContent(article.title, article.content)) {
