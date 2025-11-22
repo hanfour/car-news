@@ -11,13 +11,14 @@ import { RawArticle } from '@/types/database'
 
 export const maxDuration = 300 // Vercel Pro限制：最长5分钟
 
-// 配置参数：防止超时的保守策略
+// 配置参数：品牌多樣性優化策略
 const TIMEOUT_CONFIG = {
   MAX_DURATION_MS: 270_000,      // 270秒 (4.5分钟) - 留30秒缓冲
-  MAX_ARTICLES_PER_RUN: 50,      // 每次最多处理50篇文章（不再是主要限制）
+  MAX_ARTICLES_PER_RUN: 100,     // B. 增加上限：每次最多处理100篇（原50）
+  MIN_ARTICLES_PER_BRAND: 1,     // C. 品牌配額：每個品牌至少生成1篇
   TIME_CHECK_INTERVAL: 1000,     // 每1秒检查一次时间
-  ESTIMATED_TIME_PER_ARTICLE: 35_000,  // 估计每篇文章需要35秒（根據實際數據調整）
-  MIN_TIME_BUFFER: 45_000        // 最小時間緩衝 45 秒（確保安全停止）
+  ESTIMATED_TIME_PER_ARTICLE: 35_000,  // 估计每篇文章需要35秒
+  MIN_TIME_BUFFER: 45_000        // 最小時間緩衝 45 秒
 }
 
 async function handleCronJob(request: NextRequest) {
@@ -131,17 +132,31 @@ async function handleCronJob(request: NextRequest) {
       console.log(`- ${brand}: ${articles.length} articles`)
     }
 
-    // 2.5 智能排序：品牌優先級處理
-    // 策略：
-    // 1. 高價值品牌優先（Tesla, BMW, Mercedes, Porsche 等）
-    // 2. 文章數量多的品牌優先（有新聞價值）
-    // 3. "Other" 類別最後處理（避免消耗過多時間）
+    // 2.5 智能排序：品牌多樣性優先策略
+    // 三重策略組合：
+    // A. 品牌輪換機制 - 使用日期作為種子輪換優先順序
+    // B. 品牌配額制度 - 確保每個品牌至少有機會被處理
+    // C. 增加處理數量 - 提高文章生成限制
     const PRIORITY_BRANDS = [
       'Tesla', 'BMW', 'Mercedes', 'Mercedes-Benz', 'Audi', 'Porsche',
       'Ferrari', 'Lamborghini', 'Ford', 'Toyota', 'Volkswagen',
       'Nissan', 'Honda', 'Hyundai', 'Kia', 'Volvo', 'Polestar',
-      'Rivian', 'Lucid', 'BYD', 'XPeng', 'NIO'
+      'Rivian', 'Lucid', 'BYD', 'XPeng', 'NIO', 'Genesis'
     ]
+
+    // A. 品牌輪換機制：使用日期作為種子來輪換優先級
+    const today = new Date()
+    const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000)
+    const rotationSeed = dayOfYear % PRIORITY_BRANDS.length
+
+    // 輪換優先品牌列表
+    const rotatedPriorityBrands = [
+      ...PRIORITY_BRANDS.slice(rotationSeed),
+      ...PRIORITY_BRANDS.slice(0, rotationSeed)
+    ]
+
+    console.log(`\n🔄 Brand rotation (seed: day ${dayOfYear}, offset: ${rotationSeed})`)
+    console.log(`   Today's priority: ${rotatedPriorityBrands.slice(0, 5).join(', ')}...`)
 
     const sortedBrands = Array.from(brandGroups.entries()).sort((a, b) => {
       const [brandA, articlesA] = a
@@ -151,9 +166,19 @@ async function handleCronJob(request: NextRequest) {
       if (brandA === 'Other') return 1
       if (brandB === 'Other') return -1
 
-      // 2. 優先品牌排前面
-      const isPriorityA = PRIORITY_BRANDS.includes(brandA)
-      const isPriorityB = PRIORITY_BRANDS.includes(brandB)
+      // 2. 使用輪換後的優先品牌列表
+      const priorityIndexA = rotatedPriorityBrands.indexOf(brandA)
+      const priorityIndexB = rotatedPriorityBrands.indexOf(brandB)
+
+      const isPriorityA = priorityIndexA !== -1
+      const isPriorityB = priorityIndexB !== -1
+
+      // 兩個都是優先品牌：按輪換後的順序排
+      if (isPriorityA && isPriorityB) {
+        return priorityIndexA - priorityIndexB
+      }
+
+      // 只有一個是優先品牌
       if (isPriorityA && !isPriorityB) return -1
       if (!isPriorityA && isPriorityB) return 1
 
@@ -175,14 +200,27 @@ async function handleCronJob(request: NextRequest) {
     let totalProcessed = 0
     let skippedDueToTimeout = 0
 
+    // C. 品牌配額追踪：記錄每個品牌已生成的文章數
+    const brandQuotaTracker = new Map<string, number>()
+
     // 3. 對每個品牌進行聚類和生成（使用排序後的順序）
     for (const [brand, brandArticles] of sortedBrands) {
-      // 在处理每个品牌前检查时间
-      if (!shouldContinueProcessing(totalProcessed)) {
+      const brandProcessedCount = brandQuotaTracker.get(brand) || 0
+
+      // C. 品牌配額檢查：如果品牌還沒達到最小配額，即使時間緊張也繼續處理
+      const hasMetQuota = brandProcessedCount >= TIMEOUT_CONFIG.MIN_ARTICLES_PER_BRAND
+      const shouldProcessForQuota = !hasMetQuota && totalProcessed < TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN
+
+      // 在处理每个品牌前检查時間（但優先確保品牌配額）
+      if (!shouldProcessForQuota && !shouldContinueProcessing(totalProcessed)) {
         const remainingBrands = sortedBrands.length - (sortedBrands.findIndex(([b]) => b === brand))
         skippedDueToTimeout = remainingBrands
-        console.log(`⏭️  Skipping remaining brands (${remainingBrands} left) to avoid timeout`)
+        console.log(`⏭️  Skipping remaining brands (${remainingBrands} left) - quota met and timeout approaching`)
         break
+      }
+
+      if (shouldProcessForQuota && !shouldContinueProcessing(totalProcessed)) {
+        console.log(`[${brand}] ⚡ Processing despite time pressure (quota: ${brandProcessedCount}/${TIMEOUT_CONFIG.MIN_ARTICLES_PER_BRAND})`)
       }
 
       console.log(`\n[${brand}] Processing ${brandArticles.length} articles...`)
@@ -458,6 +496,10 @@ async function handleCronJob(request: NextRequest) {
         })
 
         totalProcessed++  // 增加已处理计数
+
+        // C. 更新品牌配額追踪
+        brandQuotaTracker.set(brand, (brandQuotaTracker.get(brand) || 0) + 1)
+
         console.log(`[${brand}] ✓ ${decision.shouldPublish ? 'Published' : 'Saved'}: ${generated.title_zh} (${storedImages.length} images stored) [${totalProcessed}/${TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN}]`)
 
       } catch (error: any) {
