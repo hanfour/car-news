@@ -196,7 +196,7 @@ async function handleCronJob(request: NextRequest) {
     }
 
     const results = []
-    const today = new Date().toISOString().split('T')[0]
+    const todayStr = new Date().toISOString().split('T')[0]
     let totalProcessed = 0
     let skippedDueToTimeout = 0
 

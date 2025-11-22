@@ -1,11 +1,14 @@
 import { createServiceClient } from '@/lib/supabase'
-import crypto from 'crypto'
 
 /**
  * 生成安全的 session token
+ * 使用 Web Crypto API (Edge Runtime 兼容)
  */
 export function generateSessionToken(): string {
-  return crypto.randomBytes(32).toString('hex') // 64 字符
+  // 使用 Web Crypto API 而非 Node.js crypto (Edge Runtime 兼容)
+  const array = new Uint8Array(32)
+  crypto.getRandomValues(array)
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('')
 }
 
 /**
