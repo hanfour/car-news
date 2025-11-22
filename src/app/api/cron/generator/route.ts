@@ -3,7 +3,6 @@ import { createServiceClient } from '@/lib/supabase'
 import { clusterArticles } from '@/lib/ai/clustering'
 import { generateArticle, decidePublish } from '@/lib/generator'
 import { generateShortId } from '@/lib/utils/short-id'
-import { generateTopicHash } from '@/lib/utils/topic-hash'
 import { groupArticlesByBrand, filterCarArticles } from '@/lib/utils/brand-extractor'
 import { generateAndSaveCoverImage } from '@/lib/ai/image-generation'
 import { downloadAndStoreImage, downloadAndStoreImages } from '@/lib/storage/image-downloader'
@@ -252,23 +251,7 @@ async function handleCronJob(request: NextRequest) {
       }
 
       try {
-        // 3.1 计算主题hash（防重复）
-        const topicHash = generateTopicHash(cluster.centroid)
-
-        // 3.2 检查今天是否已生成相同主題（只防止當天重複，不阻擋不同天的相似新聞）
-        const { data: existingLocks } = await supabase
-          .from('daily_topic_locks')
-          .select('article_id, date')
-          .eq('date', today)
-          .eq('topic_hash', topicHash)
-          .limit(1)
-
-        if (existingLocks && existingLocks.length > 0) {
-          console.log(`  → Topic already generated today: ${topicHash.slice(0, 8)}`)
-          continue
-        }
-
-        // 3.3 生成短ID（需要在圖片存儲前生成）
+        // 3.1 生成短ID（需要在圖片存儲前生成）
         const shortId = generateShortId()
 
         // 3.4 调用AI生成文章
@@ -288,7 +271,7 @@ async function handleCronJob(request: NextRequest) {
           continue
         }
 
-        // 3.4.2 檢查是否已存在極度相似的文章（相似標題 + 最近 7 天）
+        // 3.4.2 檢查是否已存在極度相似的文章（相似標題 + 最近 1 天）
         // 提取標題關鍵詞（移除常見詞彙）
         const titleKeywords = generated.title_zh
           .replace(/與|和|的|年式|登場|推出|售價|美元|起|，|：|、/g, ' ')
@@ -299,16 +282,16 @@ async function handleCronJob(request: NextRequest) {
 
         let shouldSkip = false
 
-        // 檢查最近 7 天的文章以避免重複
-        const sevenDaysAgo = new Date()
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-        const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0]
+        // 檢查最近 1 天的文章以避免重複（降低限制，只防止當天重複）
+        const oneDayAgo = new Date()
+        oneDayAgo.setDate(oneDayAgo.getDate() - 1)
+        const oneDayAgoStr = oneDayAgo.toISOString().split('T')[0]
 
         if (titleKeywords.length > 0) {
           const { data: similarArticles } = await supabase
             .from('generated_articles')
             .select('id, title_zh')
-            .gte('created_at', sevenDaysAgoStr)  // 檢查最近 7 天的文章
+            .gte('created_at', oneDayAgoStr)  // 檢查最近 1 天的文章
             .limit(100)
 
           if (similarArticles && similarArticles.length > 0) {
@@ -461,18 +444,6 @@ async function handleCronJob(request: NextRequest) {
         if (insertError) {
           console.error('Failed to insert article:', insertError)
           continue
-        }
-
-        // 3.7 创建topic lock (防止重複生成相似主題)
-        const { error: lockError } = await supabase.from('daily_topic_locks').insert({
-          date: today,
-          topic_hash: topicHash,
-          article_id: shortId
-        })
-
-        if (lockError) {
-          console.error(`[${brand}] ⚠ Failed to create topic lock:`, lockError)
-          // 如果 topic lock 創建失敗,這篇文章可能會被重複生成
           // 但我們還是保留已生成的文章(因為已經消耗了 API 額度)
         }
 
