@@ -340,8 +340,9 @@ async function handleCronJob(request: NextRequest) {
 
             const similarity = cosineSimilarity(newContentEmbedding, existingEmbedding as number[])
 
-            // 如果相似度 >= 0.85，認為內容極度相似
-            if (similarity >= 0.85) {
+            // 如果相似度 >= 0.92，認為內容極度相似（提高閾值以允許更多不同角度的文章）
+            // 0.85 太嚴格，會過濾掉很多有價值的文章
+            if (similarity >= 0.92) {
               console.log(`[${brand}] ⚠ Highly similar article already exists:`)
               console.log(`[${brand}]   Existing: "${existing.title_zh}"`)
               console.log(`[${brand}]   New:      "${generated.title_zh}"`)
