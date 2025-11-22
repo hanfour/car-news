@@ -33,17 +33,29 @@ async function deleteTodayDuplicates() {
     return
   }
 
-  // 刪除今天的文章
   const ids = todayArticles.map(a => a.id)
   console.log(`\n準備刪除 ${ids.length} 篇文章...`)
 
+  // 先刪除關聯的圖片
+  for (const id of ids) {
+    const { error: imgError } = await supabase
+      .from('article_images')
+      .delete()
+      .eq('article_id', id)
+
+    if (imgError) {
+      console.log(`⚠ 刪除圖片失敗 (${id}):`, imgError.message)
+    }
+  }
+
+  // 再刪除文章
   const { error: deleteError } = await supabase
     .from('generated_articles')
     .delete()
     .in('id', ids)
 
   if (deleteError) {
-    console.error('❌ 刪除失敗:', deleteError.message)
+    console.error('❌ 刪除文章失敗:', deleteError.message)
     return
   }
 

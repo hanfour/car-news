@@ -37,16 +37,19 @@ const CAR_BRANDS = [
   'Tata', 'Mahindra'
 ]
 
-// 機車品牌列表（用於過濾排除）
-const MOTORCYCLE_BRANDS = [
-  // 日本品牌
-  'Harley-Davidson', 'Harley', 'Ducati', 'Yamaha', 'Kawasaki', 'Suzuki',
-  'Honda', 'KTM', 'BMW', 'Triumph', 'Aprilia', 'Moto Guzzi', 'Husqvarna',
+// 專門的機車品牌列表（出現即過濾）
+const PURE_MOTORCYCLE_BRANDS = [
+  'Harley-Davidson', 'Harley', 'Ducati', 'Yamaha', 'Kawasaki',
+  'KTM', 'Triumph', 'Aprilia', 'Moto Guzzi', 'Husqvarna',
   'Royal Enfield', 'Indian', 'Victory', 'MV Agusta', 'Benelli', 'SYM',
   'Kymco', 'PGO', 'Gogoro',
   // 中文
-  '哈雷', '杜卡迪', '本田', '川崎', '鈴木', '雅馬哈', '山葉', '光陽', 'Gogoro'
+  '哈雷', '杜卡迪', '川崎', '雅馬哈', '山葉', '光陽'
 ]
+
+// 雙重品牌（汽車+機車，需要額外關鍵詞判斷）
+// 這些品牌的文章不會直接被過濾，只有同時出現摩托車關鍵詞時才過濾
+const DUAL_BRANDS = ['BMW', 'Honda', 'Suzuki', '本田', '鈴木']
 
 // 機車關鍵詞（用於內容檢測）
 const MOTORCYCLE_KEYWORDS = [
@@ -150,14 +153,14 @@ export function extractPrimaryBrand(title: string, content: string): string | nu
 export function isMotorcycleContent(title: string, content: string): boolean {
   const text = (title + ' ' + content.slice(0, 500)).toLowerCase()
 
-  // 檢查機車品牌
-  for (const brand of MOTORCYCLE_BRANDS) {
+  // 檢查專門的摩托車品牌（出現即判定為摩托車）
+  for (const brand of PURE_MOTORCYCLE_BRANDS) {
     if (text.includes(brand.toLowerCase())) {
       return true
     }
   }
 
-  // 檢查機車關鍵詞（需要多個關鍵詞匹配以提高準確性）
+  // 檢查機車關鍵詞
   let keywordMatches = 0
   for (const keyword of MOTORCYCLE_KEYWORDS) {
     if (text.includes(keyword.toLowerCase())) {
@@ -165,8 +168,22 @@ export function isMotorcycleContent(title: string, content: string): boolean {
     }
   }
 
-  // 如果有2個以上機車關鍵詞，判定為機車內容
-  if (keywordMatches >= 2) {
+  // 對於雙重品牌（BMW/Honda/Suzuki），只有同時出現摩托車關鍵詞時才判定
+  let hasDualBrand = false
+  for (const brand of DUAL_BRANDS) {
+    if (text.includes(brand.toLowerCase())) {
+      hasDualBrand = true
+      break
+    }
+  }
+
+  // 雙重品牌：需要至少 1 個摩托車關鍵詞
+  if (hasDualBrand && keywordMatches >= 1) {
+    return true
+  }
+
+  // 非品牌文章：需要 2 個以上摩托車關鍵詞
+  if (!hasDualBrand && keywordMatches >= 2) {
     return true
   }
 
