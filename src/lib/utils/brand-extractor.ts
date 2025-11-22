@@ -52,10 +52,16 @@ const PURE_MOTORCYCLE_BRANDS = [
 const DUAL_BRANDS = ['BMW', 'Honda', 'Suzuki', '本田', '鈴木']
 
 // 機車關鍵詞（用於內容檢測）
+// 移除太寬泛的詞：'cc', 'bike', '排氣量' 等會誤判汽車文章
 const MOTORCYCLE_KEYWORDS = [
-  '機車', '摩托車', '重機', '檔車', '速克達', 'motorcycle', 'bike', 'motorbike',
-  '騎士', '二輪', '125cc', '150cc', '250cc', '600cc', '1000cc', 'cc',
-  '排氣量', 'MotoGP', '賽車手', '摩托', '電動機車', '油車', 'EICMA'
+  // 中文關鍵詞
+  '機車', '摩托車', '重機', '檔車', '速克達', '騎士', '二輪', '摩托', '電動機車',
+  // 英文關鍵詞
+  'motorcycle', 'motorbike', 'scooter',
+  // 特定排量（加上 "motorcycle" 或中文才算）
+  'MotoGP', 'EICMA',
+  // 具體機車型號
+  '125cc motorcycle', '150cc motorcycle', '250cc motorcycle', '600cc motorcycle', '1000cc motorcycle'
 ]
 
 // 完全不相關的關鍵詞（用於過濾非汽車內容）
