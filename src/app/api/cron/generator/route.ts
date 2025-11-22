@@ -6,7 +6,7 @@ import { generateShortId } from '@/lib/utils/short-id'
 import { groupArticlesByBrand, filterCarArticles } from '@/lib/utils/brand-extractor'
 import { generateAndSaveCoverImage } from '@/lib/ai/image-generation'
 import { downloadAndStoreImage, downloadAndStoreImages } from '@/lib/storage/image-downloader'
-import { generateEmbedding } from '@/lib/ai/embeddings'
+import { generateEmbedding, cosineSimilarity } from '@/lib/ai/embeddings'
 import { RawArticle } from '@/types/database'
 
 export const maxDuration = 300 // Vercel Pro限制：最长5分钟
@@ -271,14 +271,11 @@ async function handleCronJob(request: NextRequest) {
           continue
         }
 
-        // 3.4.2 檢查是否已存在極度相似的文章（相似標題 + 最近 1 天）
-        // 提取標題關鍵詞（移除常見詞彙）
-        const titleKeywords = generated.title_zh
-          .replace(/與|和|的|年式|登場|推出|售價|美元|起|，|：|、/g, ' ')
-          .trim()
-          .split(/\s+/)
-          .filter(w => w.length > 1)
-          .slice(0, 5)  // 取前 5 個關鍵詞
+        // 3.4.2 檢查是否已存在極度相似的文章（使用 embedding 相似度 + 最近 1 天）
+        // 為新生成的內容生成 embedding
+        const newContentEmbedding = await generateEmbedding(
+          `${generated.title_zh}\n\n${generated.content_zh}`
+        )
 
         let shouldSkip = false
 
@@ -287,30 +284,33 @@ async function handleCronJob(request: NextRequest) {
         oneDayAgo.setDate(oneDayAgo.getDate() - 1)
         const oneDayAgoStr = oneDayAgo.toISOString().split('T')[0]
 
-        if (titleKeywords.length > 0) {
-          const { data: similarArticles } = await supabase
-            .from('generated_articles')
-            .select('id, title_zh')
-            .gte('created_at', oneDayAgoStr)  // 檢查最近 1 天的文章
-            .limit(100)
+        // 獲取最近 1 天的文章及其 embedding
+        const { data: recentArticles } = await supabase
+          .from('generated_articles')
+          .select('id, title_zh, content_embedding')
+          .gte('created_at', oneDayAgoStr)
+          .not('content_embedding', 'is', null)
+          .limit(50)  // 只檢查最近 50 篇
 
-          if (similarArticles && similarArticles.length > 0) {
-            for (const existing of similarArticles) {
-              // 檢查是否包含相同的關鍵詞
-              const matchCount = titleKeywords.filter(keyword =>
-                (existing.title_zh as string).includes(keyword)
-              ).length
+        if (recentArticles && recentArticles.length > 0) {
+          for (const existing of recentArticles) {
+            // 計算 embedding 相似度
+            let existingEmbedding = existing.content_embedding
+            if (typeof existingEmbedding === 'string') {
+              existingEmbedding = JSON.parse(existingEmbedding)
+            }
 
-              // 如果有 2 個以上關鍵詞匹配,認為是相似文章
-              if (matchCount >= 2) {
-                console.log(`[${brand}] ⚠ Similar article already exists:`)
-                console.log(`[${brand}]   Existing: "${existing.title_zh}"`)
-                console.log(`[${brand}]   New:      "${generated.title_zh}"`)
-                console.log(`[${brand}]   Match:    ${matchCount}/${titleKeywords.length} keywords`)
-                console.log(`[${brand}] → Skipping to avoid near-duplicate`)
-                shouldSkip = true
-                break  // 跳出內層 for 循環
-              }
+            const similarity = cosineSimilarity(newContentEmbedding, existingEmbedding as number[])
+
+            // 如果相似度 >= 0.85，認為內容極度相似
+            if (similarity >= 0.85) {
+              console.log(`[${brand}] ⚠ Highly similar article already exists:`)
+              console.log(`[${brand}]   Existing: "${existing.title_zh}"`)
+              console.log(`[${brand}]   New:      "${generated.title_zh}"`)
+              console.log(`[${brand}]   Similarity: ${(similarity * 100).toFixed(1)}%`)
+              console.log(`[${brand}] → Skipping to avoid duplicate content`)
+              shouldSkip = true
+              break
             }
           }
         }
