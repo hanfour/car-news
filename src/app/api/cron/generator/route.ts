@@ -203,9 +203,18 @@ async function handleCronJob(request: NextRequest) {
     // C. 品牌配額追踪：記錄每個品牌已生成的文章數
     const brandQuotaTracker = new Map<string, number>()
 
+    // D. 品牌配額上限：防止單一品牌佔據過多配額
+    const MAX_ARTICLES_PER_BRAND = 3  // 每次執行每個品牌最多生成 3 篇文章
+
     // 3. 對每個品牌進行聚類和生成（使用排序後的順序）
     for (const [brand, brandArticles] of sortedBrands) {
       const brandProcessedCount = brandQuotaTracker.get(brand) || 0
+
+      // D. 品牌配額上限檢查：如果品牌已達到配額上限，跳過該品牌
+      if (brandProcessedCount >= MAX_ARTICLES_PER_BRAND) {
+        console.log(`[${brand}] ⏭️  Skipping - reached max quota (${brandProcessedCount}/${MAX_ARTICLES_PER_BRAND})`)
+        continue
+      }
 
       // C. 品牌配額檢查：如果品牌還沒達到最小配額，即使時間緊張也繼續處理
       const hasMetQuota = brandProcessedCount >= TIMEOUT_CONFIG.MIN_ARTICLES_PER_BRAND
