@@ -137,11 +137,11 @@ async function handleCronJob(request: NextRequest) {
     // A. 品牌輪換機制 - 使用日期作為種子輪換優先順序
     // B. 品牌配額制度 - 確保每個品牌至少有機會被處理
     // C. 增加處理數量 - 提高文章生成限制
+    // 確保品牌名稱與 brand-extractor.ts 返回的名稱完全匹配
     const PRIORITY_BRANDS = [
-      'Tesla', 'BMW', 'Mercedes', 'Mercedes-Benz', 'Audi', 'Porsche',
-      'Ferrari', 'Lamborghini', 'Ford', 'Toyota', 'Volkswagen',
-      'Nissan', 'Honda', 'Hyundai', 'Kia', 'Volvo', 'Polestar',
-      'Rivian', 'Lucid', 'BYD', 'XPeng', 'NIO', 'Genesis'
+      'Tesla', 'BYD', 'Mercedes-Benz', 'BMW', 'Audi', 'Volkswagen',
+      'Toyota', 'Honda', 'Hyundai', 'Kia', 'Ford', 'Chevrolet',
+      'Porsche', 'Ferrari', 'Lamborghini', 'NIO', 'XPeng', 'Li Auto'
     ]
 
     // A. 品牌輪換機制：使用日期作為種子來輪換優先級
