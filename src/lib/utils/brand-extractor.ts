@@ -85,6 +85,7 @@ const BRAND_ALIASES: Record<string, string> = {
   'VW': 'Volkswagen',
   'Xiaopeng': 'XPeng',
   'Benz': 'Mercedes-Benz',
+  'Mercedes': 'Mercedes-Benz',  // 🔧 修復: 統一 Mercedes → Mercedes-Benz
   '特斯拉': 'Tesla',
   '比亞迪': 'BYD',
   '蔚來': 'NIO',
