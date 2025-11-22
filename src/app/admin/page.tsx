@@ -14,6 +14,32 @@ interface Article {
   view_count: number
 }
 
+interface GeneratorStats {
+  lastHour: {
+    count: number
+    brands: { brand: string; count: number }[]
+    articles: { brand: string; title_zh: string; created_at: string }[]
+  }
+  last24h: {
+    count: number
+    brands: { brand: string; count: number }[]
+  }
+  last3days: {
+    count: number
+    brands: { brand: string; count: number }[]
+  }
+  rawArticles: {
+    count: number
+    brands: { brand: string; count: number }[]
+  }
+  health: {
+    status: 'healthy' | 'warning' | 'critical'
+    teslaPercentage: number
+    uniqueBrands: number
+    brandsOverQuota: { brand: string; count: number }[]
+  }
+}
+
 export default function AdminDashboard() {
   const router = useRouter()
   const [articles, setArticles] = useState<Article[]>([])
@@ -21,6 +47,12 @@ export default function AdminDashboard() {
   const [filter, setFilter] = useState<'all' | 'published' | 'draft'>('all')
   const [sortBy, setSortBy] = useState<'date' | 'confidence'>('date')
   const [stats, setStats] = useState({ total: 0, published: 0, draft: 0 })
+
+  // Generator stats
+  const [showGenerator, setShowGenerator] = useState(false)
+  const [generatorStats, setGeneratorStats] = useState<GeneratorStats | null>(null)
+  const [generatorLoading, setGeneratorLoading] = useState(false)
+  const [triggering, setTriggering] = useState(false)
 
   useEffect(() => {
     fetchArticles()
@@ -54,6 +86,53 @@ export default function AdminDashboard() {
       console.error('Failed to fetch articles:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchGeneratorStats = async () => {
+    setGeneratorLoading(true)
+    try {
+      const response = await fetch('/api/admin/generator-stats', {
+        credentials: 'include'
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setGeneratorStats(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch generator stats:', error)
+    } finally {
+      setGeneratorLoading(false)
+    }
+  }
+
+  const handleTriggerGenerator = async () => {
+    if (!confirm('確定要手動觸發 Generator？這將開始生成新文章。')) {
+      return
+    }
+
+    setTriggering(true)
+    try {
+      const response = await fetch('/api/admin/trigger-generator', {
+        method: 'POST',
+        credentials: 'include'
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        alert(`Generator 執行成功！\n生成: ${data.result.generated} 篇\n發布: ${data.result.published} 篇`)
+        // 刷新統計
+        fetchGeneratorStats()
+        fetchArticles()
+      } else {
+        alert(`Generator 執行失敗：${data.error}`)
+      }
+    } catch (error) {
+      alert('觸發失敗：' + (error instanceof Error ? error.message : '未知錯誤'))
+    } finally {
+      setTriggering(false)
     }
   }
 
@@ -95,7 +174,6 @@ export default function AdminDashboard() {
 
   const handleLogout = async () => {
     await fetch('/api/admin/auth/logout', { method: 'POST', credentials: 'include' })
-    // Add logout param to tell login page to clear browser-side Supabase session
     router.push('/admin/login?logout=1')
     router.refresh()
   }
@@ -137,6 +215,142 @@ export default function AdminDashboard() {
             <div className="text-sm text-gray-600">Draft</div>
             <div className="text-2xl font-bold text-yellow-600">{stats.draft}</div>
           </div>
+        </div>
+
+        {/* Generator Monitor Section */}
+        <div className="bg-white rounded-lg shadow mb-8">
+          <div
+            className="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50"
+            onClick={() => {
+              setShowGenerator(!showGenerator)
+              if (!showGenerator && !generatorStats) {
+                fetchGeneratorStats()
+              }
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-gray-900">Generator Monitor</h2>
+              {generatorStats && (
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                  generatorStats.health.status === 'healthy' ? 'bg-green-100 text-green-800' :
+                  generatorStats.health.status === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-red-100 text-red-800'
+                }`}>
+                  {generatorStats.health.status.toUpperCase()}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  fetchGeneratorStats()
+                }}
+                disabled={generatorLoading}
+                className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              >
+                {generatorLoading ? 'Loading...' : 'Refresh'}
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleTriggerGenerator()
+                }}
+                disabled={triggering}
+                className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+              >
+                {triggering ? 'Running...' : 'Trigger Generator'}
+              </button>
+              <span className="text-gray-400">{showGenerator ? '▼' : '▶'}</span>
+            </div>
+          </div>
+
+          {showGenerator && generatorStats && (
+            <div className="p-4 border-t space-y-6">
+              {/* Health Status */}
+              <div className="bg-gray-50 p-4 rounded">
+                <h3 className="font-semibold mb-2">System Health</h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <div className="text-sm text-gray-600">Tesla %</div>
+                    <div className={`text-xl font-bold ${
+                      generatorStats.health.teslaPercentage > 80 ? 'text-red-600' :
+                      generatorStats.health.teslaPercentage > 50 ? 'text-yellow-600' :
+                      'text-green-600'
+                    }`}>
+                      {generatorStats.health.teslaPercentage.toFixed(1)}%
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-600">Unique Brands</div>
+                    <div className="text-xl font-bold">{generatorStats.health.uniqueBrands}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-600">Over Quota</div>
+                    <div className={`text-xl font-bold ${
+                      generatorStats.health.brandsOverQuota.length > 0 ? 'text-red-600' : 'text-green-600'
+                    }`}>
+                      {generatorStats.health.brandsOverQuota.length}
+                    </div>
+                  </div>
+                </div>
+                {generatorStats.health.brandsOverQuota.length > 0 && (
+                  <div className="mt-2 text-sm text-red-600">
+                    Brands over quota (3/hour): {generatorStats.health.brandsOverQuota.map(b => `${b.brand} (${b.count})`).join(', ')}
+                  </div>
+                )}
+              </div>
+
+              {/* Last Hour */}
+              <div>
+                <h3 className="font-semibold mb-2">Last Hour ({generatorStats.lastHour.count} articles)</h3>
+                {generatorStats.lastHour.count > 0 ? (
+                  <>
+                    <div className="grid grid-cols-4 gap-2 mb-2">
+                      {generatorStats.lastHour.brands.slice(0, 8).map(b => (
+                        <div key={b.brand} className="text-sm">
+                          <span className={`font-medium ${b.count > 3 ? 'text-red-600' : 'text-gray-900'}`}>
+                            {b.brand}
+                          </span>: {b.count}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="text-xs text-gray-600 space-y-1">
+                      {generatorStats.lastHour.articles.map((a, i) => (
+                        <div key={i}>[{a.brand}] {a.title_zh}</div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-sm text-gray-500">No articles generated in the last hour</div>
+                )}
+              </div>
+
+              {/* Last 24 Hours */}
+              <div>
+                <h3 className="font-semibold mb-2">Last 24 Hours ({generatorStats.last24h.count} articles)</h3>
+                <div className="grid grid-cols-5 gap-2">
+                  {generatorStats.last24h.brands.slice(0, 10).map(b => (
+                    <div key={b.brand} className="text-sm">
+                      <span className="font-medium">{b.brand}</span>: {b.count}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Raw Articles */}
+              <div>
+                <h3 className="font-semibold mb-2">Raw Articles ({generatorStats.rawArticles.count} pending)</h3>
+                <div className="grid grid-cols-5 gap-2">
+                  {generatorStats.rawArticles.brands.slice(0, 15).map(b => (
+                    <div key={b.brand} className="text-sm">
+                      <span className="font-medium">{b.brand}</span>: {b.count}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Controls */}
