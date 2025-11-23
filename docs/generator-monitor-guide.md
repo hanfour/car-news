@@ -58,9 +58,13 @@ Generator Monitor 是一個整合在 Admin 後台的即時監控工具，用於�
 
 ## 品牌配額機制
 
-### MAX_ARTICLES_PER_BRAND = 3
+### MAX_ARTICLES_PER_BRAND = 2
 
-每次執行 generator，每個品牌最多生成 **3 篇文章**，確保品牌多樣性。
+每次執行 generator，每個品牌最多生成 **2 篇文章**，確保品牌多樣性。
+
+### TARGET_ARTICLES = 18
+
+每次執行 generator 的目標文章數為 **18 篇**，會持續處理不同品牌直到達成目標（或時間/資源耗盡）。
 
 ### 品牌輪換策略
 
@@ -178,13 +182,23 @@ src/
 
 ### 關鍵程式碼位置
 
-**品牌配額限制**：`src/app/api/cron/generator/route.ts:L123-L128`
+**品牌配額限制**：`src/app/api/cron/generator/route.ts:L207-L219`
 ```typescript
-const MAX_ARTICLES_PER_BRAND = 3
+const MAX_ARTICLES_PER_BRAND = 2  // 每個品牌最多 2 篇
 
 if (brandProcessedCount >= MAX_ARTICLES_PER_BRAND) {
   console.log(`[${brand}] ⏭️  Skipping - reached max quota`)
   continue
+}
+```
+
+**目標文章數配置**：`src/app/api/cron/generator/route.ts:L15-L23`
+```typescript
+const TIMEOUT_CONFIG = {
+  TARGET_ARTICLES: 18,           // 每次執行目標生成 18 篇
+  MIN_ARTICLES_PER_BRAND: 2,     // 每個品牌至少生成 2 篇
+  MAX_ARTICLES_PER_RUN: 100,     // 絕對上限 100 篇
+  // ...
 }
 ```
 
@@ -200,6 +214,12 @@ if (brandProcessedCount >= MAX_ARTICLES_PER_BRAND) {
 4. **手動觸發**：僅在測試或緊急情況下使用
 
 ## 更新日誌
+
+### 2024-11-23
+- ✅ 調整品牌配額上限 (MAX_ARTICLES_PER_BRAND: 3 → 2)
+- ✅ 新增目標文章數機制 (TARGET_ARTICLES = 18)
+- ✅ 優化 timeout 邏輯：優先達成目標文章數，而非過早停止
+- ✅ 提高品牌多樣性保障 (MIN_ARTICLES_PER_BRAND: 1 → 2)
 
 ### 2024-11-22
 - ✅ 新增 Generator Monitor 功能

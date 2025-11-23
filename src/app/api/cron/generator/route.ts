@@ -15,7 +15,8 @@ export const maxDuration = 300 // Vercel Pro限制：最长5分钟
 const TIMEOUT_CONFIG = {
   MAX_DURATION_MS: 270_000,      // 270秒 (4.5分钟) - 留30秒缓冲
   MAX_ARTICLES_PER_RUN: 100,     // B. 增加上限：每次最多处理100篇（原50）
-  MIN_ARTICLES_PER_BRAND: 1,     // C. 品牌配額：每個品牌至少生成1篇
+  MIN_ARTICLES_PER_BRAND: 2,     // C. 品牌配額：每個品牌至少生成2篇（提高以確保每個品牌有足夠曝光）
+  TARGET_ARTICLES: 18,           // D. 目標文章數：每次執行目標生成18篇（12-24 範圍中間值）
   TIME_CHECK_INTERVAL: 1000,     // 每1秒检查一次时间
   ESTIMATED_TIME_PER_ARTICLE: 35_000,  // 估计每篇文章需要35秒
   MIN_TIME_BUFFER: 45_000        // 最小時間緩衝 45 秒
@@ -45,11 +46,21 @@ async function handleCronJob(request: NextRequest) {
       return false
     }
 
-    // 条件2: 剩余时间不足以安全处理下一篇
-    // 需要預留：1篇文章時間 + 最小緩衝時間
+    // 条件2: 如果還沒達到目標文章數，繼續處理（除非時間真的不夠了）
+    if (processedCount < TIMEOUT_CONFIG.TARGET_ARTICLES) {
+      const minRequiredTime = estimatedTimeForNext + TIMEOUT_CONFIG.MIN_TIME_BUFFER
+      if (remainingTime < minRequiredTime) {
+        console.log(`⏸️  Target not met (${processedCount}/${TIMEOUT_CONFIG.TARGET_ARTICLES}) but time insufficient (${Math.round(remainingTime/1000)}s < ${Math.round(minRequiredTime/1000)}s)`)
+        return false
+      }
+      // 還沒達到目標且時間充裕，繼續處理
+      return true
+    }
+
+    // 条件3: 已達到目標，但如果時間還很充裕，可以繼續處理更多品牌
     const minRequiredTime = estimatedTimeForNext + TIMEOUT_CONFIG.MIN_TIME_BUFFER
     if (remainingTime < minRequiredTime) {
-      console.log(`⏸️  Insufficient time remaining (${Math.round(remainingTime/1000)}s < ${Math.round(minRequiredTime/1000)}s required), stopping gracefully`)
+      console.log(`⏸️  Target met (${processedCount}/${TIMEOUT_CONFIG.TARGET_ARTICLES}), time limit reached`)
       return false
     }
 
@@ -204,7 +215,7 @@ async function handleCronJob(request: NextRequest) {
     const brandQuotaTracker = new Map<string, number>()
 
     // D. 品牌配額上限：防止單一品牌佔據過多配額
-    const MAX_ARTICLES_PER_BRAND = 3  // 每次執行每個品牌最多生成 3 篇文章
+    const MAX_ARTICLES_PER_BRAND = 2  // 每次執行每個品牌最多生成 2 篇文章（降低以強制品牌多樣性）
 
     // 3. 對每個品牌進行聚類和生成（使用排序後的順序）
     for (const [brand, brandArticles] of sortedBrands) {
