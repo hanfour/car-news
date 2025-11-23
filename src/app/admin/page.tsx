@@ -326,16 +326,77 @@ export default function AdminDashboard() {
                 )}
               </div>
 
-              {/* Last 24 Hours */}
-              <div>
-                <h3 className="font-semibold mb-2">Last 24 Hours ({generatorStats.last24h.count} articles)</h3>
-                <div className="grid grid-cols-5 gap-2">
-                  {generatorStats.last24h.brands.slice(0, 10).map(b => (
-                    <div key={b.brand} className="text-sm">
-                      <span className="font-medium">{b.brand}</span>: {b.count}
+              {/* Last 24 Hours - Enhanced Brand Distribution */}
+              <div className="bg-blue-50 p-4 rounded">
+                <h3 className="font-semibold mb-3 text-lg">24小時品牌分布 ({generatorStats.last24h.count} 篇文章)</h3>
+
+                {generatorStats.last24h.count > 0 ? (
+                  <>
+                    {/* Visual Progress Bars */}
+                    <div className="space-y-2 mb-4">
+                      {generatorStats.last24h.brands.slice(0, 10).map(b => {
+                        const percentage = (b.count / generatorStats.last24h.count) * 100
+                        const isOverweight = percentage > 25
+                        const isWarning = percentage > 15 && percentage <= 25
+
+                        return (
+                          <div key={b.brand} className="flex items-center gap-2">
+                            <div className="w-32 text-sm font-medium truncate">{b.brand}</div>
+                            <div className="flex-1 bg-gray-200 rounded-full h-6 relative overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${
+                                  isOverweight ? 'bg-red-500' :
+                                  isWarning ? 'bg-yellow-500' :
+                                  'bg-green-500'
+                                }`}
+                                style={{ width: `${percentage}%` }}
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center text-xs font-semibold">
+                                {b.count} 篇 ({percentage.toFixed(1)}%)
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
-                  ))}
-                </div>
+
+                    {/* Health Indicators */}
+                    <div className="grid grid-cols-3 gap-3 pt-3 border-t border-blue-200">
+                      <div className="text-center">
+                        <div className="text-xs text-gray-600 mb-1">最高佔比</div>
+                        <div className={`text-lg font-bold ${
+                          (generatorStats.last24h.brands[0]?.count / generatorStats.last24h.count * 100) > 25 ? 'text-red-600' :
+                          (generatorStats.last24h.brands[0]?.count / generatorStats.last24h.count * 100) > 15 ? 'text-yellow-600' :
+                          'text-green-600'
+                        }`}>
+                          {generatorStats.last24h.brands[0]?.brand || 'N/A'}: {
+                            ((generatorStats.last24h.brands[0]?.count / generatorStats.last24h.count * 100) || 0).toFixed(1)
+                          }%
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-xs text-gray-600 mb-1">品牌數量</div>
+                        <div className="text-lg font-bold text-blue-600">
+                          {generatorStats.health.uniqueBrands} 個品牌
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-xs text-gray-600 mb-1">健康狀態</div>
+                        <div className={`text-lg font-bold ${
+                          generatorStats.health.status === 'healthy' ? 'text-green-600' :
+                          generatorStats.health.status === 'warning' ? 'text-yellow-600' :
+                          'text-red-600'
+                        }`}>
+                          {generatorStats.health.status === 'healthy' ? '✅ 健康' :
+                           generatorStats.health.status === 'warning' ? '⚠️  注意' :
+                           '🔴 警告'}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-sm text-gray-500">過去 24 小時無文章生成</div>
+                )}
               </div>
 
               {/* Raw Articles */}
