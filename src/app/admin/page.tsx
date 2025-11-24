@@ -48,6 +48,8 @@ export default function AdminDashboard() {
   const [sortBy, setSortBy] = useState<'date' | 'confidence'>('date')
   const [stats, setStats] = useState({ total: 0, published: 0, draft: 0 })
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [batchProcessing, setBatchProcessing] = useState(false)
 
   // Generator stats
   const [showGenerator, setShowGenerator] = useState(false)
@@ -171,6 +173,119 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('Failed to delete article:', error)
     }
+  }
+
+  const toggleSelection = (id: string) => {
+    const newSelected = new Set(selectedIds)
+    if (newSelected.has(id)) {
+      newSelected.delete(id)
+    } else {
+      newSelected.add(id)
+    }
+    setSelectedIds(newSelected)
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredArticles.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(filteredArticles.map(a => a.id)))
+    }
+  }
+
+  const handleBatchPublish = async () => {
+    if (selectedIds.size === 0) {
+      alert('請先選擇文章')
+      return
+    }
+
+    setBatchProcessing(true)
+    let successCount = 0
+    let failCount = 0
+
+    for (const id of selectedIds) {
+      try {
+        const response = await fetch(`/api/admin/articles/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ published: true })
+        })
+        if (response.ok) successCount++
+        else failCount++
+      } catch (error) {
+        failCount++
+      }
+    }
+
+    setBatchProcessing(false)
+    setSelectedIds(new Set())
+    fetchArticles()
+    alert(`批次發布完成！\n成功: ${successCount} 篇\n失敗: ${failCount} 篇`)
+  }
+
+  const handleBatchUnpublish = async () => {
+    if (selectedIds.size === 0) {
+      alert('請先選擇文章')
+      return
+    }
+
+    setBatchProcessing(true)
+    let successCount = 0
+    let failCount = 0
+
+    for (const id of selectedIds) {
+      try {
+        const response = await fetch(`/api/admin/articles/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ published: false })
+        })
+        if (response.ok) successCount++
+        else failCount++
+      } catch (error) {
+        failCount++
+      }
+    }
+
+    setBatchProcessing(false)
+    setSelectedIds(new Set())
+    fetchArticles()
+    alert(`批次取消發布完成！\n成功: ${successCount} 篇\n失敗: ${failCount} 篇`)
+  }
+
+  const handleBatchDelete = async () => {
+    if (selectedIds.size === 0) {
+      alert('請先選擇文章')
+      return
+    }
+
+    if (!confirm(`確定要刪除 ${selectedIds.size} 篇文章嗎？此操作無法撤銷。`)) {
+      return
+    }
+
+    setBatchProcessing(true)
+    let successCount = 0
+    let failCount = 0
+
+    for (const id of selectedIds) {
+      try {
+        const response = await fetch(`/api/admin/articles/${id}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        })
+        if (response.ok) successCount++
+        else failCount++
+      } catch (error) {
+        failCount++
+      }
+    }
+
+    setBatchProcessing(false)
+    setSelectedIds(new Set())
+    fetchArticles()
+    alert(`批次刪除完成！\n成功: ${successCount} 篇\n失敗: ${failCount} 篇`)
   }
 
   const handleLogout = async () => {
@@ -468,6 +583,44 @@ export default function AdminDashboard() {
           </button>
         </div>
 
+        {/* Batch Operations */}
+        {selectedIds.size > 0 && (
+          <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg shadow mb-4 flex items-center gap-4">
+            <span className="text-sm font-medium text-blue-900">
+              已選擇 {selectedIds.size} 篇文章
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={handleBatchPublish}
+                disabled={batchProcessing}
+                className="px-4 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+              >
+                {batchProcessing ? '處理中...' : '批次發布'}
+              </button>
+              <button
+                onClick={handleBatchUnpublish}
+                disabled={batchProcessing}
+                className="px-4 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 disabled:opacity-50 text-sm"
+              >
+                {batchProcessing ? '處理中...' : '批次取消發布'}
+              </button>
+              <button
+                onClick={handleBatchDelete}
+                disabled={batchProcessing}
+                className="px-4 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm"
+              >
+                {batchProcessing ? '處理中...' : '批次刪除'}
+              </button>
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                className="px-4 py-1 bg-gray-400 text-white rounded hover:bg-gray-500 text-sm"
+              >
+                取消選擇
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Articles Table */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           {loading ? (
@@ -477,6 +630,14 @@ export default function AdminDashboard() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.size === filteredArticles.length && filteredArticles.length > 0}
+                        onChange={toggleSelectAll}
+                        className="rounded"
+                      />
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       ID
                     </th>
@@ -506,6 +667,14 @@ export default function AdminDashboard() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredArticles.map((article) => (
                     <tr key={article.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(article.id)}
+                          onChange={() => toggleSelection(article.id)}
+                          className="rounded"
+                        />
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
                         {article.id}
                       </td>
