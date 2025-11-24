@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import SocialMediaManager from '@/components/SocialMediaManager'
 
 interface Article {
   id: string
@@ -424,11 +423,6 @@ export default function AdminDashboard() {
               </div>
             </div>
           )}
-        </div>
-
-        {/* Social Media Manager Section */}
-        <div className="mb-8">
-          <SocialMediaManager />
         </div>
 
         {/* Controls */}
