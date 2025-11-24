@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import SocialMediaManager from '@/components/SocialMediaManager'
 
 interface Article {
   id: string
@@ -47,6 +48,7 @@ export default function AdminDashboard() {
   const [filter, setFilter] = useState<'all' | 'published' | 'draft'>('all')
   const [sortBy, setSortBy] = useState<'date' | 'confidence'>('date')
   const [stats, setStats] = useState({ total: 0, published: 0, draft: 0 })
+  const [searchTerm, setSearchTerm] = useState('')
 
   // Generator stats
   const [showGenerator, setShowGenerator] = useState(false)
@@ -183,6 +185,16 @@ export default function AdminDashboard() {
       return b.confidence - a.confidence
     }
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  })
+
+  const filteredArticles = sortedArticles.filter(article => {
+    if (!searchTerm) return true
+    const term = searchTerm.toLowerCase()
+    return (
+      article.id.toLowerCase().includes(term) ||
+      article.title_zh.toLowerCase().includes(term) ||
+      (article.primary_brand?.toLowerCase().includes(term) || false)
+    )
   })
 
   return (
@@ -414,8 +426,23 @@ export default function AdminDashboard() {
           )}
         </div>
 
+        {/* Social Media Manager Section */}
+        <div className="mb-8">
+          <SocialMediaManager />
+        </div>
+
         {/* Controls */}
         <div className="bg-white p-4 rounded-lg shadow mb-4 flex gap-4">
+          <div className="flex-1">
+            <label className="text-sm text-gray-600 mr-2">Search:</label>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by ID, title, or brand..."
+              className="border rounded px-3 py-1 w-full max-w-md"
+            />
+          </div>
           <div>
             <label className="text-sm text-gray-600 mr-2">Filter:</label>
             <select
@@ -441,7 +468,7 @@ export default function AdminDashboard() {
           </div>
           <button
             onClick={fetchArticles}
-            className="ml-auto px-4 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="px-4 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
             Refresh
           </button>
@@ -483,7 +510,7 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {sortedArticles.map((article) => (
+                  {filteredArticles.map((article) => (
                     <tr key={article.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
                         {article.id}

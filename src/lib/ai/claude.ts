@@ -295,3 +295,32 @@ ${content}
 
   return JSON.parse(jsonText)
 }
+
+/**
+ * Simple text generation function for general purposes
+ */
+export async function generateText(
+  prompt: string,
+  options?: { maxTokens?: number; temperature?: number }
+): Promise<string> {
+  const claudeModel = await getAvailableClaudeModel()
+
+  if (!claudeModel) {
+    throw new Error('No Claude model available')
+  }
+
+  const anthropic = getAnthropic()
+  const message = await anthropic.messages.create({
+    model: claudeModel,
+    max_tokens: options?.maxTokens || 1024,
+    temperature: options?.temperature || 0.7,
+    messages: [
+      {
+        role: 'user',
+        content: prompt
+      }
+    ]
+  })
+
+  return message.content[0].type === 'text' ? message.content[0].text : ''
+}
