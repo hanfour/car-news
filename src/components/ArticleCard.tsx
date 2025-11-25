@@ -8,7 +8,7 @@ interface ArticleCardProps {
     id: string
     title_zh: string
     published_at: string
-    source_date?: string  // 來源文章的原始發布時間
+    source_published_at?: string  // 來源文章的原始發布時間
     view_count: number
     categories?: string[]
     brands?: string[]
@@ -31,7 +31,7 @@ export function ArticleCard({ article, gradient }: ArticleCardProps) {
   const month = article.published_at?.slice(5, 7) || String(new Date().getMonth() + 1).padStart(2, '0')
 
   // 顯示來源時間給使用者（真實新聞時間）
-  const displayDate = article.source_date || article.published_at
+  const displayDate = article.source_published_at || article.published_at
 
   return (
     <Link href={`/${year}/${month}/${article.id}`} prefetch={false}>

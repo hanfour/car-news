@@ -16,7 +16,7 @@ async function getLatestArticles() {
 
   const { data, error } = await supabase
     .from('generated_articles')
-    .select('id, title_zh, published_at, view_count, share_count, categories, brands, cover_image')
+    .select('id, title_zh, published_at, source_published_at, view_count, share_count, categories, brands, cover_image')
     .eq('published', true)
     .order('published_at', { ascending: false })
     .limit(50)

@@ -69,7 +69,7 @@ function getDaysAgo(days: number): Date {
 }
 
 // Common field selection to avoid duplication - includes all required Article fields
-const ARTICLE_LIST_FIELDS = 'id, title_zh, published_at, cover_image, categories, primary_brand, car_models'
+const ARTICLE_LIST_FIELDS = 'id, title_zh, published_at, source_published_at, cover_image, categories, primary_brand, car_models'
 const ARTICLE_WITH_STATS = `${ARTICLE_LIST_FIELDS}, view_count, share_count, comments_count`
 
 async function getPublishedArticles(): Promise<Article[]> {
