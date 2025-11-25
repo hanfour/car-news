@@ -228,29 +228,57 @@ function buildImagePrompt(
 /**
  * 生成並持久化存儲封面圖片
  * 自動將 DALL-E 3 生成的圖片上傳到 Supabase Storage
+ *
+ * @param title 文章標題
+ * @param content 文章內容
+ * @param brands 品牌列表
+ * @param referenceImages 可選的參考圖片（用於生成更準確的變體）
  */
 export async function generateAndSaveCoverImage(
   title: string,
   content: string,
-  brands?: string[]
+  brands?: string[],
+  referenceImages?: Array<{ url: string; caption?: string; size?: number }>
 ): Promise<{ url: string; credit: string } | null> {
-  // 1. 生成圖片
+
+  // 策略 1: 如果有參考圖片，優先使用圖生圖（Image Variation）
+  if (referenceImages && referenceImages.length > 0) {
+    console.log(`→ Found ${referenceImages.length} reference images, trying variation generation first...`)
+
+    try {
+      const { generateCoverFromBestReference } = await import('@/lib/ai/image-variation')
+      const variationResult = await generateCoverFromBestReference(referenceImages)
+
+      if (variationResult && variationResult.url) {
+        console.log('✓ Successfully generated cover from reference image')
+        return variationResult
+      } else {
+        console.log('⚠ Variation generation failed, falling back to text-to-image...')
+      }
+    } catch (error: any) {
+      console.warn('⚠ Variation generation error:', error.message)
+      console.log('→ Falling back to text-to-image generation...')
+    }
+  }
+
+  // 策略 2: Fallback 到純文字生成（DALL-E 3）
+  console.log('→ Using text-to-image generation (DALL-E 3)...')
+
   const result = await generateCoverImage(title, content, brands)
 
   if (!result || !result.url) {
     return null
   }
 
-  // 2. 上傳到持久化存儲
+  // 上傳到持久化存儲
   const { uploadImageFromUrl } = await import('@/lib/storage/image-uploader')
 
-  // 生成有意義的文件名
   const timestamp = Date.now()
   const brandPrefix = brands && brands.length > 0 ? brands[0].toLowerCase() : 'auto'
   const fileName = `ai-${brandPrefix}-${timestamp}`
 
   console.log('→ Uploading AI-generated image to permanent storage...')
-  const permanentUrl = await uploadImageFromUrl(result.url, fileName, true) // 啟用浮水印
+  const permanentUrl = await uploadImageFromUrl(result.url, fileName, true)
 
   if (!permanentUrl) {
     console.warn('⚠ Failed to upload to storage, using temporary DALL-E URL')
