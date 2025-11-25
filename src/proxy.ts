@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { verifySessionToken } from '@/lib/admin/session'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // 保護 /admin 路徑
   if (request.nextUrl.pathname.startsWith('/admin')) {
     const response = NextResponse.next()
