@@ -8,6 +8,13 @@ import { generateAndSaveCoverImage } from '@/lib/ai/image-generation'
 import { downloadAndStoreImage, downloadAndStoreImages } from '@/lib/storage/image-downloader'
 import { generateEmbedding, cosineSimilarity } from '@/lib/ai/embeddings'
 import { RawArticle } from '@/types/database'
+import {
+  checkTitleDuplicate,
+  generateTopicHash,
+  checkTopicLock,
+  createTopicLock,
+  markRawArticlesAsUsed
+} from '@/lib/utils/deduplication'
 
 export const maxDuration = 300 // Vercel Pro限制：最长5分钟
 
@@ -302,6 +309,23 @@ async function handleCronJob(request: NextRequest) {
 
       // 3.2 為每個主題聚類生成文章
       for (const cluster of brandClusters) {
+      // ============ SOLUTION 3: Topic Lock Check ============
+      // Generate topic hash from cluster centroid
+      let centroid = cluster.centroid
+      if (typeof centroid === 'string') {
+        centroid = JSON.parse(centroid)
+      }
+      const topicHash = generateTopicHash(centroid as number[])
+
+      // Check if this topic was generated recently (within 2 days)
+      const topicLockResult = await checkTopicLock(topicHash, 2)
+      if (topicLockResult.locked) {
+        console.log(`[${brand}] 🔒 Topic locked (generated ${topicLockResult.date}, article: ${topicLockResult.articleId})`)
+        console.log(`[${brand}] → Skipping to avoid duplicate topic`)
+        continue
+      }
+      // ======================================================
+
       // 在处理每个cluster前检查时间和数量限制
       if (!shouldContinueProcessing(totalProcessed)) {
         console.log(`[${brand}] ⏸️  Stopping cluster processing to avoid timeout`)
@@ -316,18 +340,17 @@ async function handleCronJob(request: NextRequest) {
         console.log(`[${brand}] → Generating article for cluster (${cluster.articles.length} sources)...`)
         const generated = await generateArticle(cluster.articles)
 
-        // 3.4.1 檢查是否已存在相同標題的文章（防止重複）
-        const { data: exactDuplicate } = await supabase
-          .from('generated_articles')
-          .select('id')
-          .eq('title_zh', generated.title_zh)
-          .single()
-
-        if (exactDuplicate) {
-          console.log(`[${brand}] ⚠ Article with same title already exists: "${generated.title_zh}"`)
+        // ============ SOLUTION 1: Title Similarity Check ============
+        // Check for similar titles (not just exact matches)
+        const titleDuplicate = await checkTitleDuplicate(generated.title_zh, 2, 0.85)
+        if (titleDuplicate) {
+          console.log(`[${brand}] ⚠ Similar title found (${(titleDuplicate.similarity * 100).toFixed(1)}% match):`)
+          console.log(`[${brand}]   Existing: "${titleDuplicate.title_zh}"`)
+          console.log(`[${brand}]   New:      "${generated.title_zh}"`)
           console.log(`[${brand}] → Skipping to avoid duplicate`)
           continue
         }
+        // ===========================================================
 
         // 3.4.2 檢查是否已存在極度相似的文章（使用 embedding 相似度 + 最近 1 天）
         // 為新生成的內容生成 embedding
@@ -505,6 +528,27 @@ async function handleCronJob(request: NextRequest) {
           continue
           // 但我們還是保留已生成的文章(因為已經消耗了 API 額度)
         }
+
+        // ============ SOLUTION 2: Mark Raw Articles as Used ============
+        // Mark all source articles as used to prevent reuse
+        const rawArticleIds = cluster.articles.map(a => a.id)
+        const markedSuccess = await markRawArticlesAsUsed(rawArticleIds, shortId)
+        if (markedSuccess) {
+          console.log(`[${brand}] 📌 Marked ${rawArticleIds.length} raw articles as used`)
+        } else {
+          console.log(`[${brand}] ⚠ Failed to mark raw articles as used (non-fatal)`)
+        }
+        // ===============================================================
+
+        // ============ SOLUTION 3: Create Topic Lock ============
+        // Lock this topic to prevent regeneration within 2 days
+        const lockSuccess = await createTopicLock(topicHash, shortId)
+        if (lockSuccess) {
+          console.log(`[${brand}] 🔒 Topic locked: ${topicHash.slice(0, 12)}...`)
+        } else {
+          console.log(`[${brand}] ⚠ Failed to create topic lock (non-fatal)`)
+        }
+        // =======================================================
 
         results.push({
           id: shortId,
