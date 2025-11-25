@@ -1,16 +1,14 @@
 import { createServiceClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
+import { verifyAdminAuth } from '@/lib/admin/auth'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
-    // 驗證 admin 權限
-    const cookieStore = await cookies()
-    const token = cookieStore.get('admin_token')?.value
-
-    if (!token || token !== process.env.ADMIN_API_KEY) {
+    // Verify admin authentication
+    const isAuthorized = await verifyAdminAuth(request)
+    if (!isAuthorized) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
