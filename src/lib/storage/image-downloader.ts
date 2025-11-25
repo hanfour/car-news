@@ -127,6 +127,13 @@ export async function downloadAndStoreImage(
 
     console.log(`[Image Storage] Downloaded ${size} bytes, type: ${contentType}`)
 
+    // 檢查圖片是否過小 (可能是縮圖或佔位符)
+    if (size < 5000) {
+      console.warn(`[Image Storage] Image too small (${size} bytes), likely a placeholder or thumbnail`)
+      console.warn(`[Image Storage] Skipping image: ${imageUrl}`)
+      return null
+    }
+
     // 檢查文件大小（限制 10MB）
     if (size > 10 * 1024 * 1024) {
       console.warn(`[Image Storage] File too large (${size} bytes), attempting to fetch compressed version...`)
