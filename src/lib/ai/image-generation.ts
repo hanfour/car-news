@@ -5,9 +5,17 @@
 
 import OpenAI from 'openai'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-})
+// Lazy initialization to ensure env vars are loaded first
+let openai: OpenAI | null = null
+
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    })
+  }
+  return openai
+}
 
 interface ImageGenerationResult {
   url: string
@@ -30,7 +38,7 @@ export async function generateCoverImage(
     console.log('→ Generating cover image with DALL-E 3...')
     console.log(`   Prompt: ${prompt.slice(0, 100)}...`)
 
-    const response = await openai.images.generate({
+    const response = await getOpenAI().images.generate({
       model: 'dall-e-3',
       prompt,
       n: 1,
