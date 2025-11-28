@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron/generator",
-      "schedule": "0 1,4,7,10,13,16 * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/cleanup",

@@ -15,17 +15,19 @@ import {
   createTopicLock,
   markRawArticlesAsUsed
 } from '@/lib/utils/deduplication'
+import { comprehensiveDuplicateCheck } from '@/lib/utils/advanced-deduplication'
 
 export const maxDuration = 300 // Vercel Pro限制：最长5分钟
 
-// 配置参数：品牌多樣性優化策略
+// 配置参数：小批量高频率策略（避免超时）
+// 策略：每小时执行一次，每次生成 10 篇，确保在 5 分钟内完成
 const TIMEOUT_CONFIG = {
   MAX_DURATION_MS: 270_000,      // 270秒 (4.5分钟) - 留30秒缓冲
-  MAX_ARTICLES_PER_RUN: 100,     // B. 增加上限：每次最多处理100篇（原50）
-  MIN_ARTICLES_PER_BRAND: 2,     // C. 品牌配額：每個品牌至少生成2篇（提高以確保每個品牌有足夠曝光）
-  TARGET_ARTICLES: 18,           // D. 目標文章數：每次執行目標生成18篇（12-24 範圍中間值）
+  MAX_ARTICLES_PER_RUN: 15,      // 每次最多处理15篇（留安全余量）
+  MIN_ARTICLES_PER_BRAND: 1,     // 品牌配額：每個品牌至少生成1篇（確保多樣性）
+  TARGET_ARTICLES: 10,           // 目標文章數：每次執行目標生成10篇（耗時 ~4 分鐘）
   TIME_CHECK_INTERVAL: 1000,     // 每1秒检查一次时间
-  ESTIMATED_TIME_PER_ARTICLE: 35_000,  // 估计每篇文章需要35秒
+  ESTIMATED_TIME_PER_ARTICLE: 25_000,  // Gemini 更快：估计每篇文章需要25秒（vs Claude 35秒）
   MIN_TIME_BUFFER: 45_000        // 最小時間緩衝 45 秒
 }
 
@@ -222,7 +224,7 @@ async function handleCronJob(request: NextRequest) {
     const brandQuotaTracker = new Map<string, number>()
 
     // D. 品牌配額上限：防止單一品牌佔據過多配額
-    const MAX_ARTICLES_PER_BRAND = 2  // 每次執行每個品牌最多生成 2 篇文章（降低以強制品牌多樣性）
+    const MAX_ARTICLES_PER_BRAND = 3  // 每小時每個品牌最多生成 3 篇文章（配合高頻率執行，保持品牌多樣性）
 
     // 3. 對每個品牌進行聚類和生成（使用排序後的順序）
     for (const [brand, brandArticles] of sortedBrands) {
@@ -340,66 +342,31 @@ async function handleCronJob(request: NextRequest) {
         console.log(`[${brand}] → Generating article for cluster (${cluster.articles.length} sources)...`)
         const generated = await generateArticle(cluster.articles)
 
-        // ============ SOLUTION 1: Title Similarity Check ============
-        // Check for similar titles (not just exact matches)
-        const titleDuplicate = await checkTitleDuplicate(generated.title_zh, 2, 0.85)
-        if (titleDuplicate) {
-          console.log(`[${brand}] ⚠ Similar title found (${(titleDuplicate.similarity * 100).toFixed(1)}% match):`)
-          console.log(`[${brand}]   Existing: "${titleDuplicate.title_zh}"`)
-          console.log(`[${brand}]   New:      "${generated.title_zh}"`)
-          console.log(`[${brand}] → Skipping to avoid duplicate`)
-          continue
-        }
-        // ===========================================================
-
-        // 3.4.2 檢查是否已存在極度相似的文章（使用 embedding 相似度 + 最近 1 天）
-        // 為新生成的內容生成 embedding
+        // ============ COMPREHENSIVE DUPLICATE CHECK ============
+        // Step 1: Generate embedding for the new article
+        console.log(`[${brand}] → Running comprehensive duplicate check...`)
         const newContentEmbedding = await generateEmbedding(
           `${generated.title_zh}\n\n${generated.content_zh}`
         )
 
-        let shouldSkip = false
+        // Step 2: Run all duplicate checks (brand frequency, keyword overlap, embedding similarity)
+        const duplicateResult = await comprehensiveDuplicateCheck({
+          title: generated.title_zh,
+          embedding: newContentEmbedding,
+          brand: brand === 'Other' ? 'Unknown' : brand
+        })
 
-        // 檢查最近 1 天的文章以避免重複（降低限制，只防止當天重複）
-        const oneDayAgo = new Date()
-        oneDayAgo.setDate(oneDayAgo.getDate() - 1)
-        const oneDayAgoStr = oneDayAgo.toISOString().split('T')[0]
-
-        // 獲取最近 1 天的文章及其 embedding
-        const { data: recentArticles } = await supabase
-          .from('generated_articles')
-          .select('id, title_zh, content_embedding')
-          .gte('created_at', oneDayAgoStr)
-          .not('content_embedding', 'is', null)
-          .limit(50)  // 只檢查最近 50 篇
-
-        if (recentArticles && recentArticles.length > 0) {
-          for (const existing of recentArticles) {
-            // 計算 embedding 相似度
-            let existingEmbedding = existing.content_embedding
-            if (typeof existingEmbedding === 'string') {
-              existingEmbedding = JSON.parse(existingEmbedding)
-            }
-
-            const similarity = cosineSimilarity(newContentEmbedding, existingEmbedding as number[])
-
-            // 如果相似度 >= 0.92，認為內容極度相似（提高閾值以允許更多不同角度的文章）
-            // 0.85 太嚴格，會過濾掉很多有價值的文章
-            if (similarity >= 0.92) {
-              console.log(`[${brand}] ⚠ Highly similar article already exists:`)
-              console.log(`[${brand}]   Existing: "${existing.title_zh}"`)
-              console.log(`[${brand}]   New:      "${generated.title_zh}"`)
-              console.log(`[${brand}]   Similarity: ${(similarity * 100).toFixed(1)}%`)
-              console.log(`[${brand}] → Skipping to avoid duplicate content`)
-              shouldSkip = true
-              break
-            }
+        if (duplicateResult.isDuplicate) {
+          console.log(`[${brand}] 🚫 Duplicate detected: ${duplicateResult.reason}`)
+          if (duplicateResult.relatedArticle) {
+            console.log(`[${brand}]   Related: "${duplicateResult.relatedArticle.title_zh}"`)
           }
+          console.log(`[${brand}] → Skipping to avoid duplicate`)
+          continue
         }
 
-        if (shouldSkip) {
-          continue  // 跳到下一個 cluster
-        }
+        console.log(`[${brand}] ✓ Passed duplicate check`)
+        // =======================================================
 
         // 3.5 收集該 cluster 所有圖片（外部 URL）
         const sourceImages: Array<{ url: string; credit: string; caption?: string }> = []
@@ -423,7 +390,7 @@ async function handleCronJob(request: NextRequest) {
         let coverImage = generated.coverImage
         let imageCredit = generated.imageCredit
 
-        // 優先順序：1. AI生成的coverImage  2. 來源文章第一張圖  3. AI生成封面圖
+        // 優先順序：1. AI生成的coverImage  2. 來源文章第一張圖  3. 智能 AI 生成
         if (generated.coverImage) {
           // 下載並存儲 AI 生成的封面圖
           console.log(`[${brand}] → Downloading AI-generated cover image...`)
@@ -442,21 +409,34 @@ async function handleCronJob(request: NextRequest) {
           coverImage = storedImages[0].url
           imageCredit = storedImages[0].credit
           console.log(`[${brand}] → Using first source image as cover`)
-        } else if (sourceImages.length === 0) {
-          // 完全沒有圖片時，生成 AI 封面圖
-          console.log(`[${brand}] → No images found, generating and saving AI cover image...`)
-          const aiImage = await generateAndSaveCoverImage(
-            generated.title_zh,
-            generated.content_zh,
-            generated.brands
-          )
+        } else {
+          // 沒有可用圖片時的智能策略
+          // 注意：sourceImages 可能存在但下載失敗（storedImages.length === 0）
+          console.log(`[${brand}] → No images available (source: ${sourceImages.length}, stored: ${storedImages.length})`)
 
-          if (aiImage && aiImage.url) {
-            coverImage = aiImage.url
-            imageCredit = aiImage.credit
-            console.log(`[${brand}] ✓ AI cover image generated and saved`)
+          // 智能判斷是否生成 AI 圖片
+          // 成本考量：DALL-E 3 ($0.08/張) vs Gemini 文字 ($0.000675/篇) = 100x 差異
+          // 可通過環境變數 ENABLE_AI_IMAGE_GENERATION 控制（默認啟用）
+          const enableAIGeneration = process.env.ENABLE_AI_IMAGE_GENERATION !== 'false'
+
+          if (enableAIGeneration) {
+            console.log(`[${brand}] → No source images, generating AI cover (cost: $0.08)...`)
+            const aiImage = await generateAndSaveCoverImage(
+              generated.title_zh,
+              generated.content_zh,
+              generated.brands
+            )
+
+            if (aiImage && aiImage.url) {
+              coverImage = aiImage.url
+              imageCredit = aiImage.credit
+              console.log(`[${brand}] ✓ AI cover image generated and saved`)
+            } else {
+              console.log(`[${brand}] ✗ AI image generation failed`)
+            }
           } else {
-            console.log(`[${brand}] ✗ AI image generation failed`)
+            console.log(`[${brand}] ⏭️  AI image generation disabled (ENABLE_AI_IMAGE_GENERATION=false)`)
+            // AI 圖片生成已關閉，文章將沒有封面圖
           }
         }
 
@@ -495,7 +475,7 @@ async function handleCronJob(request: NextRequest) {
           filteredBrands = allBrands.slice(0, 3)
         }
 
-        // 3.8 保存文章（包含标签、封面圖、品牌、多張圖片、來源時間）
+        // 3.8 保存文章（包含标签、封面圖、品牌、多張圖片、來源時間、content_embedding）
         const { data: article, error: insertError } = await supabase
           .from('generated_articles')
           .insert({
@@ -518,7 +498,8 @@ async function handleCronJob(request: NextRequest) {
             cover_image: coverImage || null,
             image_credit: imageCredit || null,
             primary_brand: brand === 'Other' ? null : brand,
-            images: storedImages.length > 0 ? storedImages : []
+            images: storedImages.length > 0 ? storedImages : [],
+            content_embedding: newContentEmbedding
           })
           .select()
           .single()

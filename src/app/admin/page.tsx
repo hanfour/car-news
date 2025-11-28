@@ -40,6 +40,33 @@ interface GeneratorStats {
   }
 }
 
+interface DuplicateMonitorStats {
+  stats: {
+    totalArticles: number
+    articlesWithEmbedding: number
+    semanticDuplicatesCount: number
+    keywordDuplicatesCount: number
+    brandViolationsCount: number
+    publishedArticles: number
+  }
+  semanticDuplicates: Array<{
+    article1: { id: string; title_zh: string; brand: string | null }
+    article2: { id: string; title_zh: string; brand: string | null }
+    similarity: number
+  }>
+  keywordDuplicates: Array<{
+    article1: { id: string; title_zh: string; brand: string | null }
+    article2: { id: string; title_zh: string; brand: string | null }
+    overlap: number
+    keywords: string[]
+  }>
+  brandViolations: Array<{
+    brand: string
+    count: number
+    articles: Array<{ id: string; title_zh: string; created_at: string }>
+  }>
+}
+
 export default function AdminDashboard() {
   const router = useRouter()
   const [articles, setArticles] = useState<Article[]>([])
@@ -56,6 +83,11 @@ export default function AdminDashboard() {
   const [generatorStats, setGeneratorStats] = useState<GeneratorStats | null>(null)
   const [generatorLoading, setGeneratorLoading] = useState(false)
   const [triggering, setTriggering] = useState(false)
+
+  // Duplicate monitor
+  const [showDuplicates, setShowDuplicates] = useState(false)
+  const [duplicateStats, setDuplicateStats] = useState<DuplicateMonitorStats | null>(null)
+  const [duplicateLoading, setDuplicateLoading] = useState(false)
 
   useEffect(() => {
     fetchArticles()
@@ -110,8 +142,26 @@ export default function AdminDashboard() {
     }
   }
 
+  const fetchDuplicateStats = async () => {
+    setDuplicateLoading(true)
+    try {
+      const response = await fetch('/api/admin/duplicate-monitor', {
+        credentials: 'include'
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setDuplicateStats(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch duplicate stats:', error)
+    } finally {
+      setDuplicateLoading(false)
+    }
+  }
+
   const handleTriggerGenerator = async () => {
-    if (!confirm('確定要手動觸發 Generator？這將開始生成新文章。')) {
+    if (!confirm('確定要手動觸發 Generator？這將開始生成新文章（目標 10 篇，約需 4-5 分鐘）。')) {
       return
     }
 
@@ -125,10 +175,14 @@ export default function AdminDashboard() {
       const data = await response.json()
 
       if (response.ok) {
-        alert(`Generator 執行成功！\n生成: ${data.result.generated} 篇\n發布: ${data.result.published} 篇`)
-        // 刷新統計
-        fetchGeneratorStats()
-        fetchArticles()
+        // 新的異步響應：立即返回，不等待完成
+        alert(`✅ Generator 已在後台啟動！\n\n${data.message}\n\n請稍後刷新頁面查看新文章。\n您可以關閉此頁面，生成會繼續進行。`)
+
+        // 30 秒後自動刷新統計（讓用戶有時間看到第一批文章）
+        setTimeout(() => {
+          fetchGeneratorStats()
+          fetchArticles()
+        }, 30000)
       } else {
         alert(`Generator 執行失敗：${data.error}`)
       }
@@ -536,6 +590,223 @@ export default function AdminDashboard() {
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+        </div>
+
+        {/* Duplicate Monitor Section */}
+        <div className="bg-white rounded-lg shadow mb-8">
+          <div
+            className="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50"
+            onClick={() => {
+              setShowDuplicates(!showDuplicates)
+              if (!showDuplicates && !duplicateStats) {
+                fetchDuplicateStats()
+              }
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-gray-900">Duplicate Monitor</h2>
+              {duplicateStats && (
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                  duplicateStats.stats.semanticDuplicatesCount + duplicateStats.stats.keywordDuplicatesCount > 0
+                    ? 'bg-red-100 text-red-800'
+                    : 'bg-green-100 text-green-800'
+                }`}>
+                  {duplicateStats.stats.semanticDuplicatesCount + duplicateStats.stats.keywordDuplicatesCount > 0
+                    ? `${duplicateStats.stats.semanticDuplicatesCount + duplicateStats.stats.keywordDuplicatesCount} ISSUES`
+                    : 'CLEAN'}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  fetchDuplicateStats()
+                }}
+                disabled={duplicateLoading}
+                className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              >
+                {duplicateLoading ? 'Scanning...' : 'Scan Now'}
+              </button>
+              <span className="text-gray-400">{showDuplicates ? '▼' : '▶'}</span>
+            </div>
+          </div>
+
+          {showDuplicates && duplicateStats && (
+            <div className="p-4 border-t space-y-6">
+              {/* Summary Stats */}
+              <div className="grid grid-cols-4 gap-4">
+                <div className="bg-blue-50 p-3 rounded">
+                  <div className="text-xs text-gray-600 mb-1">分析文章</div>
+                  <div className="text-xl font-bold text-blue-900">{duplicateStats.stats.totalArticles}</div>
+                  <div className="text-xs text-gray-500">{duplicateStats.stats.articlesWithEmbedding} 含 embedding</div>
+                </div>
+                <div className="bg-red-50 p-3 rounded">
+                  <div className="text-xs text-gray-600 mb-1">語義重複</div>
+                  <div className={`text-xl font-bold ${
+                    duplicateStats.stats.semanticDuplicatesCount > 0 ? 'text-red-600' : 'text-green-600'
+                  }`}>
+                    {duplicateStats.stats.semanticDuplicatesCount}
+                  </div>
+                  <div className="text-xs text-gray-500">&gt;90% 相似度</div>
+                </div>
+                <div className="bg-yellow-50 p-3 rounded">
+                  <div className="text-xs text-gray-600 mb-1">關鍵詞重複</div>
+                  <div className={`text-xl font-bold ${
+                    duplicateStats.stats.keywordDuplicatesCount > 0 ? 'text-yellow-600' : 'text-green-600'
+                  }`}>
+                    {duplicateStats.stats.keywordDuplicatesCount}
+                  </div>
+                  <div className="text-xs text-gray-500">&gt;70% 重疊</div>
+                </div>
+                <div className="bg-orange-50 p-3 rounded">
+                  <div className="text-xs text-gray-600 mb-1">品牌超限</div>
+                  <div className={`text-xl font-bold ${
+                    duplicateStats.stats.brandViolationsCount > 0 ? 'text-orange-600' : 'text-green-600'
+                  }`}>
+                    {duplicateStats.stats.brandViolationsCount}
+                  </div>
+                  <div className="text-xs text-gray-500">&gt;3 篇/24h</div>
+                </div>
+              </div>
+
+              {/* Semantic Duplicates */}
+              {duplicateStats.semanticDuplicates.length > 0 && (
+                <div className="bg-red-50 p-4 rounded">
+                  <h3 className="font-semibold text-red-900 mb-3">🚨 語義重複 (Embedding Similarity &gt;90%)</h3>
+                  <div className="space-y-3">
+                    {duplicateStats.semanticDuplicates.map((dup, idx) => (
+                      <div key={idx} className="bg-white p-3 rounded border border-red-200">
+                        <div className="flex items-start gap-2 mb-2">
+                          <div className="flex-shrink-0 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">
+                            {(dup.similarity * 100).toFixed(0)}%
+                          </div>
+                          <div className="flex-1 text-sm">
+                            <div className="font-medium text-gray-900 mb-1">
+                              [{dup.article1.brand}] {dup.article1.title_zh}
+                            </div>
+                            <div className="text-gray-700">
+                              [{dup.article2.brand}] {dup.article2.title_zh}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 text-xs">
+                          <button
+                            onClick={() => window.open(`/admin?search=${dup.article1.id}`, '_blank')}
+                            className="text-blue-600 hover:underline"
+                          >
+                            查看 #{dup.article1.id}
+                          </button>
+                          <span className="text-gray-300">|</span>
+                          <button
+                            onClick={() => window.open(`/admin?search=${dup.article2.id}`, '_blank')}
+                            className="text-blue-600 hover:underline"
+                          >
+                            查看 #{dup.article2.id}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Keyword Duplicates */}
+              {duplicateStats.keywordDuplicates.length > 0 && (
+                <div className="bg-yellow-50 p-4 rounded">
+                  <h3 className="font-semibold text-yellow-900 mb-3">⚠️ 關鍵詞重複 (Keyword Overlap &gt;70%)</h3>
+                  <div className="space-y-3">
+                    {duplicateStats.keywordDuplicates.map((dup, idx) => (
+                      <div key={idx} className="bg-white p-3 rounded border border-yellow-200">
+                        <div className="flex items-start gap-2 mb-2">
+                          <div className="flex-shrink-0 bg-yellow-600 text-white text-xs font-bold px-2 py-1 rounded">
+                            {(dup.overlap * 100).toFixed(0)}%
+                          </div>
+                          <div className="flex-1 text-sm">
+                            <div className="font-medium text-gray-900 mb-1">
+                              [{dup.article1.brand}] {dup.article1.title_zh}
+                            </div>
+                            <div className="text-gray-700 mb-2">
+                              [{dup.article2.brand}] {dup.article2.title_zh}
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              <span className="text-xs text-gray-500">共同關鍵詞:</span>
+                              {dup.keywords.map((kw, i) => (
+                                <span key={i} className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">
+                                  {kw}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 text-xs">
+                          <button
+                            onClick={() => window.open(`/admin?search=${dup.article1.id}`, '_blank')}
+                            className="text-blue-600 hover:underline"
+                          >
+                            查看 #{dup.article1.id}
+                          </button>
+                          <span className="text-gray-300">|</span>
+                          <button
+                            onClick={() => window.open(`/admin?search=${dup.article2.id}`, '_blank')}
+                            className="text-blue-600 hover:underline"
+                          >
+                            查看 #{dup.article2.id}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Brand Frequency Violations */}
+              {duplicateStats.brandViolations.length > 0 && (
+                <div className="bg-orange-50 p-4 rounded">
+                  <h3 className="font-semibold text-orange-900 mb-3">📊 品牌頻率超限 (&gt;3 篇/24小時)</h3>
+                  <div className="space-y-3">
+                    {duplicateStats.brandViolations.map((vio, idx) => (
+                      <div key={idx} className="bg-white p-3 rounded border border-orange-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="flex-shrink-0 bg-orange-600 text-white text-sm font-bold px-3 py-1 rounded">
+                            {vio.brand}
+                          </div>
+                          <div className="text-lg font-bold text-orange-600">{vio.count} 篇</div>
+                          <div className="text-sm text-gray-500">(限制: 3 篇/24h)</div>
+                        </div>
+                        <div className="space-y-1 text-xs text-gray-700">
+                          {vio.articles.map((article, i) => (
+                            <div key={i} className="flex justify-between">
+                              <span className="truncate flex-1">{article.title_zh}</span>
+                              <button
+                                onClick={() => window.open(`/admin?search=${article.id}`, '_blank')}
+                                className="ml-2 text-blue-600 hover:underline flex-shrink-0"
+                              >
+                                #{article.id}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Clean State */}
+              {duplicateStats.stats.semanticDuplicatesCount === 0 &&
+               duplicateStats.stats.keywordDuplicatesCount === 0 &&
+               duplicateStats.stats.brandViolationsCount === 0 && (
+                <div className="bg-green-50 p-6 rounded text-center">
+                  <div className="text-4xl mb-2">✅</div>
+                  <div className="text-lg font-semibold text-green-900">無重複問題</div>
+                  <div className="text-sm text-green-700 mt-1">
+                    過去 7 天的 {duplicateStats.stats.totalArticles} 篇文章未發現重複內容
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
