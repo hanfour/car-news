@@ -1,108 +1,77 @@
-import { createClient } from '@supabase/supabase-js'
+#!/usr/bin/env tsx
+
 import * as dotenv from 'dotenv'
 import * as path from 'path'
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 
-// Load .env.local
-dotenv.config({ path: path.join(process.cwd(), '.env.local') })
+import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error('Missing Supabase credentials')
-  process.exit(1)
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey)
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 async function checkRecentArticles() {
-  // Get all recent articles from last 7 days
-  const sevenDaysAgo = new Date(Date.now() - 7 * 86400000)
+  console.log('🔍 檢查最近生成的文章...\n')
+  console.log('='.repeat(80))
 
-  const { data: allArticles, error } = await supabase
+  const { data: articles, error } = await supabase
     .from('generated_articles')
-    .select('id, title_zh, created_at, source_urls, published_at')
-    .gte('created_at', sevenDaysAgo.toISOString())
+    .select('id, title_zh, cover_image, image_credit, published, created_at, confidence')
     .order('created_at', { ascending: false })
-    .limit(100)
+    .limit(10)
 
   if (error) {
-    console.error('Error fetching articles:', error)
-    return
+    console.error('❌ 查詢失敗:', error.message)
+    process.exit(1)
   }
 
-  console.log('\n=== 最近 7 天的文章 (共 ' + (allArticles?.length || 0) + ' 篇) ===')
+  if (!articles || articles.length === 0) {
+    console.log('❌ 沒有找到文章')
+    process.exit(0)
+  }
 
-  // Group by date
-  const articlesByDate = new Map<string, typeof allArticles>()
+  console.log(`\n找到 ${articles.length} 篇最近的文章:\n`)
 
-  allArticles?.forEach(a => {
-    const date = new Date(a.created_at).toLocaleDateString('zh-TW')
-    if (!articlesByDate.has(date)) {
-      articlesByDate.set(date, [])
+  for (const article of articles) {
+    const hasImage = !!article.cover_image
+    const imageStatus = hasImage ? '✅' : '❌'
+    const publishedStatus = article.published ? '✅ 已發布' : '⏸️  草稿'
+
+    console.log(`${imageStatus} ${publishedStatus} | ${article.created_at.slice(0, 19)}`)
+    console.log(`   標題: ${article.title_zh}`)
+    console.log(`   ID: ${article.id}`)
+
+    if (hasImage) {
+      const imageUrl = article.cover_image!.slice(0, 80)
+      console.log(`   圖片: ${imageUrl}...`)
+    } else {
+      console.log(`   圖片: ❌ 無封面圖`)
     }
-    articlesByDate.get(date)!.push(a)
-  })
 
-  // Display by date
-  Array.from(articlesByDate.entries())
-    .sort((a, b) => b[0].localeCompare(a[0]))
-    .forEach(([date, articles]) => {
-      console.log(`\n${date} (${articles.length} 篇):`)
-      articles.forEach(a => {
-        console.log(`  ${new Date(a.created_at).toLocaleTimeString('zh-TW')} | ${a.title_zh.substring(0, 60)}`)
-      })
-    })
-
-  // Now check for duplicates
-  const today = new Date()
-  const yesterday = new Date(Date.now() - 86400000)
-  today.setHours(0, 0, 0, 0)
-  yesterday.setHours(0, 0, 0, 0)
-
-  const todayArticles = allArticles?.filter(a => new Date(a.created_at) >= today) || []
-  const yesterdayArticles = allArticles?.filter(a => {
-    const date = new Date(a.created_at)
-    return date >= yesterday && date < today
-  }) || []
-
-  console.log('\n=== 今天的文章 (' + todayArticles.length + ' 篇) ===')
-  todayArticles.forEach(a => {
-    console.log(`${new Date(a.created_at).toLocaleString('zh-TW')} | ${a.title_zh}`)
-  })
-
-  console.log('\n=== 昨天的文章 (' + yesterdayArticles.length + ' 篇) ===')
-  yesterdayArticles.forEach(a => {
-    console.log(`${new Date(a.created_at).toLocaleString('zh-TW')} | ${a.title_zh}`)
-  })
-
-  // Check for duplicates
-  console.log('\n=== 檢查重複文章 ===')
-  const todayTitles = new Set(todayArticles?.map(a => a.title_zh) || [])
-  const yesterdayTitles = new Set(yesterdayArticles?.map(a => a.title_zh) || [])
-
-  const duplicates = [...todayTitles].filter(title => yesterdayTitles.has(title))
-
-  if (duplicates.length > 0) {
-    console.log('⚠️  發現重複文章標題：')
-    duplicates.forEach(title => console.log('  -', title))
-  } else {
-    console.log('✅ 沒有發現重複的文章標題')
+    console.log('')
   }
 
-  // Check source URLs (flatten arrays)
-  console.log('\n=== 檢查來源 URL ===')
-  const todayUrls = new Set(todayArticles?.flatMap(a => a.source_urls || []) || [])
-  const yesterdayUrls = new Set(yesterdayArticles?.flatMap(a => a.source_urls || []) || [])
+  console.log('='.repeat(80))
 
-  const duplicateUrls = [...todayUrls].filter(url => yesterdayUrls.has(url))
+  const withImages = articles.filter(a => a.cover_image).length
+  const published = articles.filter(a => a.published).length
 
-  if (duplicateUrls.length > 0) {
-    console.log('⚠️  發現重複的來源 URL：')
-    duplicateUrls.forEach(url => console.log('  -', url))
+  console.log(`\n📊 統計:`)
+  console.log(`   有圖片: ${withImages}/${articles.length}`)
+  console.log(`   已發布: ${published}/${articles.length}`)
+
+  const publishedWithoutImages = articles.filter(a => a.published && !a.cover_image)
+
+  if (publishedWithoutImages.length > 0) {
+    console.log(`\n⚠️  警告: 有 ${publishedWithoutImages.length} 篇已發布的文章沒有封面圖！`)
+    console.log(`\n可以執行: npx tsx scripts/fix-missing-covers.ts`)
   } else {
-    console.log('✅ 沒有發現重複的來源 URL')
+    console.log(`\n✅ 所有已發布的文章都有封面圖！`)
   }
 }
 
-checkRecentArticles()
+checkRecentArticles().catch(error => {
+  console.error('\n❌ 腳本執行失敗:', error)
+  process.exit(1)
+})

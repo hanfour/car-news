@@ -5,11 +5,13 @@ import { TodayFeaturedSection } from '@/components/TodayFeaturedSection'
 import { PopularArticlesCarousel } from '@/components/PopularArticlesCarousel'
 import { AllArticlesGrid } from '@/components/AllArticlesGrid'
 import { TagCloud } from '@/components/TagCloud'
+import { AutoRefreshArticles } from '@/components/AutoRefreshArticles'
 import { POPULAR_BRANDS, BRANDS_BY_COUNTRY } from '@/config/brands'
 import type { Article, ArticleWithContent, ArticleWithBrands, Tag } from '@/types/article'
 import { Metadata } from 'next'
 
-export const revalidate = 60 // 每60秒重新验证
+export const revalidate = 10 // 每10秒重新验证（更快看到新文章，適合開發環境）
+// 注意：生產環境建議使用 30-60 秒以減少服務器負載
 
 /**
  * Homepage SEO metadata
@@ -234,6 +236,9 @@ export default async function Home() {
     <div className="flex flex-col min-h-screen">
       {/* Sticky Header with Sidebar */}
       <StickyHeader popularBrands={POPULAR_BRANDS} brandsByCountry={BRANDS_BY_COUNTRY} />
+
+      {/* 自動檢測並提示新文章 */}
+      <AutoRefreshArticles />
 
       {/* 今日最新文章輪播 */}
       <TodayArticlesCarousel articles={todayArticles} />
