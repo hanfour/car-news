@@ -69,7 +69,7 @@ async function diagnose() {
 
   if (sourcesError) {
     console.error('❌ 查詢錯誤:', sourcesError)
-  } else {
+  } else if (sources) {
     console.log(`✅ 最近 7 天抓取了 ${sources.length} 篇源文章`)
     if (sources.length > 0) {
       console.log(`   最新: ${sources[0].published_at} - ${sources[0].source}`)
@@ -102,7 +102,7 @@ async function diagnose() {
     console.log('   解決: 新配置（10 篇/次）已部署，應該修復此問題')
     console.log('')
 
-    if (sources.length === 0) {
+    if (sources && sources.length === 0) {
       console.log('❌ 問題 3: Scraper 也停止運行')
       console.log('   原因: 沒有源文章，Generator 無法生成')
       console.log('   解決: 檢查 Scraper Cron 是否正常')
