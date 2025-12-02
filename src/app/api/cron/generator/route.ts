@@ -119,28 +119,35 @@ async function handleCronJob(request: NextRequest) {
     }
 
     // 1.6 為沒有 embedding 的文章生成 embedding（批次處理）
-    const articlesWithoutEmbedding = carArticles.filter(a => !a.embedding)
-    if (articlesWithoutEmbedding.length > 0) {
-      console.log(`Generating embeddings for ${articlesWithoutEmbedding.length} articles...`)
+    // 可通過環境變量 DISABLE_EMBEDDINGS=true 臨時禁用（當 OpenAI API 配額用完時）
+    const DISABLE_EMBEDDINGS = process.env.DISABLE_EMBEDDINGS === 'true'
 
-      for (const article of articlesWithoutEmbedding) {
-        try {
-          const embedding = await generateEmbedding(article.content)
-          const { error: updateError } = await supabase
-            .from('raw_articles')
-            .update({ embedding })
-            .eq('id', article.id)
+    if (DISABLE_EMBEDDINGS) {
+      console.log('⚠️  Embeddings generation is disabled (DISABLE_EMBEDDINGS=true)')
+    } else {
+      const articlesWithoutEmbedding = carArticles.filter(a => !a.embedding)
+      if (articlesWithoutEmbedding.length > 0) {
+        console.log(`Generating embeddings for ${articlesWithoutEmbedding.length} articles...`)
 
-          if (updateError) {
-            console.error(`Failed to update embedding for ${article.url}:`, updateError)
-          } else {
-            article.embedding = embedding // 更新本地對象
+        for (const article of articlesWithoutEmbedding) {
+          try {
+            const embedding = await generateEmbedding(article.content)
+            const { error: updateError } = await supabase
+              .from('raw_articles')
+              .update({ embedding })
+              .eq('id', article.id)
+
+            if (updateError) {
+              console.error(`Failed to update embedding for ${article.url}:`, updateError)
+            } else {
+              article.embedding = embedding // 更新本地對象
+            }
+          } catch (error) {
+            console.error(`Failed to generate embedding for ${article.url}:`, error)
           }
-        } catch (error) {
-          console.error(`Failed to generate embedding for ${article.url}:`, error)
         }
+        console.log(`✓ Embeddings generated`)
       }
-      console.log(`✓ Embeddings generated`)
     }
 
     // 2. 按品牌分組
