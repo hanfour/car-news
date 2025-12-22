@@ -20,7 +20,7 @@ export async function GET() {
     // 1. Fetch all published articles
     const { data: articles, error } = await supabase
       .from('generated_articles')
-      .select('id, published_at, updated_at')
+      .select('id, published_at')
       .eq('published', true)
       .order('published_at', { ascending: false })
 
@@ -68,7 +68,7 @@ export async function GET() {
   <!-- Articles -->
 ${articles?.map(article => {
   // Parse published_at to get year and month
-  const publishedDate = new Date(article.published_at || article.updated_at)
+  const publishedDate = new Date(article.published_at)
   const year = publishedDate.getFullYear()
   const month = String(publishedDate.getMonth() + 1).padStart(2, '0')
 
@@ -88,7 +88,7 @@ ${articles?.map(article => {
     changefreq = 'weekly'
   }
 
-  const lastmod = article.updated_at || article.published_at
+  const lastmod = article.published_at
 
   return `  <url>
     <loc>${baseUrl}/${year}/${month}/${article.id}</loc>

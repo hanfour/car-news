@@ -45,7 +45,7 @@ Gemini API 提供慷慨的免費額度：
 
 ### Step 1: 取得 Gemini API Key
 
-你已經有了：`AIzaSyDWVFo-A6n4Vau7QGpSv3M4kS2CnMkv93w`
+你已經有了：`your-google-api-key`
 
 或到以下網址申請新的：
 1. 訪問 https://ai.google.dev/
@@ -59,7 +59,7 @@ Gemini API 提供慷慨的免費額度：
 
 ```bash
 # Google Gemini API (新增)
-GEMINI_API_KEY=AIzaSyDWVFo-A6n4Vau7QGpSv3M4kS2CnMkv93w
+GEMINI_API_KEY=your-google-api-key
 
 # AI Provider 設定
 AI_PROVIDER=gemini        # 'claude' | 'gemini'
@@ -449,7 +449,7 @@ const apiKey = 'AIzaSy...'  // 永遠不要這樣做！
 # .env.local
 AI_PROVIDER=gemini
 GEMINI_MODEL=flash
-GEMINI_API_KEY=AIzaSyDWVFo-A6n4Vau7QGpSv3M4kS2CnMkv93w
+GEMINI_API_KEY=your-google-api-key
 
 # 保留作為備用
 ANTHROPIC_API_KEY=your-claude-key

@@ -8,7 +8,7 @@
 
 ```bash
 # Google Gemini API (使用 Gemini 2.5 模型)
-GEMINI_API_KEY=AIzaSyDWVFo-A6n4Vau7QGpSv3M4kS2CnMkv93w
+GEMINI_API_KEY=your-google-api-key-here
 
 # 啟用 Gemini
 AI_PROVIDER=gemini

@@ -68,11 +68,21 @@ export async function parseRSSFeed(source: NewsSource): Promise<ScrapedArticle[]
           .replace(/&quot;/g, '"')
       }
 
+      // 安全解析日期，避免無效日期導致 toISOString() 崩潰
+      let publishedAt: Date | undefined
+      if (item.pubDate) {
+        const parsed = new Date(item.pubDate)
+        // 檢查是否為有效日期
+        if (!isNaN(parsed.getTime())) {
+          publishedAt = parsed
+        }
+      }
+
       articles.push({
         url: item.link,
         title: item.title,
         content: content.slice(0, 5000), // 限制长度
-        publishedAt: item.pubDate ? new Date(item.pubDate) : undefined,
+        publishedAt,
         source: source.name,
         imageUrl
       })
