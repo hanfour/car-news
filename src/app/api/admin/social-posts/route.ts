@@ -94,7 +94,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const articleUrl = `https://wantcar.autos/${article.slug}`
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://wantcar.autos'
+    const articleUrl = `${baseUrl}/${article.slug}`
 
     // 為每個平台生成貼文
     const createdPosts = []

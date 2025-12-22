@@ -7,9 +7,9 @@ import { getErrorMessage } from '@/lib/utils/error'
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const authHeader = request.headers.get('authorization')
-  const expectedToken = process.env.MIGRATION_TOKEN || 'your-secret-migration-token'
+  const expectedToken = process.env.MIGRATION_TOKEN
 
-  if (authHeader !== `Bearer ${expectedToken}`) {
+  if (!expectedToken || authHeader !== `Bearer ${expectedToken}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
