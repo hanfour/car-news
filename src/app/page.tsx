@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 
   openGraph: {
     type: 'website',
-    url: process.env.NEXT_PUBLIC_BASE_URL || 'https://wantcar.com',
+    url: process.env.NEXT_PUBLIC_BASE_URL || 'https://wantcar.autos',
     title: '玩咖 WANT CAR - 想要車？玩車資訊一網打盡',
     description: '從數據到動力，AI 帶你玩懂車界未來。聚合全球汽車新聞，提供 Tesla、BMW、Mercedes 等品牌最新資訊。',
     siteName: '玩咖 WANT CAR',
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
   },
 
   alternates: {
-    canonical: process.env.NEXT_PUBLIC_BASE_URL || 'https://wantcar.com'
+    canonical: process.env.NEXT_PUBLIC_BASE_URL || 'https://wantcar.autos'
   },
 
   robots: {

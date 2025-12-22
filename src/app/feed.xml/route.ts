@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
 import RSS from 'rss'
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://wantcar.com'
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://wantcar.autos'
 
 export async function GET() {
   const supabase = createClient()
@@ -27,8 +27,8 @@ export async function GET() {
     feed_url: `${BASE_URL}/feed.xml`,
     site_url: BASE_URL,
     image_url: `${BASE_URL}/logo.png`,
-    managingEditor: 'editor@wantcar.com (玩咖 WANT CAR 編輯團隊)',
-    webMaster: 'webmaster@wantcar.com (玩咖 WANT CAR 技術團隊)',
+    managingEditor: 'editor@wantcar.autos (玩咖 WANT CAR 編輯團隊)',
+    webMaster: 'webmaster@wantcar.autos (玩咖 WANT CAR 技術團隊)',
     copyright: `© ${new Date().getFullYear()} WANT CAR`,
     language: 'zh-TW',
     categories: ['汽車', '電動車', '新車', '科技'],
@@ -43,10 +43,15 @@ export async function GET() {
       ? article.content_zh.slice(0, 200).trim() + '...'
       : article.title_zh
 
+    // Extract year and month from published_at for URL
+    const publishedDate = new Date(article.published_at)
+    const year = publishedDate.getFullYear()
+    const month = String(publishedDate.getMonth() + 1).padStart(2, '0')
+
     feed.item({
       title: article.title_zh,
       description,
-      url: `${BASE_URL}/article/${article.id}`,
+      url: `${BASE_URL}/${year}/${month}/${article.id}`,
       guid: article.id,
       categories: [
         ...(article.brands || []),
