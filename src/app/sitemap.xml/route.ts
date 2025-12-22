@@ -108,7 +108,7 @@ ${articles?.map(article => {
       }
     })
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Sitemap] Unexpected error:', error)
     return new NextResponse('Error generating sitemap', { status: 500 })
   }

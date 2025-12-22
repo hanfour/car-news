@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
+import { getErrorMessage } from '@/lib/utils/error'
 
 export async function POST(request: NextRequest) {
   try {
@@ -128,9 +129,9 @@ export async function POST(request: NextRequest) {
           console.log(`[Migration ${i + 1}] Success`)
           results.push({ step: i + 1, success: true })
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error(`[Migration ${i + 1}] Exception:`, err)
-        results.push({ step: i + 1, error: err.message })
+        results.push({ step: i + 1, error: getErrorMessage(err) })
       }
     }
 
@@ -152,10 +153,10 @@ export async function POST(request: NextRequest) {
       message: 'Migration applied successfully',
       results
     })
-  } catch (error: any) {
-    console.error('[Migration] Unexpected error:', error)
+  } catch (error) {
+    console.error('[Migration] Unexpected error:', getErrorMessage(error))
     return NextResponse.json(
-      { error: 'Migration failed', details: error.message },
+      { error: 'Migration failed', details: getErrorMessage(error) },
       { status: 500 }
     )
   }

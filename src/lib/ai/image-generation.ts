@@ -4,6 +4,7 @@
  */
 
 import OpenAI from 'openai'
+import { getErrorMessage } from '@/lib/utils/error'
 
 // Lazy initialization to ensure env vars are loaded first
 let openai: OpenAI | null = null
@@ -63,11 +64,11 @@ export async function generateCoverImage(
       revisedPrompt
     }
 
-  } catch (error: any) {
-    console.error('✗ Image generation failed:', error.message)
+  } catch (error) {
+    console.error('✗ Image generation failed:', getErrorMessage(error))
     return {
       url: '',
-      error: error.message
+      error: getErrorMessage(error)
     }
   }
 }
@@ -255,8 +256,8 @@ export async function generateAndSaveCoverImage(
       } else {
         console.log('⚠ Variation generation failed, falling back to text-to-image...')
       }
-    } catch (error: any) {
-      console.warn('⚠ Variation generation error:', error.message)
+    } catch (error) {
+      console.warn('⚠ Variation generation error:', getErrorMessage(error))
       console.log('→ Falling back to text-to-image generation...')
     }
   }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { createServiceClient } from '@/lib/supabase'
+import { getErrorMessage } from '@/lib/utils/error'
 
 // POST: Record a share event
 export async function POST(
@@ -91,8 +92,8 @@ export async function POST(
       success: true,
       shareCount: article?.share_count || 0
     })
-  } catch (error: any) {
-    console.error('[Article Share API] Unexpected error:', error)
+  } catch (error) {
+    console.error('[Article Share API] Unexpected error:', getErrorMessage(error))
     return NextResponse.json(
       { error: '系統錯誤' },
       { status: 500 }
@@ -121,8 +122,8 @@ export async function GET(
     return NextResponse.json({
       shareCount: article?.share_count || 0
     })
-  } catch (error: any) {
-    console.error('[Article Share API GET] Unexpected error:', error)
+  } catch (error) {
+    console.error('[Article Share API GET] Unexpected error:', getErrorMessage(error))
     return NextResponse.json(
       { error: '系統錯誤' },
       { status: 500 }

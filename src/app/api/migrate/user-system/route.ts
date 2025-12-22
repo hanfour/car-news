@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
 import fs from 'fs'
 import path from 'path'
+import { getErrorMessage } from '@/lib/utils/error'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -38,9 +39,9 @@ export async function GET(request: Request) {
         } else {
           results.push({ statement: statement.substring(0, 100), success: true })
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error(`✗ Exception:`, err)
-        results.push({ statement: statement.substring(0, 100), error: err.message })
+        results.push({ statement: statement.substring(0, 100), error: getErrorMessage(err) })
       }
     }
 
@@ -49,11 +50,11 @@ export async function GET(request: Request) {
       results,
       totalStatements: statements.length
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error('✗ Migration failed:', error)
     return NextResponse.json({
       error: 'Migration failed',
-      details: error.message,
+      details: getErrorMessage(error),
       instructions: [
         '請手動執行 migration：',
         '1. 打開 Supabase Dashboard',

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { createServerClient } from '@supabase/ssr'
+import { getErrorMessage } from '@/lib/utils/error'
 
 export async function POST(
   request: NextRequest,
@@ -91,10 +92,10 @@ export async function POST(
       message: '檢舉已提交，我們會盡快處理'
     })
 
-  } catch (error: any) {
-    console.error('Report error:', error)
+  } catch (error) {
+    console.error('Report error:', getErrorMessage(error))
     return NextResponse.json(
-      { error: error.message || '檢舉失敗' },
+      { error: getErrorMessage(error) || '檢舉失敗' },
       { status: 500 }
     )
   }

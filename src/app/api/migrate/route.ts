@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
+import { getErrorMessage } from '@/lib/utils/error'
 
 export async function POST(request: NextRequest) {
   // Verify admin token
@@ -50,11 +51,11 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, message: 'Migration completed' })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Migration error:', error)
     return NextResponse.json({
       success: false,
-      error: error.message,
+      error: getErrorMessage(error),
       instructions: 'Please run this SQL in Supabase dashboard:\n\n' +
         'ALTER TABLE raw_articles ADD COLUMN IF NOT EXISTS image_url TEXT, ADD COLUMN IF NOT EXISTS image_credit TEXT;\n' +
         'ALTER TABLE generated_articles ADD COLUMN IF NOT EXISTS cover_image TEXT, ADD COLUMN IF NOT EXISTS image_credit TEXT;'

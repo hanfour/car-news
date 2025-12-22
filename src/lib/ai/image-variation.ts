@@ -5,6 +5,7 @@
 
 import OpenAI from 'openai'
 import sharp from 'sharp'
+import { getErrorMessage } from '@/lib/utils/error'
 
 // Lazy initialization
 let openai: OpenAI | null = null
@@ -78,8 +79,8 @@ async function downloadAndConvertToPNG(imageUrl: string): Promise<Buffer | null>
 
     return pngBuffer
 
-  } catch (error: any) {
-    console.error(`✗ Image processing failed:`, error.message)
+  } catch (error) {
+    console.error(`✗ Image processing failed:`, getErrorMessage(error))
     return null
   }
 }
@@ -133,13 +134,13 @@ export async function generateImageVariation(
       url: imageUrl
     }
 
-  } catch (error: any) {
-    console.error('✗ Variation generation failed:', error.message)
+  } catch (error) {
+    console.error('✗ Variation generation failed:', getErrorMessage(error))
 
     // 如果是 quota exceeded 或其他 OpenAI 錯誤，返回錯誤信息
     return {
       url: '',
-      error: error.message
+      error: getErrorMessage(error)
     }
   }
 }

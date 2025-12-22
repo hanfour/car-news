@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
 import { verifyDebugAccess } from '@/lib/admin/auth'
 import Anthropic from '@anthropic-ai/sdk'
+import { getErrorMessage } from '@/lib/utils/error'
 
 const CATEGORY_RULES = `
 請根據以下標準重新判斷文章分類（選擇1-2個最符合的）：
@@ -145,11 +146,11 @@ ${CATEGORY_RULES}
 
       // 避免 API rate limit
       await new Promise(resolve => setTimeout(resolve, 1000))
-    } catch (error: any) {
+    } catch (error) {
       failed.push({
         id: article.id,
         title: article.title_zh,
-        error: error.message
+        error: getErrorMessage(error)
       })
     }
   }

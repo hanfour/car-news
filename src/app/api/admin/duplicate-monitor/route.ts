@@ -6,6 +6,7 @@ import {
   ArticleForDuplicateCheck
 } from '@/lib/utils/advanced-deduplication'
 import { verifySessionToken } from '@/lib/admin/session'
+import { getErrorMessage } from '@/lib/utils/error'
 
 export const dynamic = 'force-dynamic'
 
@@ -145,8 +146,8 @@ export async function GET(request: NextRequest) {
       brandViolations
     })
 
-  } catch (error: any) {
-    console.error('[Duplicate Monitor] Error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch (error) {
+    console.error('[Duplicate Monitor] Error:', getErrorMessage(error))
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 })
   }
 }

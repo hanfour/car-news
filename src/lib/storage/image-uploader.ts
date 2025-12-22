@@ -5,6 +5,7 @@
 
 import { createServiceClient } from '@/lib/supabase'
 import crypto from 'crypto'
+import { getErrorMessage } from '@/lib/utils/error'
 
 const BUCKET_NAME = 'article-images'
 
@@ -61,7 +62,7 @@ export async function uploadImageFromUrl(
     }
 
     const arrayBuffer = await response.arrayBuffer()
-    let buffer: any = Buffer.from(arrayBuffer)
+    let buffer: Buffer = Buffer.from(arrayBuffer)
 
     // 2.1 如果需要添加浮水印
     if (addWatermark) {
@@ -127,8 +128,8 @@ export async function uploadImageFromUrl(
 
     return publicUrl
 
-  } catch (error: any) {
-    console.error('✗ Image upload error:', error.message)
+  } catch (error) {
+    console.error('✗ Image upload error:', getErrorMessage(error))
     return null
   }
 }
@@ -194,8 +195,8 @@ export async function deleteOldImages(olderThanDays: number = 30): Promise<numbe
     console.log(`✓ Deleted ${filesToDelete.length} old images`)
     return filesToDelete.length
 
-  } catch (error: any) {
-    console.error('Delete error:', error.message)
+  } catch (error) {
+    console.error('Delete error:', getErrorMessage(error))
     return 0
   }
 }

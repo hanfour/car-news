@@ -2,6 +2,7 @@ import { createServiceClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/admin/auth'
 import { ArticleImage } from '@/types/article'
+import { getErrorMessage } from '@/lib/utils/error'
 
 /**
  * 修復資料庫中包含 HTML 實體編碼的圖片 URL
@@ -131,12 +132,12 @@ export async function POST(request: NextRequest) {
       }
     })
 
-  } catch (error: any) {
-    console.error('Fix image URLs error:', error)
+  } catch (error) {
+    console.error('Fix image URLs error:', getErrorMessage(error))
     return NextResponse.json(
       {
         success: false,
-        error: error.message
+        error: getErrorMessage(error)
       },
       { status: 500 }
     )

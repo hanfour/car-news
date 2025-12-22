@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyDebugAccess } from '@/lib/admin/auth'
+import { getErrorMessage } from '@/lib/utils/error'
 
 export async function GET(request: NextRequest) {
   const access = await verifyDebugAccess(request)
@@ -43,10 +44,10 @@ export async function GET(request: NextRequest) {
         }))
       }
     })
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json({
       success: false,
-      error: error.message
+      error: getErrorMessage(error)
     }, { status: 500 })
   }
 }

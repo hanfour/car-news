@@ -8,6 +8,7 @@ import { generateAndSaveCoverImage } from '@/lib/ai/image-generation'
 import { downloadAndStoreImage, downloadAndStoreImages } from '@/lib/storage/image-downloader'
 import { generateEmbedding, cosineSimilarity } from '@/lib/ai/embeddings'
 import { RawArticle } from '@/types/database'
+import { getErrorMessage } from '@/lib/utils/error'
 import {
   checkTitleDuplicate,
   generateTopicHash,
@@ -555,8 +556,8 @@ async function handleCronJob(request: NextRequest) {
 
         console.log(`[${brand}] ✓ ${decision.shouldPublish ? 'Published' : 'Saved'}: ${generated.title_zh} (${storedImages.length} images stored) [${totalProcessed}/${TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN}]`)
 
-      } catch (error: any) {
-        console.error(`[${brand}] Error generating article for cluster:`, error)
+      } catch (error) {
+        console.error(`[${brand}] Error generating article for cluster:`, getErrorMessage(error))
         // 继续处理下一个聚类
       }
       }
@@ -612,7 +613,7 @@ async function handleCronJob(request: NextRequest) {
       } : null
     })
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Generator error:', error)
 
     // 记录错误日志
@@ -622,8 +623,8 @@ async function handleCronJob(request: NextRequest) {
         job_name: 'generator',
         status: 'error',
         metadata: {
-          error: error.message,
-          stack: error.stack,
+          error: getErrorMessage(error),
+          stack: error instanceof Error ? error.stack : undefined,
           duration_ms: Date.now() - startTime
         }
       })
@@ -633,7 +634,7 @@ async function handleCronJob(request: NextRequest) {
 
     return NextResponse.json(
       {
-        error: error.message,
+        error: getErrorMessage(error),
         duration: Date.now() - startTime
       },
       { status: 500 }

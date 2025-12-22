@@ -3,6 +3,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { createServiceClient } from '@/lib/supabase'
 import { moderateComment } from '@/lib/ai/claude'
+import { getErrorMessage } from '@/lib/utils/error'
 
 // GET: 获取文章评论列表
 export async function GET(request: NextRequest) {
@@ -190,8 +191,8 @@ export async function POST(request: NextRequest) {
       success: true,
       comment: data
     })
-  } catch (error: any) {
-    console.error('Unexpected error:', error)
+  } catch (error) {
+    console.error('Unexpected error:', getErrorMessage(error))
     return NextResponse.json(
       { error: '系統錯誤，請稍後再試' },
       { status: 500 }

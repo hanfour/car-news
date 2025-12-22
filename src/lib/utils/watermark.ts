@@ -4,6 +4,7 @@
  */
 
 import sharp from 'sharp'
+import { getErrorMessage } from '@/lib/utils/error'
 
 interface WatermarkOptions {
   text?: string
@@ -57,8 +58,8 @@ export async function addWatermark(
     console.log(`✓ Watermark added: "${text}"`)
     return watermarkedBuffer
 
-  } catch (error: any) {
-    console.error('✗ Watermark failed:', error.message)
+  } catch (error) {
+    console.error('✗ Watermark failed:', getErrorMessage(error))
     // 如果浮水印失敗，返回原圖
     return imageBuffer
   }

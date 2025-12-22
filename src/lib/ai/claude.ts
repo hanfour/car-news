@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { getErrorMessage } from '@/lib/utils/error'
 
 let client: Anthropic | null = null
 let cachedModel: string | null = null
@@ -199,8 +200,8 @@ ${s.content.slice(0, 2000)}...
 
       console.log('✓ Article generated successfully with Claude')
       return result
-    } catch (error: any) {
-      console.error(`✗ Claude generation failed: ${error.message}`)
+    } catch (error) {
+      console.error(`✗ Claude generation failed: ${getErrorMessage(error)}`)
       console.log('→ Falling back to OpenAI GPT-4o...')
     }
   } else {

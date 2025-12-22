@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase'
 import crypto from 'crypto'
+import { getErrorMessage } from '@/lib/utils/error'
 
 /**
  * 圖片下載和存儲服務
@@ -181,8 +182,8 @@ export async function downloadAndStoreImage(
       size,
       mimeType: blob.type,
     }
-  } catch (error: any) {
-    console.error(`[Image Storage] Error:`, error.message)
+  } catch (error) {
+    console.error(`[Image Storage] Error:`, getErrorMessage(error))
     return null
   }
 }

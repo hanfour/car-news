@@ -3,6 +3,7 @@ import { downloadAndStoreImage, downloadAndStoreImages } from '@/lib/storage/ima
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/admin/auth'
 import { ArticleImage } from '@/types/article'
+import { getErrorMessage } from '@/lib/utils/error'
 
 /**
  * 圖片遷移 API - 將歷史文章的外部圖片下載並存儲到 Supabase Storage
@@ -152,15 +153,15 @@ export async function POST(request: NextRequest) {
           imagesCount: Array.isArray(newImages) ? newImages.length : 0
         })
 
-      } catch (error: any) {
-        console.error(`[Image Migration] ✗ Error processing article ${article.id}:`, error.message)
+      } catch (error) {
+        console.error(`[Image Migration] ✗ Error processing article ${article.id}:`, getErrorMessage(error))
         results.failed++
         results.details.push({
           id: article.id,
           title: article.title_zh || 'Untitled',
           coverImageMigrated: false,
           imagesCount: 0,
-          error: error.message
+          error: getErrorMessage(error)
         })
       }
     }
@@ -188,13 +189,13 @@ export async function POST(request: NextRequest) {
       }
     })
 
-  } catch (error: any) {
-    console.error('[Image Migration] Fatal error:', error)
+  } catch (error) {
+    console.error('[Image Migration] Fatal error:', getErrorMessage(error))
 
     return NextResponse.json(
       {
         success: false,
-        error: error.message,
+        error: getErrorMessage(error),
         duration: Date.now() - startTime
       },
       { status: 500 }

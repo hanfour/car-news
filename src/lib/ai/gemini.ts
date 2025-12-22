@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import type { GenerateArticleInput, GenerateArticleOutput } from './claude'
+import { getErrorMessage } from '@/lib/utils/error'
 
 let genAI: GoogleGenerativeAI | null = null
 
@@ -133,8 +134,8 @@ ${s.content.slice(0, 2000)}...
     console.log(`✓ Article generated successfully with Gemini ${model}`)
     return parsedResult
 
-  } catch (error: any) {
-    console.error(`✗ Gemini generation failed: ${error.message}`)
+  } catch (error) {
+    console.error(`✗ Gemini generation failed: ${getErrorMessage(error)}`)
     throw error
   }
 }
@@ -194,8 +195,8 @@ ${content}
       .trim()
 
     return JSON.parse(jsonText)
-  } catch (error: any) {
-    console.error('✗ Gemini moderation failed:', error)
+  } catch (error) {
+    console.error('✗ Gemini moderation failed:', getErrorMessage(error))
     // 預設通過，避免 false positive
     return {
       passed: true,
@@ -233,8 +234,8 @@ export async function generateTextWithGemini(
     const result = await model.generateContent(prompt)
     const response = result.response
     return response.text()
-  } catch (error: any) {
-    console.error('✗ Gemini text generation failed:', error)
+  } catch (error) {
+    console.error('✗ Gemini text generation failed:', getErrorMessage(error))
     throw error
   }
 }

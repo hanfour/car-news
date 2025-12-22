@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { createServiceClient } from '@/lib/supabase'
+import { getErrorMessage } from '@/lib/utils/error'
 
 // POST: Toggle favorite on an article
 export async function POST(
@@ -122,8 +123,8 @@ export async function POST(
         isFavorited: true
       })
     }
-  } catch (error: any) {
-    console.error('[Favorite API] Unexpected error:', error)
+  } catch (error) {
+    console.error('[Favorite API] Unexpected error:', getErrorMessage(error))
     return NextResponse.json(
       { error: '系統錯誤' },
       { status: 500 }
@@ -180,8 +181,8 @@ export async function GET(
     }
 
     return NextResponse.json({ isFavorited })
-  } catch (error: any) {
-    console.error('[Favorite API GET] Unexpected error:', error)
+  } catch (error) {
+    console.error('[Favorite API GET] Unexpected error:', getErrorMessage(error))
     return NextResponse.json(
       { error: '系統錯誤' },
       { status: 500 }

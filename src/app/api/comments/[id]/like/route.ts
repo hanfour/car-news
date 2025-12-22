@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { createServiceClient } from '@/lib/supabase'
+import { getErrorMessage } from '@/lib/utils/error'
 
 // POST: Toggle like on a comment
 export async function POST(
@@ -138,8 +139,8 @@ export async function POST(
         likeCount: comment?.likes_count || 0
       })
     }
-  } catch (error: any) {
-    console.error('[Like API] Unexpected error:', error)
+  } catch (error) {
+    console.error('[Like API] Unexpected error:', getErrorMessage(error))
     return NextResponse.json(
       { error: '系統錯誤' },
       { status: 500 }
@@ -207,8 +208,8 @@ export async function GET(
       likeCount: comment?.likes_count || 0,
       isLiked
     })
-  } catch (error: any) {
-    console.error('[Like API GET] Unexpected error:', error)
+  } catch (error) {
+    console.error('[Like API GET] Unexpected error:', getErrorMessage(error))
     return NextResponse.json(
       { error: '系統錯誤' },
       { status: 500 }

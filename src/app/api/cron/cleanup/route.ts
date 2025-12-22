@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
+import { getErrorMessage } from '@/lib/utils/error'
 
 export const maxDuration = 30 // 清理任务应该很快
 
@@ -70,7 +71,7 @@ async function handleCronJob(request: NextRequest) {
       duration: Date.now() - startTime
     })
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Cleanup error:', error)
 
     // 记录错误日志
@@ -80,7 +81,7 @@ async function handleCronJob(request: NextRequest) {
         job_name: 'cleanup',
         status: 'error',
         metadata: {
-          error: error.message,
+          error: getErrorMessage(error),
           duration_ms: Date.now() - startTime
         }
       })
@@ -90,7 +91,7 @@ async function handleCronJob(request: NextRequest) {
 
     return NextResponse.json(
       {
-        error: error.message,
+        error: getErrorMessage(error),
         duration: Date.now() - startTime
       },
       { status: 500 }

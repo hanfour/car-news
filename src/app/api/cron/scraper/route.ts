@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { scrapeAllSources } from '@/lib/scraper'
 import { generateEmbedding } from '@/lib/ai/embeddings'
+import { getErrorMessage } from '@/lib/utils/error'
 
 export const maxDuration = 300 // Vercel Pro限制：最长5分钟（与generator一致）
 
@@ -169,7 +170,7 @@ async function handleCronJob(request: NextRequest) {
       duration: Date.now() - startTime
     })
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Scraper error:', error)
 
     // 记录错误日志
@@ -179,7 +180,7 @@ async function handleCronJob(request: NextRequest) {
         job_name: 'scraper',
         status: 'error',
         metadata: {
-          error: error.message,
+          error: getErrorMessage(error),
           duration_ms: Date.now() - startTime
         }
       })
@@ -189,7 +190,7 @@ async function handleCronJob(request: NextRequest) {
 
     return NextResponse.json(
       {
-        error: error.message,
+        error: getErrorMessage(error),
         duration: Date.now() - startTime
       },
       { status: 500 }

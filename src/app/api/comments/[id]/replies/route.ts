@@ -3,6 +3,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { moderateComment } from '@/lib/ai/claude'
 import { createServiceClient } from '@/lib/supabase'
+import { getErrorMessage } from '@/lib/utils/error'
 
 // GET: Fetch replies for a comment
 export async function GET(
@@ -50,8 +51,8 @@ export async function GET(
     }))
 
     return NextResponse.json({ replies: repliesWithProfiles })
-  } catch (error: any) {
-    console.error('[Replies API GET] Unexpected error:', error)
+  } catch (error) {
+    console.error('[Replies API GET] Unexpected error:', getErrorMessage(error))
     return NextResponse.json(
       { error: '系統錯誤' },
       { status: 500 }
@@ -203,8 +204,8 @@ export async function POST(
         profiles: profile
       }
     })
-  } catch (error: any) {
-    console.error('[Reply API POST] Unexpected error:', error)
+  } catch (error) {
+    console.error('[Reply API POST] Unexpected error:', getErrorMessage(error))
     return NextResponse.json(
       { error: '系統錯誤，請稍後再試' },
       { status: 500 }
