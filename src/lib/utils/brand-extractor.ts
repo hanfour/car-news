@@ -107,14 +107,11 @@ const BRAND_ALIASES: Record<string, string> = {
  */
 export function extractBrands(text: string): string[] {
   const foundBrands = new Set<string>()
-  const lowerText = text.toLowerCase()
 
   // 檢查每個品牌
   for (const brand of CAR_BRANDS) {
-    const lowerBrand = brand.toLowerCase()
-
-    // 使用單詞邊界確保完整匹配
-    const regex = new RegExp(`\\b${lowerBrand}\\b`, 'i')
+    // 使用單詞邊界確保完整匹配（case-insensitive）
+    const regex = new RegExp(`\\b${brand}\\b`, 'i')
 
     if (regex.test(text)) {
       // 標準化品牌名稱

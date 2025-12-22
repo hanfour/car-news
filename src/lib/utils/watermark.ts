@@ -19,7 +19,7 @@ interface WatermarkOptions {
 export async function addWatermark(
   imageBuffer: Buffer,
   options: WatermarkOptions = {}
-): Promise<any> {
+): Promise<Buffer> {
   const {
     text = 'AI 生成模擬圖',
     position = 'bottom-right',
@@ -181,7 +181,7 @@ function getGravity(position: string): string {
 export async function downloadAndAddWatermark(
   imageUrl: string,
   watermarkOptions?: WatermarkOptions
-): Promise<any> {
+): Promise<Buffer> {
   // 1. 下載圖片
   const response = await fetch(imageUrl)
   if (!response.ok) {
