@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { verifyDebugAccess } from '@/lib/admin/auth'
 
 // 從 image-generation.ts 複製的分析函數（用於調試）
 function analyzeContentForVisuals(title: string, content: string): string {
@@ -78,7 +79,10 @@ function analyzeContentForVisuals(title: string, content: string): string {
     : 'modern design with clean lines and contemporary styling'
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const access = await verifyDebugAccess(request)
+  if (!access.allowed) return access.response!
+
   const testTitle = 'BMW 發表全新 iX5 氫能源電動車'
   const testContent = `
     BMW 今日在慕尼黑總部發表全新 iX5 Hydrogen 氫能源電動車，

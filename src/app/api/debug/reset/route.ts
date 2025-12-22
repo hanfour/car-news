@@ -1,7 +1,11 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
+import { verifyDebugAccess } from '@/lib/admin/auth'
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const access = await verifyDebugAccess(request)
+  if (!access.allowed) return access.response!
+
   const supabase = createServiceClient()
 
   console.log('Deleting raw_articles...')

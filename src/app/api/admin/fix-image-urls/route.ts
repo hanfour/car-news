@@ -1,5 +1,7 @@
 import { createServiceClient } from '@/lib/supabase'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { verifyAdminAuth } from '@/lib/admin/auth'
+import { ArticleImage } from '@/types/article'
 
 /**
  * 修復資料庫中包含 HTML 實體編碼的圖片 URL
@@ -12,7 +14,12 @@ import { NextResponse } from 'next/server'
  * 2. 解碼 HTML 實體
  * 3. 更新資料庫
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const isAuthorized = await verifyAdminAuth(request)
+  if (!isAuthorized) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const supabase = createServiceClient()
 
   try {
@@ -85,7 +92,7 @@ export async function POST() {
 
       // 修復 images 陣列中的 URL
       if (Array.isArray(article.images) && article.images.length > 0) {
-        fixedImages = article.images.map((img: any) => {
+        fixedImages = article.images.map((img: ArticleImage) => {
           if (img.url && img.url.includes('&#038;')) {
             needsUpdate = true
             return {

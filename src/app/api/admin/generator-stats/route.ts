@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
       .gt('expires_at', new Date().toISOString())
 
     // 計算品牌分布
-    const calculateBrandDistribution = (articles: any[]) => {
+    const calculateBrandDistribution = (articles: Array<{ brand?: string | null }>) => {
       const brandCount = new Map<string, number>()
       articles.forEach(a => {
         const brand = a.brand || 'Unknown'

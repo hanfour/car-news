@@ -1,7 +1,10 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { generateAndSaveCoverImage } from '@/lib/ai/image-generation'
+import { verifyDebugAccess } from '@/lib/admin/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const access = await verifyDebugAccess(request)
+  if (!access.allowed) return access.response!
   const testTitle = 'BMW 發表全新 iX5 氫能源電動車'
   const testContent = `
     BMW 今日在慕尼黑總部發表全新 iX5 Hydrogen 氫能源電動車，

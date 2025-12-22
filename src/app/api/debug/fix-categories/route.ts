@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
+import { verifyDebugAccess } from '@/lib/admin/auth'
 import Anthropic from '@anthropic-ai/sdk'
 
 const CATEGORY_RULES = `
@@ -30,7 +31,10 @@ const CATEGORY_RULES = `
 }
 `
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
+  const access = await verifyDebugAccess(request)
+  if (!access.allowed) return access.response!
+
   const { searchParams } = new URL(request.url)
   const action = searchParams.get('action') || 'check' // check | fix
 

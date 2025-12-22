@@ -1,6 +1,8 @@
 import { createServiceClient } from '@/lib/supabase'
 import { downloadAndStoreImage, downloadAndStoreImages } from '@/lib/storage/image-downloader'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { verifyAdminAuth } from '@/lib/admin/auth'
+import { ArticleImage } from '@/types/article'
 
 /**
  * 圖片遷移 API - 將歷史文章的外部圖片下載並存儲到 Supabase Storage
@@ -13,7 +15,12 @@ import { NextResponse } from 'next/server'
  * 執行方式：
  * curl -X POST https://wantcar.vercel.app/api/admin/migrate-images
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const isAuthorized = await verifyAdminAuth(request)
+  if (!isAuthorized) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const startTime = Date.now()
 
   try {
@@ -90,13 +97,13 @@ export async function POST() {
         if (Array.isArray(article.images) && article.images.length > 0) {
           console.log(`[Image Migration] → Migrating ${article.images.length} images...`)
 
-          const externalImages = article.images.filter((img: any) =>
+          const externalImages = article.images.filter((img: ArticleImage) =>
             img.url && isExternalUrl(img.url)
           )
 
           if (externalImages.length > 0) {
             const storedImages = await downloadAndStoreImages(
-              externalImages.map((img: any) => ({
+              externalImages.map((img: ArticleImage) => ({
                 url: img.url,
                 credit: img.credit || 'Migrated',
                 caption: img.caption
@@ -105,8 +112,8 @@ export async function POST() {
             )
 
             // 合併已遷移和未遷移的圖片
-            const migratedImageUrls = new Set(externalImages.map((img: any) => img.url))
-            const unchangedImages = article.images.filter((img: any) =>
+            const migratedImageUrls = new Set(externalImages.map((img: ArticleImage) => img.url))
+            const unchangedImages = article.images.filter((img: ArticleImage) =>
               !migratedImageUrls.has(img.url)
             )
 
