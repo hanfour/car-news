@@ -15,6 +15,8 @@ import { HoverLink } from '@/components/HoverLink'
 import { BrandTag } from './BrandTag'
 import { ArticleViewTracker } from '@/components/ArticleViewTracker'
 import { SanitizedContent } from '@/components/SanitizedContent'
+import { ArticleImage } from '@/types/article'
+import Script from 'next/script'
 
 interface PageProps {
   params: Promise<{
@@ -109,7 +111,7 @@ async function getRelatedArticles(articleId: string, brands: string[], categorie
  * Generate SEO metadata for the article page
  */
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { id } = await params
+  const { year, month, id } = await params
   const article = await getArticle(id)
 
   if (!article) {
@@ -125,8 +127,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     : article.title_zh
 
   // 網站基礎 URL
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://wantcar.com'
-  const articleUrl = `${baseUrl}/article/${id}`
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://wantcar.autos'
+  const articleUrl = `${baseUrl}/${year}/${month}/${id}`
 
   // 品牌和分類標籤
   const keywords = [
@@ -205,6 +207,43 @@ export default async function ArticlePage({ params }: PageProps) {
   const comments = await getComments(id)
   const relatedArticles = await getRelatedArticles(id, article.brands || [], article.categories || [])
 
+  // Generate JSON-LD structured data for SEO
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://wantcar.autos'
+  const publishedDate = new Date(article.published_at || article.created_at)
+  const year = publishedDate.getFullYear()
+  const month = String(publishedDate.getMonth() + 1).padStart(2, '0')
+  const articleUrl = `${baseUrl}/${year}/${month}/${id}`
+
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'NewsArticle',
+    headline: article.title_zh,
+    description: article.content_zh.slice(0, 150).trim() + '...',
+    image: article.cover_image ? [article.cover_image] : [],
+    datePublished: article.published_at || article.created_at,
+    dateModified: article.updated_at || article.published_at || article.created_at,
+    author: {
+      '@type': 'Organization',
+      name: '玩咖 WANT CAR',
+      url: baseUrl
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: '玩咖 WANT CAR',
+      url: baseUrl,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${baseUrl}/logo.png`
+      }
+    },
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': articleUrl
+    },
+    articleSection: article.categories?.[0] || 'news',
+    keywords: [...(article.brands || []), ...(article.categories || []), ...(article.tags || [])].join(', ')
+  }
+
   // 將 Markdown 轉換為 HTML（保留文章結構）
   const formatContent = (content: string) => {
     // 移除文章末尾的「資訊來源」或「資料來源」區塊
@@ -259,9 +298,17 @@ export default async function ArticlePage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      {/* Client-side view tracking */}
-      <ArticleViewTracker articleId={id} />
+    <>
+      {/* JSON-LD Structured Data for SEO */}
+      <Script
+        id="article-structured-data"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
+
+      <div className="min-h-screen flex flex-col bg-gray-50">
+        {/* Client-side view tracking */}
+        <ArticleViewTracker articleId={id} />
 
       {/* Sticky Header */}
       <StickyHeader popularBrands={POPULAR_BRANDS} brandsByCountry={BRANDS_BY_COUNTRY} showBrands={false} />
@@ -352,7 +399,7 @@ export default async function ArticlePage({ params }: PageProps) {
               <div className="mt-8 pt-6 border-t border-gray-200">
                 <h3 className="text-sm font-semibold text-gray-900 mb-4">相關圖片</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {article.images.map((img: any, index: number) => (
+                  {article.images.map((img: ArticleImage, index: number) => (
                     <div key={index} className="group">
                       <div className="relative aspect-[16/9] bg-gray-200 rounded-lg overflow-hidden">
                         <Image
@@ -524,6 +571,7 @@ export default async function ArticlePage({ params }: PageProps) {
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+    </>
   )
 }

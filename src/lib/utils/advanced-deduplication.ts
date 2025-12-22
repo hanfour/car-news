@@ -259,3 +259,183 @@ export async function comprehensiveDuplicateCheck(params: {
 
   return { isDuplicate: false }
 }
+
+// ============================================
+// 批量重複檢測（用於監控和清理）
+// ============================================
+
+export interface ArticleForDuplicateCheck {
+  id: string
+  title_zh: string
+  created_at: string
+  published: boolean
+  view_count: number
+  content_embedding?: number[] | string | null
+  primary_brand?: string | null
+}
+
+export interface DuplicatePair {
+  article1: { id: string; title_zh: string; brand: string | null }
+  article2: { id: string; title_zh: string; brand: string | null }
+  similarity: number
+  keywords?: string[]
+}
+
+/**
+ * 批量檢測語義重複
+ * 使用 O(n²) 比較所有文章對的 embedding 相似度
+ */
+export function findSemanticDuplicatesInBatch(
+  articles: ArticleForDuplicateCheck[],
+  similarityThreshold: number = 0.90
+): DuplicatePair[] {
+  const duplicates: DuplicatePair[] = []
+  const articlesWithEmbedding = articles.filter(a => a.content_embedding)
+
+  for (let i = 0; i < articlesWithEmbedding.length; i++) {
+    for (let j = i + 1; j < articlesWithEmbedding.length; j++) {
+      const a1 = articlesWithEmbedding[i]
+      const a2 = articlesWithEmbedding[j]
+
+      let emb1 = a1.content_embedding
+      let emb2 = a2.content_embedding
+
+      if (typeof emb1 === 'string') emb1 = JSON.parse(emb1)
+      if (typeof emb2 === 'string') emb2 = JSON.parse(emb2)
+
+      const similarity = cosineSimilarity(emb1 as number[], emb2 as number[])
+
+      if (similarity >= similarityThreshold) {
+        duplicates.push({
+          article1: { id: a1.id, title_zh: a1.title_zh, brand: a1.primary_brand || null },
+          article2: { id: a2.id, title_zh: a2.title_zh, brand: a2.primary_brand || null },
+          similarity: Math.round(similarity * 100) / 100
+        })
+      }
+    }
+  }
+
+  return duplicates
+}
+
+/**
+ * 批量檢測關鍵詞重複
+ * 只比較同品牌文章的關鍵詞重疊度
+ */
+export function findKeywordDuplicatesInBatch(
+  articles: ArticleForDuplicateCheck[],
+  overlapThreshold: number = 0.70,
+  minKeywordMatches: number = 2
+): DuplicatePair[] {
+  const duplicates: DuplicatePair[] = []
+
+  for (let i = 0; i < articles.length; i++) {
+    for (let j = i + 1; j < articles.length; j++) {
+      const a1 = articles[i]
+      const a2 = articles[j]
+
+      // 只比較同品牌
+      if (a1.primary_brand !== a2.primary_brand || !a1.primary_brand) continue
+
+      const keywords1 = new Set(extractKeywords(a1.title_zh))
+      const keywords2 = new Set(extractKeywords(a2.title_zh))
+
+      const intersection = new Set(Array.from(keywords1).filter(k => keywords2.has(k)))
+      const union = new Set([...Array.from(keywords1), ...Array.from(keywords2)])
+      const overlap = intersection.size / union.size
+
+      if (overlap >= overlapThreshold && intersection.size >= minKeywordMatches) {
+        duplicates.push({
+          article1: { id: a1.id, title_zh: a1.title_zh, brand: a1.primary_brand ?? null },
+          article2: { id: a2.id, title_zh: a2.title_zh, brand: a2.primary_brand ?? null },
+          similarity: Math.round(overlap * 100) / 100,
+          keywords: Array.from(intersection)
+        })
+      }
+    }
+  }
+
+  return duplicates
+}
+
+export interface DuplicateGroup {
+  type: 'semantic' | 'keyword'
+  articles: ArticleForDuplicateCheck[]
+  similarity: number
+  keywords?: string[]
+}
+
+/**
+ * 將成對的重複轉換為分組
+ * 使用 Union-Find 算法合併有關聯的文章
+ */
+export function pairsToDuplicateGroups(
+  pairs: DuplicatePair[],
+  allArticles: ArticleForDuplicateCheck[],
+  type: 'semantic' | 'keyword'
+): DuplicateGroup[] {
+  if (pairs.length === 0) return []
+
+  // 建立文章 ID 到文章的映射
+  const articleMap = new Map(allArticles.map(a => [a.id, a]))
+
+  // Union-Find 結構
+  const parent = new Map<string, string>()
+  const find = (id: string): string => {
+    if (!parent.has(id)) parent.set(id, id)
+    if (parent.get(id) !== id) {
+      parent.set(id, find(parent.get(id)!))
+    }
+    return parent.get(id)!
+  }
+  const union = (id1: string, id2: string) => {
+    const root1 = find(id1)
+    const root2 = find(id2)
+    if (root1 !== root2) {
+      parent.set(root1, root2)
+    }
+  }
+
+  // 合併相關的文章
+  const maxSimilarity = new Map<string, number>()
+  const allKeywords = new Map<string, Set<string>>()
+
+  for (const pair of pairs) {
+    union(pair.article1.id, pair.article2.id)
+
+    const root = find(pair.article1.id)
+    maxSimilarity.set(root, Math.max(maxSimilarity.get(root) || 0, pair.similarity))
+
+    if (pair.keywords) {
+      if (!allKeywords.has(root)) allKeywords.set(root, new Set())
+      pair.keywords.forEach(k => allKeywords.get(root)!.add(k))
+    }
+  }
+
+  // 按組收集文章
+  const groups = new Map<string, ArticleForDuplicateCheck[]>()
+  for (const pair of pairs) {
+    const root = find(pair.article1.id)
+    if (!groups.has(root)) groups.set(root, [])
+
+    const group = groups.get(root)!
+    if (!group.some(a => a.id === pair.article1.id)) {
+      const article = articleMap.get(pair.article1.id)
+      if (article) group.push(article)
+    }
+    if (!group.some(a => a.id === pair.article2.id)) {
+      const article = articleMap.get(pair.article2.id)
+      if (article) group.push(article)
+    }
+  }
+
+  // 轉換為 DuplicateGroup 格式
+  return Array.from(groups.entries()).map(([root, articles]) => ({
+    type,
+    articles: articles.sort((a, b) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    ),
+    similarity: maxSimilarity.get(root) || 0,
+    keywords: allKeywords.has(root) ? Array.from(allKeywords.get(root)!) : undefined
+  }))
+}

@@ -27,3 +27,9 @@ export interface Tag {
   name: string
   count: number
 }
+
+export interface ArticleImage {
+  url: string
+  caption?: string
+  credit: string
+}
