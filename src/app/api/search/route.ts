@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
  * Full-text search API using PostgreSQL tsvector
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
 /**
  * Fallback search using ILIKE (slower but works without migration)
  */
-async function fallbackSearch(supabase: any, query: string) {
+async function fallbackSearch(supabase: SupabaseClient, query: string) {
   // Sanitize query to prevent performance attacks
   // Escape special ILIKE characters: % and _
   const sanitizedQuery = query.replace(/[%_]/g, '\\$&').trim()

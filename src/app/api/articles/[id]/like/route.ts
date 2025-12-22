@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { createServiceClient } from '@/lib/supabase'
+import { getErrorMessage } from '@/lib/utils/error'
 
 // POST: Toggle like on an article
 export async function POST(
@@ -36,15 +37,17 @@ export async function POST(
           set(name: string, value: string, options: CookieOptions) {
             try {
               cookieStore.set({ name, value, ...options })
-            } catch (error) {
-              // Ignore errors in API routes
+            } catch {
+              // Cookie operations may fail in API routes when headers are already sent
+              // This is expected behavior and safe to ignore
             }
           },
           remove(name: string, options: CookieOptions) {
             try {
               cookieStore.set({ name, value: '', ...options })
-            } catch (error) {
-              // Ignore errors in API routes
+            } catch {
+              // Cookie operations may fail in API routes when headers are already sent
+              // This is expected behavior and safe to ignore
             }
           },
         },
@@ -138,8 +141,8 @@ export async function POST(
         likeCount: article?.likes_count || 0
       })
     }
-  } catch (error: any) {
-    console.error('[Article Like API] Unexpected error:', error)
+  } catch (error) {
+    console.error('[Article Like API] Unexpected error:', getErrorMessage(error))
     return NextResponse.json(
       { error: '系統錯誤' },
       { status: 500 }
@@ -207,8 +210,8 @@ export async function GET(
       likeCount: article?.likes_count || 0,
       isLiked
     })
-  } catch (error: any) {
-    console.error('[Article Like API GET] Unexpected error:', error)
+  } catch (error) {
+    console.error('[Article Like API GET] Unexpected error:', getErrorMessage(error))
     return NextResponse.json(
       { error: '系統錯誤' },
       { status: 500 }

@@ -18,8 +18,8 @@ export interface AuditLogEntry {
   resourceType?: string
   resourceId?: string
   changes?: {
-    before?: any
-    after?: any
+    before?: Record<string, unknown>
+    after?: Record<string, unknown>
   }
   ipAddress?: string
   userAgent?: string

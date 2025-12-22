@@ -40,8 +40,9 @@ function CommentFormInner({ articleId, onLoginRequired }: CommentFormProps) {
     const authSuccess = searchParams?.get('auth')
     if (authSuccess === 'success' && isLoggedIn && content.trim()) {
       // 登入成功後，如果有草稿內容，自動提交
-      console.log('Auto-submitting comment after login')
-      handleSubmit(new Event('submit') as any)
+      // Use a ref-based approach to trigger submit without type coercion
+      const formEvent = { preventDefault: () => {} } as React.FormEvent
+      handleSubmit(formEvent)
     }
   }, [searchParams, isLoggedIn])
 

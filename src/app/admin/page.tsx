@@ -1,7 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, ChangeEvent } from 'react'
 import { useRouter } from 'next/navigation'
+
+type ArticleFilter = 'all' | 'published' | 'draft'
+type ArticleSortBy = 'date' | 'confidence'
 
 interface Article {
   id: string
@@ -71,8 +74,8 @@ export default function AdminDashboard() {
   const router = useRouter()
   const [articles, setArticles] = useState<Article[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<'all' | 'published' | 'draft'>('all')
-  const [sortBy, setSortBy] = useState<'date' | 'confidence'>('date')
+  const [filter, setFilter] = useState<ArticleFilter>('all')
+  const [sortBy, setSortBy] = useState<ArticleSortBy>('date')
   const [stats, setStats] = useState({ total: 0, published: 0, draft: 0 })
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -827,7 +830,7 @@ export default function AdminDashboard() {
             <label className="text-sm text-gray-600 mr-2">Filter:</label>
             <select
               value={filter}
-              onChange={(e) => setFilter(e.target.value as any)}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => setFilter(e.target.value as ArticleFilter)}
               className="border rounded px-3 py-1"
             >
               <option value="all">All</option>
@@ -839,7 +842,7 @@ export default function AdminDashboard() {
             <label className="text-sm text-gray-600 mr-2">Sort by:</label>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => setSortBy(e.target.value as ArticleSortBy)}
               className="border rounded px-3 py-1"
             >
               <option value="date">Date</option>

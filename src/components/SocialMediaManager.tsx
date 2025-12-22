@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, ChangeEvent } from 'react'
+
+type StatusFilter = 'all' | 'pending' | 'posted' | 'failed'
 
 interface SocialPost {
   id: string
@@ -38,7 +40,7 @@ export default function SocialMediaManager() {
   const [posts, setPosts] = useState<SocialPost[]>([])
   const [loading, setLoading] = useState(true)
   const [publishing, setPublishing] = useState<string | null>(null)
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'posted' | 'failed'>('pending')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending')
 
   useEffect(() => {
     fetchPosts()
@@ -144,7 +146,7 @@ export default function SocialMediaManager() {
         <label className="text-sm text-gray-600 mr-2">Status:</label>
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as any)}
+          onChange={(e: ChangeEvent<HTMLSelectElement>) => setStatusFilter(e.target.value as StatusFilter)}
           className="border rounded px-3 py-1"
         >
           <option value="all">All ({stats.total})</option>
