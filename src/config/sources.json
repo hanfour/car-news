@@ -281,5 +281,45 @@
     "brand": "Volkswagen",
     "category": "official",
     "note": "404 Page not found - disabled 2025-11-21"
+  },
+  {
+    "id": "thedrive",
+    "name": "The Drive",
+    "url": "https://www.thedrive.com/feed",
+    "type": "rss",
+    "enabled": true,
+    "note": "Added 2025-12-22 for expansion"
+  },
+  {
+    "id": "hotcars",
+    "name": "HotCars",
+    "url": "https://www.hotcars.com/feed/",
+    "type": "rss",
+    "enabled": true,
+    "note": "Added 2025-12-22 for expansion"
+  },
+  {
+    "id": "slashgear-auto",
+    "name": "SlashGear Auto",
+    "url": "https://www.slashgear.com/feed/",
+    "type": "rss",
+    "enabled": true,
+    "note": "Added 2025-12-22 for expansion"
+  },
+  {
+    "id": "topspeed",
+    "name": "TopSpeed",
+    "url": "https://www.topspeed.com/feed/",
+    "type": "rss",
+    "enabled": true,
+    "note": "Added 2025-12-22 for expansion"
+  },
+  {
+    "id": "autoevolution",
+    "name": "AutoEvolution",
+    "url": "https://www.autoevolution.com/rss/news.xml",
+    "type": "rss",
+    "enabled": true,
+    "note": "Added 2025-12-22 for expansion"
   }
 ]

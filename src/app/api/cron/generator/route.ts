@@ -20,13 +20,13 @@ import { comprehensiveDuplicateCheck } from '@/lib/utils/advanced-deduplication'
 
 export const maxDuration = 300 // Vercel Pro限制：最长5分钟
 
-// 配置参数：小批量高频率策略（避免超时）
-// 策略：每小时执行一次，每次生成 10 篇，确保在 5 分钟内完成
+// 配置参数：中度擴展策略（Gemini 免費額度內）
+// 策略：每小时执行一次，每次生成 15 篇，确保在 5 分钟内完成
 const TIMEOUT_CONFIG = {
   MAX_DURATION_MS: 270_000,      // 270秒 (4.5分钟) - 留30秒缓冲
-  MAX_ARTICLES_PER_RUN: 15,      // 每次最多处理15篇（留安全余量）
+  MAX_ARTICLES_PER_RUN: 20,      // 每次最多处理20篇（中度擴展）
   MIN_ARTICLES_PER_BRAND: 1,     // 品牌配額：每個品牌至少生成1篇（確保多樣性）
-  TARGET_ARTICLES: 10,           // 目標文章數：每次執行目標生成10篇（耗時 ~4 分鐘）
+  TARGET_ARTICLES: 15,           // 目標文章數：每次執行目標生成15篇（中度擴展）
   TIME_CHECK_INTERVAL: 1000,     // 每1秒检查一次时间
   ESTIMATED_TIME_PER_ARTICLE: 25_000,  // Gemini 更快：估计每篇文章需要25秒（vs Claude 35秒）
   MIN_TIME_BUFFER: 45_000        // 最小時間緩衝 45 秒
