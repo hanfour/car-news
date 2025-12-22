@@ -89,7 +89,16 @@ export async function checkTitleDuplicate(
  * Generate topic hash from cluster centroid
  * Used for topic lock mechanism
  */
-export function generateTopicHash(centroid: number[]): string {
+export function generateTopicHash(centroid: number[] | null | undefined): string {
+  // Handle null/undefined centroid - use empty string as fallback
+  if (!centroid || !Array.isArray(centroid) || centroid.length === 0) {
+    // Generate a random hash for articles without embeddings
+    return crypto
+      .createHash('sha256')
+      .update(`no-embedding-${Date.now()}-${Math.random()}`)
+      .digest('hex')
+  }
+
   // Convert centroid to string and hash it
   const centroidStr = centroid.join(',')
 
