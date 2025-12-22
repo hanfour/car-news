@@ -56,10 +56,6 @@ export async function GET(request: NextRequest) {
       profiles: profilesMap.get(comment.user_id) || null
     }))
 
-    console.log('[Comments GET] Success:', {
-      count: commentsWithProfiles.length
-    })
-
     return NextResponse.json({ comments: commentsWithProfiles })
   } catch (error) {
     console.error('Unexpected error:', error)
@@ -95,7 +91,6 @@ export async function POST(request: NextRequest) {
     const authHeader = request.headers.get('Authorization')
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('[Comments API] No auth header')
       return NextResponse.json(
         { error: '請先登入' },
         { status: 401 }
@@ -134,13 +129,6 @@ export async function POST(request: NextRequest) {
     // 使用 token 驗證用戶
     const { data: { user }, error: authError } = await supabase.auth.getUser(token)
 
-    console.log('[Comments API] Auth check:', {
-      hasAuthHeader: !!authHeader,
-      hasUser: !!user,
-      userId: user?.id,
-      authError: authError?.message
-    })
-
     if (authError || !user) {
       return NextResponse.json(
         { error: '請先登入' },
@@ -149,7 +137,6 @@ export async function POST(request: NextRequest) {
     }
 
     // AI 審核
-    console.log('Moderating comment...')
     const moderation = await moderateComment(content)
 
     // 如果 confidence > 95 且有明確違規，拒絕

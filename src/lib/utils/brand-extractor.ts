@@ -219,13 +219,7 @@ export function isIrrelevantContent(title: string, content: string): boolean {
 export function filterOutMotorcycleArticles<T extends { title: string; content: string }>(
   articles: T[]
 ): T[] {
-  return articles.filter(article => {
-    const isMotorcycle = isMotorcycleContent(article.title, article.content)
-    if (isMotorcycle) {
-      console.log(`🏍️  Filtered out motorcycle article: ${article.title.slice(0, 100)}`)
-    }
-    return !isMotorcycle
-  })
+  return articles.filter(article => !isMotorcycleContent(article.title, article.content))
 }
 
 /**
@@ -242,12 +236,7 @@ export function filterCarArticles<T extends { title: string; content: string }>(
     // }
 
     // 檢查不相關內容
-    if (isIrrelevantContent(article.title, article.content)) {
-      console.log(`🚫 Filtered: irrelevant - ${article.title.slice(0, 100)}`)
-      return false
-    }
-
-    return true
+    return !isIrrelevantContent(article.title, article.content)
   })
 }
 

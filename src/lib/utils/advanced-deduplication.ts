@@ -68,7 +68,6 @@ export async function checkEmbeddingSimilarity(
     const similarity = cosineSimilarity(newEmbedding, article.embedding as number[])
 
     if (similarity >= similarityThreshold) {
-      console.log(`[Embedding Check] High similarity detected: ${(similarity * 100).toFixed(1)}%`)
       return {
         id: article.id,
         title_zh: article.title_zh,
@@ -113,10 +112,6 @@ export async function checkBrandFrequency(
 
   const count = recentArticles?.length || 0
   const exceeded = count >= maxArticles
-
-  if (exceeded) {
-    console.log(`[Brand Frequency] ${brand} exceeded limit: ${count}/${maxArticles} in ${windowHours}h`)
-  }
 
   return {
     exceeded,
@@ -192,10 +187,6 @@ export async function checkKeywordOverlap(
     const overlap = intersection.size / union.size
 
     if (overlap >= overlapThreshold) {
-      console.log(`[Keyword Overlap] High overlap detected: ${(overlap * 100).toFixed(1)}%`)
-      console.log(`  New: ${Array.from(newKeywords).join(', ')}`)
-      console.log(`  Existing: ${Array.from(articleKeywords).join(', ')}`)
-
       return {
         id: article.id,
         title_zh: article.title_zh,

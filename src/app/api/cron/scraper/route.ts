@@ -10,32 +10,11 @@ async function handleCronJob(request: NextRequest) {
   // 验证 Vercel Cron 或手动触发
   const isVercelCron = request.headers.get('x-vercel-cron') === '1'
   const authHeader = request.headers.get('authorization')
-  // Trim CRON_SECRET to remove any trailing newlines or whitespace
   const expectedAuth = `Bearer ${process.env.CRON_SECRET?.trim()}`
   const isManualTrigger = authHeader === expectedAuth
 
-  // Debug logging
-  console.log('Auth Debug:', {
-    isVercelCron,
-    hasAuthHeader: !!authHeader,
-    authMatches: isManualTrigger,
-    receivedLength: authHeader?.length,
-    expectedLength: expectedAuth.length,
-    receivedPrefix: authHeader?.substring(0, 30) + '...',
-    expectedPrefix: expectedAuth.substring(0, 30) + '...',
-    receivedSuffix: authHeader?.substring(authHeader.length - 10),
-    expectedSuffix: expectedAuth.substring(expectedAuth.length - 10),
-    envSecretLength: process.env.CRON_SECRET?.length
-  })
-
   if (!isVercelCron && !isManualTrigger) {
-    return NextResponse.json({
-      error: 'Unauthorized',
-      debug: process.env.NODE_ENV === 'development' ? {
-        isVercelCron,
-        hasAuth: !!authHeader
-      } : undefined
-    }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const startTime = Date.now()
