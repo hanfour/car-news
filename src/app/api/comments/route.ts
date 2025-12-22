@@ -111,14 +111,14 @@ export async function POST(request: NextRequest) {
           set(name: string, value: string, options: CookieOptions) {
             try {
               cookieStore.set({ name, value, ...options })
-            } catch (error) {
+            } catch {
               // Ignore errors in API routes
             }
           },
           remove(name: string, options: CookieOptions) {
             try {
               cookieStore.set({ name, value: '', ...options })
-            } catch (error) {
+            } catch {
               // Ignore errors in API routes
             }
           },

@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
 import { getErrorMessage } from '@/lib/utils/error'
 
 let client: Anthropic | null = null
@@ -210,7 +211,6 @@ ${s.content.slice(0, 2000)}...
 
   // 策略2: 降級到 OpenAI GPT-4o
   try {
-    const OpenAI = require('openai').default
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
     const completion = await openai.chat.completions.create({

@@ -14,6 +14,7 @@ function NavigationProgressInner() {
 
   useEffect(() => {
     // 頁面變化時重置狀態
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- Valid pattern for route change reset
     setIsNavigating(false)
     setProgress(0)
   }, [pathname, searchParams])

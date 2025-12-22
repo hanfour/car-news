@@ -81,7 +81,7 @@ async function fixBrokenImages() {
     totalArticles++
 
     let needsUpdate = false
-    let updatedImages: StoredImage[] = []
+    const updatedImages: StoredImage[] = []
     let updatedCoverImage = article.cover_image
 
     // 檢查文章圖片

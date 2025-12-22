@@ -1,0 +1,21 @@
+# Build outputs
+.next/
+out/
+dist/
+build/
+
+# Dependencies
+node_modules/
+
+# Config files (CommonJS)
+jest.config.js
+next.config.js
+tailwind.config.js
+postcss.config.js
+
+# Legacy scripts (CommonJS)
+*.js
+!src/**/*.js
+
+# Generated files
+*.d.ts

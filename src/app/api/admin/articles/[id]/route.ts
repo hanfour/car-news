@@ -70,7 +70,7 @@ export async function PATCH(
   ]
 
   // 過濾出允許的欄位
-  const updates: any = {}
+  const updates: Record<string, unknown> = {}
   for (const field of allowedFields) {
     if (field in body) {
       updates[field] = body[field]

@@ -22,6 +22,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
       const messageParam = params.get('message')
 
       if (errorParam) {
+        // eslint-disable-next-line react-hooks/rules-of-hooks -- Valid pattern for reading URL params
         setError(messageParam || '登入失敗，請稍後再試')
         // 清除 URL 參數
         window.history.replaceState({}, '', window.location.pathname)

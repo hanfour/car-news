@@ -92,7 +92,7 @@ export async function checkBrandFrequency(
   brand: string,
   windowHours: number = 24,
   maxArticles: number = 3
-): Promise<{ exceeded: boolean; count: number; recentArticles: any[] }> {
+): Promise<{ exceeded: boolean; count: number; recentArticles: Array<{ id: string; title_zh: string; created_at: string }> }> {
   const supabase = createServiceClient()
 
   const windowDate = new Date()
