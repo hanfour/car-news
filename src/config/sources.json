@@ -319,7 +319,7 @@
     "name": "AutoEvolution",
     "url": "https://www.autoevolution.com/rss/news.xml",
     "type": "rss",
-    "enabled": true,
-    "note": "Added 2025-12-22 for expansion"
+    "enabled": false,
+    "note": "Disabled 2025-12-23: Cloudflare blocks RSS access (returns empty content)"
   }
 ]
