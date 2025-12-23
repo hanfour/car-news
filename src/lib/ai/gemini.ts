@@ -105,8 +105,9 @@ ${s.content.slice(0, 2000)}...
       model: modelName,
       generationConfig: {
         temperature: 0.7,
-        // 中文每字約 2-3 tokens，一篇 1500 字文章 + JSON 結構需要 ~6000-8000 tokens
-        maxOutputTokens: 8192,
+        // Gemini 2.5 Flash 支持最高 65536 output tokens
+        // 中文文章 + JSON 結構 + metadata 需要較大空間，設為 16384 確保不被截斷
+        maxOutputTokens: 16384,
         responseMimeType: 'application/json'
       }
     })
