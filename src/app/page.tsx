@@ -232,13 +232,16 @@ export default async function Home() {
     getAllTags(),
   ])
 
+  // 獲取 SSR 時的最新文章時間，用於客戶端比較是否有更新
+  const ssrLatestTime = articles.length > 0 ? articles[0].published_at : null
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Sticky Header with Sidebar */}
       <StickyHeader popularBrands={POPULAR_BRANDS} brandsByCountry={BRANDS_BY_COUNTRY} />
 
       {/* 自動檢測並提示新文章 */}
-      <AutoRefreshArticles />
+      <AutoRefreshArticles ssrLatestTime={ssrLatestTime} />
 
       {/* 今日最新文章輪播 */}
       <TodayArticlesCarousel articles={todayArticles} />

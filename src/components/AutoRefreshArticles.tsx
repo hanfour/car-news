@@ -1,22 +1,30 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 
+interface AutoRefreshArticlesProps {
+  /** SSR 渲染時的最新文章發布時間，用於比較是否有更新 */
+  ssrLatestTime?: string | null
+}
+
 /**
- * 自動檢測新文章並提示用戶刷新
- * 使用 Supabase Realtime 監聽新文章發布
+ * 自動檢測新文章並刷新頁面
+ * 1. 頁面載入時：比較 SSR 數據與實時數據，若有更新則自動刷新
+ * 2. 頁面開啟後：使用 Supabase Realtime 監聽新文章發布
  */
-export function AutoRefreshArticles() {
+export function AutoRefreshArticles({ ssrLatestTime }: AutoRefreshArticlesProps) {
   const router = useRouter()
   const [hasNewArticles, setHasNewArticles] = useState(false)
   const [latestArticleTime, setLatestArticleTime] = useState<string | null>(null)
+  const initialCheckDone = useRef(false)
+  const hasAutoRefreshed = useRef(false)
 
   useEffect(() => {
     const supabase = createClient()
 
-    // 獲取當前最新文章時間
+    // 獲取當前最新文章時間，並在初次載入時檢查是否需要刷新
     const fetchLatestArticleTime = async () => {
       const { data } = await supabase
         .from('generated_articles')
@@ -27,7 +35,51 @@ export function AutoRefreshArticles() {
         .single()
 
       if (data) {
-        setLatestArticleTime(data.published_at)
+        const dbLatestTime = data.published_at
+        setLatestArticleTime(dbLatestTime)
+
+        // 初次載入時，比較 SSR 數據與 DB 實時數據
+        if (!initialCheckDone.current) {
+          initialCheckDone.current = true
+
+          // 如果有 SSR 時間，比較是否有更新
+          if (ssrLatestTime && dbLatestTime && !hasAutoRefreshed.current) {
+            const ssrTime = new Date(ssrLatestTime)
+            const dbTime = new Date(dbLatestTime)
+
+            if (dbTime > ssrTime) {
+              // DB 有更新的文章，自動刷新頁面數據
+              console.log('[AutoRefresh] SSR data is stale, refreshing...', {
+                ssrTime: ssrTime.toISOString(),
+                dbTime: dbTime.toISOString()
+              })
+              hasAutoRefreshed.current = true
+              router.refresh()
+              return
+            }
+          }
+
+          // 沒有 SSR 時間時，使用 sessionStorage 作為備用
+          if (!ssrLatestTime) {
+            const lastSeenTime = sessionStorage.getItem('lastSeenArticleTime')
+            if (lastSeenTime && dbLatestTime) {
+              const lastSeen = new Date(lastSeenTime)
+              const dbTime = new Date(dbLatestTime)
+
+              if (dbTime > lastSeen && !hasAutoRefreshed.current) {
+                console.log('[AutoRefresh] New articles since last visit, refreshing...')
+                hasAutoRefreshed.current = true
+                router.refresh()
+                return
+              }
+            }
+          }
+
+          // 更新 sessionStorage 記錄
+          if (dbLatestTime) {
+            sessionStorage.setItem('lastSeenArticleTime', dbLatestTime)
+          }
+        }
       }
     }
 
@@ -45,7 +97,7 @@ export function AutoRefreshArticles() {
           filter: 'published=eq.true'
         },
         (payload) => {
-          console.log('New article published:', payload.new)
+          console.log('[AutoRefresh] New article published:', payload.new)
 
           // 檢查是否真的有新文章（發布時間晚於當前最新）
           if (latestArticleTime) {
@@ -54,6 +106,8 @@ export function AutoRefreshArticles() {
 
             if (newArticleTime > currentLatestTime) {
               setHasNewArticles(true)
+              // 更新 sessionStorage
+              sessionStorage.setItem('lastSeenArticleTime', payload.new.published_at as string)
             }
           } else {
             setHasNewArticles(true)
@@ -71,7 +125,7 @@ export function AutoRefreshArticles() {
         (payload) => {
           // 如果文章從未發布變為已發布
           if (payload.old?.published === false && payload.new?.published === true) {
-            console.log('Article published:', payload.new)
+            console.log('[AutoRefresh] Article published:', payload.new)
             setHasNewArticles(true)
           }
         }
@@ -81,7 +135,7 @@ export function AutoRefreshArticles() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [latestArticleTime])
+  }, [latestArticleTime, ssrLatestTime, router])
 
   const handleRefresh = () => {
     setHasNewArticles(false)
