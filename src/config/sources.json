@@ -194,8 +194,8 @@
     "name": "Jalopnik",
     "url": "https://jalopnik.com/rss",
     "type": "rss",
-    "enabled": false,
-    "note": "RSS feed not responding - disabled 2025-11-21"
+    "enabled": true,
+    "note": "Re-enabled 2025-12-23: RSS feed working again"
   },
   {
     "id": "motor1",
@@ -321,5 +321,88 @@
     "type": "rss",
     "enabled": false,
     "note": "Disabled 2025-12-23: Cloudflare blocks RSS access (returns empty content)"
+  },
+  {
+    "id": "cnevpost",
+    "name": "CnEVPost",
+    "url": "https://cnevpost.com/feed/",
+    "type": "rss",
+    "enabled": true,
+    "category": "green",
+    "note": "Added 2025-12-23: Chinese EV news (NIO, XPeng, Li Auto, BYD)"
+  },
+  {
+    "id": "cnevpost-nio",
+    "name": "CnEVPost - NIO",
+    "url": "https://cnevpost.com/category/nio/feed/",
+    "type": "rss",
+    "enabled": true,
+    "brand": "NIO",
+    "category": "blog",
+    "note": "Added 2025-12-23"
+  },
+  {
+    "id": "cnevpost-xpeng",
+    "name": "CnEVPost - XPeng",
+    "url": "https://cnevpost.com/category/xpeng/feed/",
+    "type": "rss",
+    "enabled": true,
+    "brand": "XPeng",
+    "category": "blog",
+    "note": "Added 2025-12-23"
+  },
+  {
+    "id": "cnevpost-li-auto",
+    "name": "CnEVPost - Li Auto",
+    "url": "https://cnevpost.com/category/li-auto/feed/",
+    "type": "rss",
+    "enabled": true,
+    "brand": "Li Auto",
+    "category": "blog",
+    "note": "Added 2025-12-23"
+  },
+  {
+    "id": "cnevpost-byd",
+    "name": "CnEVPost - BYD",
+    "url": "https://cnevpost.com/category/byd/feed/",
+    "type": "rss",
+    "enabled": true,
+    "brand": "BYD",
+    "category": "blog",
+    "note": "Added 2025-12-23"
+  },
+  {
+    "id": "pistonheads",
+    "name": "PistonHeads",
+    "url": "https://www.pistonheads.com/xml/news091.asp",
+    "type": "rss",
+    "enabled": true,
+    "note": "Added 2025-12-23: Europe's largest motoring community"
+  },
+  {
+    "id": "chargedevs",
+    "name": "Charged EVs",
+    "url": "https://chargedevs.com/feed/",
+    "type": "rss",
+    "enabled": true,
+    "category": "green",
+    "note": "Added 2025-12-23: EV industry news and discussions"
+  },
+  {
+    "id": "automotive-iq",
+    "name": "Automotive IQ",
+    "url": "https://www.automotive-iq.com/rss/articles",
+    "type": "rss",
+    "enabled": true,
+    "category": "industry",
+    "note": "Added 2025-12-23: Automotive industry insights"
+  },
+  {
+    "id": "paultan",
+    "name": "Paul Tan Automotive",
+    "url": "https://paultan.org/feed/",
+    "type": "rss",
+    "enabled": true,
+    "note": "Added 2025-12-23: Asian automotive news (Malaysia)"
   }
 ]
