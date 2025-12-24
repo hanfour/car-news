@@ -17,6 +17,7 @@ import {
   markRawArticlesAsUsed
 } from '@/lib/utils/deduplication'
 import { comprehensiveDuplicateCheck } from '@/lib/utils/advanced-deduplication'
+import { collectByRoundRobin, sortBrandsByPriority } from '@/lib/generator/round-robin'
 
 export const maxDuration = 300 // Vercel Pro限制：最长5分钟
 
@@ -160,165 +161,110 @@ async function handleCronJob(request: NextRequest) {
       console.log(`- ${brand}: ${articles.length} articles`)
     }
 
-    // 2.5 智能排序：品牌多樣性優先策略
-    // 三重策略組合：
-    // A. 品牌輪換機制 - 使用日期作為種子輪換優先順序
-    // B. 品牌配額制度 - 確保每個品牌至少有機會被處理
-    // C. 增加處理數量 - 提高文章生成限制
-    // 確保品牌名稱與 brand-extractor.ts 返回的名稱完全匹配
+    // 2.5 品牌優先級排序
     const PRIORITY_BRANDS = [
       'Tesla', 'BYD', 'Mercedes-Benz', 'BMW', 'Audi', 'Volkswagen',
       'Toyota', 'Honda', 'Hyundai', 'Kia', 'Ford', 'Chevrolet',
       'Porsche', 'Ferrari', 'Lamborghini', 'NIO', 'XPeng', 'Li Auto'
     ]
 
-    // A. 品牌輪換機制：使用日期作為種子來輪換優先級
-    const today = new Date()
-    const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000)
-    const rotationSeed = dayOfYear % PRIORITY_BRANDS.length
+    // 使用輪盤算法的優先級排序
+    const sortedBrandList = sortBrandsByPriority(brandGroups, PRIORITY_BRANDS)
 
-    // 輪換優先品牌列表
-    const rotatedPriorityBrands = [
-      ...PRIORITY_BRANDS.slice(rotationSeed),
-      ...PRIORITY_BRANDS.slice(0, rotationSeed)
-    ]
-
-    console.log(`\n🔄 Brand rotation (seed: day ${dayOfYear}, offset: ${rotationSeed})`)
-    console.log(`   Today's priority: ${rotatedPriorityBrands.slice(0, 5).join(', ')}...`)
-
-    const sortedBrands = Array.from(brandGroups.entries()).sort((a, b) => {
-      const [brandA, articlesA] = a
-      const [brandB, articlesB] = b
-
-      // 1. "Other" 永遠最後
-      if (brandA === 'Other') return 1
-      if (brandB === 'Other') return -1
-
-      // 2. 使用輪換後的優先品牌列表
-      const priorityIndexA = rotatedPriorityBrands.indexOf(brandA)
-      const priorityIndexB = rotatedPriorityBrands.indexOf(brandB)
-
-      const isPriorityA = priorityIndexA !== -1
-      const isPriorityB = priorityIndexB !== -1
-
-      // 兩個都是優先品牌：按輪換後的順序排
-      if (isPriorityA && isPriorityB) {
-        return priorityIndexA - priorityIndexB
-      }
-
-      // 只有一個是優先品牌
-      if (isPriorityA && !isPriorityB) return -1
-      if (!isPriorityA && isPriorityB) return 1
-
-      // 3. 文章數量多的優先（有新聞價值）
-      return articlesB.length - articlesA.length
-    })
-
-    console.log('\n📊 Processing order (by priority):')
-    sortedBrands.slice(0, 10).forEach(([brand, articles], idx) => {
+    console.log('\n📊 Brand priority order:')
+    sortedBrandList.slice(0, 10).forEach(({ brand, articles }, idx) => {
       const isPriority = PRIORITY_BRANDS.includes(brand)
       console.log(`  ${idx + 1}. ${brand}: ${articles.length} articles ${isPriority ? '⭐' : ''}`)
     })
-    if (sortedBrands.length > 10) {
-      console.log(`  ... and ${sortedBrands.length - 10} more brands\n`)
+    if (sortedBrandList.length > 10) {
+      console.log(`  ... and ${sortedBrandList.length - 10} more brands\n`)
     }
 
-    const results = []
-    const todayStr = new Date().toISOString().split('T')[0]
-    let totalProcessed = 0
-    let skippedDueToTimeout = 0
+    // 2.6 預先對所有品牌進行聚類
+    console.log('\n🔄 Pre-clustering all brands...')
+    type BrandClusterData = {
+      brand: string
+      clusters: Array<{
+        articles: RawArticle[]
+        centroid: number[] | null
+        size: number
+        similarity: number
+      }>
+    }
+    const allBrandClusters: BrandClusterData[] = []
 
-    // C. 品牌配額追踪：記錄每個品牌已生成的文章數
-    const brandQuotaTracker = new Map<string, number>()
-
-    // D. 品牌配額上限：防止單一品牌佔據過多配額
-    const MAX_ARTICLES_PER_BRAND = 3  // 每小時每個品牌最多生成 3 篇文章（配合高頻率執行，保持品牌多樣性）
-
-    // 3. 對每個品牌進行聚類和生成（使用排序後的順序）
-    for (const [brand, brandArticles] of sortedBrands) {
-      const brandProcessedCount = brandQuotaTracker.get(brand) || 0
-
-      // D. 品牌配額上限檢查：如果品牌已達到配額上限，跳過該品牌
-      if (brandProcessedCount >= MAX_ARTICLES_PER_BRAND) {
-        console.log(`[${brand}] ⏭️  Skipping - reached max quota (${brandProcessedCount}/${MAX_ARTICLES_PER_BRAND})`)
-        continue
-      }
-
-      // C. 品牌配額檢查：如果品牌還沒達到最小配額，即使時間緊張也繼續處理
-      const hasMetQuota = brandProcessedCount >= TIMEOUT_CONFIG.MIN_ARTICLES_PER_BRAND
-      const shouldProcessForQuota = !hasMetQuota && totalProcessed < TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN
-
-      // 在处理每个品牌前检查時間（但優先確保品牌配額）
-      if (!shouldProcessForQuota && !shouldContinueProcessing(totalProcessed)) {
-        const remainingBrands = sortedBrands.length - (sortedBrands.findIndex(([b]) => b === brand))
-        skippedDueToTimeout = remainingBrands
-        console.log(`⏭️  Skipping remaining brands (${remainingBrands} left) - quota met and timeout approaching`)
-        break
-      }
-
-      if (shouldProcessForQuota && !shouldContinueProcessing(totalProcessed)) {
-        console.log(`[${brand}] ⚡ Processing despite time pressure (quota: ${brandProcessedCount}/${TIMEOUT_CONFIG.MIN_ARTICLES_PER_BRAND})`)
-      }
-
-      console.log(`\n[${brand}] Processing ${brandArticles.length} articles...`)
-
-      // 3.1 在品牌內進行主題聚類
-      // 根據文章數量決定聚類策略：
-      // - 1篇：直接生成單篇文章
-      // - 2篇：嘗試聚類（最少2篇，相似度0.6）
-      // - 3篇以上：正常聚類（最少2篇，相似度0.5）
-      let brandClusters = []
+    for (const { brand, articles: brandArticles } of sortedBrandList) {
+      let brandClusters: Array<{
+        articles: RawArticle[]
+        centroid: number[] | null
+        size: number
+        similarity: number
+      }> = []
 
       if (brandArticles.length === 1) {
-        // 單篇文章直接處理，不需要聚類
-        console.log(`[${brand}] Single article, processing directly`)
-        const article = brandArticles[0]
+        const article = brandArticles[0] as RawArticle
         let centroid = article.embedding
         if (typeof centroid === 'string') {
           centroid = JSON.parse(centroid)
         }
         brandClusters.push({
           articles: [article],
-          centroid: centroid,
+          centroid: centroid as number[] | null,
           size: 1,
-          similarity: 1.0  // 單篇文章相似度設為1.0
+          similarity: 1.0
         })
       } else if (brandArticles.length === 2) {
-        // 2篇文章：使用較高相似度門檻
-        brandClusters = await clusterArticles(brandArticles, 2, 0.6)
+        brandClusters = await clusterArticles(brandArticles as RawArticle[], 2, 0.6)
       } else {
-        // 3篇以上：正常聚類（最少2篇，相似度0.5）
-        brandClusters = await clusterArticles(brandArticles, 2, 0.5)
+        brandClusters = await clusterArticles(brandArticles as RawArticle[], 2, 0.5)
       }
 
-      console.log(`[${brand}] Found ${brandClusters.length} topic clusters`)
-
-      // 如果聚類失敗，嘗試將所有文章合併成一個「品牌週報」
+      // 如果聚類失敗，嘗試創建品牌週報
       if (brandClusters.length === 0 && brandArticles.length >= 2) {
-        console.log(`[${brand}] No clusters found, creating brand digest`)
-
-        // 解析第一篇文章的 embedding（可能是字串或陣列）
-        let centroid = brandArticles[0].embedding
+        let centroid = (brandArticles[0] as RawArticle).embedding
         if (typeof centroid === 'string') {
           centroid = JSON.parse(centroid)
         }
-
-        // 手動創建一個包含所有文章的 cluster
         brandClusters.push({
-          articles: brandArticles,
-          centroid: centroid,
+          articles: brandArticles as RawArticle[],
+          centroid: centroid as number[] | null,
           size: brandArticles.length,
-          similarity: 0.5  // 品牌週報使用預設相似度
+          similarity: 0.5
         })
       }
 
-      if (brandClusters.length === 0) {
-        console.log(`[${brand}] Skipping: no valid clusters`)
-        continue
+      if (brandClusters.length > 0) {
+        allBrandClusters.push({ brand, clusters: brandClusters })
+        console.log(`  [${brand}] ${brandClusters.length} clusters`)
+      }
+    }
+
+    console.log(`\n✓ Pre-clustering complete: ${allBrandClusters.length} brands with clusters`)
+
+    // 2.7 使用輪盤算法收集要處理的 clusters
+    const MAX_ARTICLES_PER_BRAND = 3
+    const { collected, roundsCompleted } = await collectByRoundRobin(
+      allBrandClusters,
+      TIMEOUT_CONFIG.TARGET_ARTICLES,
+      MAX_ARTICLES_PER_BRAND
+    )
+
+    console.log(`\n🎡 Round-robin collection: ${collected.length} items from ${roundsCompleted} rounds`)
+
+    const results = []
+    let totalProcessed = 0
+    let skippedDueToTimeout = 0
+
+    // 3. 按輪盤順序處理收集到的 clusters
+    for (const { brand, cluster } of collected) {
+      // 時間檢查
+      if (!shouldContinueProcessing(totalProcessed)) {
+        skippedDueToTimeout = collected.length - totalProcessed
+        console.log(`⏭️  Stopping - timeout approaching (${skippedDueToTimeout} items remaining)`)
+        break
       }
 
-      // 3.2 為每個主題聚類生成文章
-      for (const cluster of brandClusters) {
+      console.log(`\n[${brand}] Processing cluster (${cluster.size} sources)...`)
       // ============ SOLUTION 3: Topic Lock Check ============
       // Generate topic hash from cluster centroid
       let centroid = cluster.centroid
@@ -335,12 +281,6 @@ async function handleCronJob(request: NextRequest) {
         continue
       }
       // ======================================================
-
-      // 在处理每个cluster前检查时间和数量限制
-      if (!shouldContinueProcessing(totalProcessed)) {
-        console.log(`[${brand}] ⏸️  Stopping cluster processing to avoid timeout`)
-        break
-      }
 
       try {
         // 3.1 生成短ID（需要在圖片存儲前生成）
@@ -551,15 +491,11 @@ async function handleCronJob(request: NextRequest) {
 
         totalProcessed++  // 增加已处理计数
 
-        // C. 更新品牌配額追踪
-        brandQuotaTracker.set(brand, (brandQuotaTracker.get(brand) || 0) + 1)
-
-        console.log(`[${brand}] ✓ ${decision.shouldPublish ? 'Published' : 'Saved'}: ${generated.title_zh} (${storedImages.length} images stored) [${totalProcessed}/${TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN}]`)
+        console.log(`[${brand}] ✓ ${decision.shouldPublish ? 'Published' : 'Saved'}: ${generated.title_zh} (${storedImages.length} images stored) [${totalProcessed}/${TIMEOUT_CONFIG.TARGET_ARTICLES}]`)
 
       } catch (error) {
         console.error(`[${brand}] Error generating article for cluster:`, getErrorMessage(error))
         // 继续处理下一个聚类
-      }
       }
     }
 
@@ -593,6 +529,11 @@ async function handleCronJob(request: NextRequest) {
         duration_ms: elapsedTime,
         hit_timeout: hitTimeout,
         timeout_reason: hitTimeout ? (totalProcessed >= TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN ? 'article_limit' : 'time_limit') : null,
+        round_robin: {
+          collected: collected.length,
+          rounds_completed: roundsCompleted,
+          brands_with_clusters: allBrandClusters.length
+        },
         brands: Object.fromEntries(
           Array.from(brandGroups.entries()).map(([brand, articles]) => [brand, articles.length])
         )
