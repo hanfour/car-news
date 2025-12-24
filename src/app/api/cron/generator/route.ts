@@ -16,7 +16,7 @@ import {
   createTopicLock,
   markRawArticlesAsUsed
 } from '@/lib/utils/deduplication'
-import { comprehensiveDuplicateCheck } from '@/lib/utils/advanced-deduplication'
+import { comprehensiveDuplicateCheck, checkBrandFrequency } from '@/lib/utils/advanced-deduplication'
 import { collectByRoundRobin, sortBrandsByPriority } from '@/lib/generator/round-robin'
 
 export const maxDuration = 300 // Vercel Pro限制：最长5分钟
@@ -283,10 +283,19 @@ async function handleCronJob(request: NextRequest) {
       // ======================================================
 
       try {
-        // 3.1 生成短ID（需要在圖片存儲前生成）
+        // 3.1 品牌頻率前置檢查（避免浪費 Gemini API 調用）
+        const frequencyCheck = await checkBrandFrequency(brand, 24, 3)
+        if (frequencyCheck.exceeded) {
+          console.log(`[${brand}] 🚫 Brand frequency exceeded (${frequencyCheck.count}/3 in 24h)`)
+          console.log(`[${brand}]   Recent: "${frequencyCheck.recentArticles[0]?.title_zh}"`)
+          console.log(`[${brand}] → Skipping to save API quota`)
+          continue
+        }
+
+        // 3.2 生成短ID（需要在圖片存儲前生成）
         const shortId = generateShortId()
 
-        // 3.4 调用AI生成文章
+        // 3.3 调用AI生成文章
         console.log(`[${brand}] → Generating article for cluster (${cluster.articles.length} sources)...`)
         const generated = await generateArticle(cluster.articles)
 
@@ -338,19 +347,33 @@ async function handleCronJob(request: NextRequest) {
         let coverImage = generated.coverImage
         let imageCredit = generated.imageCredit
 
-        // 優先順序：1. AI生成的coverImage  2. 來源文章第一張圖  3. 智能 AI 生成
+        // 優先順序：1. AI選取的coverImage  2. 來源文章第一張圖  3. 智能 AI 生成
         if (generated.coverImage) {
-          // 下載並存儲 AI 生成的封面圖
-          console.log(`[${brand}] → Downloading AI-generated cover image...`)
+          // 檢查 coverImage 是否來自來源文章（而非 AI 生成）
+          const matchingSource = sourceImages.find(img => {
+            if (img.url === generated.coverImage) return true
+            try {
+              const sourceHost = new URL(img.url).hostname
+              return generated.coverImage?.includes(sourceHost)
+            } catch {
+              return false
+            }
+          })
+
+          const credit = matchingSource
+            ? matchingSource.credit
+            : (generated.imageCredit || 'AI Generated')
+
+          console.log(`[${brand}] → Downloading cover image (credit: ${credit})...`)
           const storedCover = await downloadAndStoreImage(
             generated.coverImage,
             shortId,
-            'AI Generated'
+            credit
           )
           if (storedCover) {
             coverImage = storedCover.url
             imageCredit = storedCover.credit
-            console.log(`[${brand}] → ✓ AI cover image stored`)
+            console.log(`[${brand}] → ✓ Cover image stored (from: ${matchingSource ? 'source' : 'AI'})`)
           }
         } else if (storedImages.length > 0) {
           // 使用來源文章的第一張圖片作為封面
