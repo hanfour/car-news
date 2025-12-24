@@ -10,13 +10,13 @@ export const revalidate = 60
 async function getArticlesByBrand(brand: string) {
   const supabase = createClient()
 
+  // 優化：列表頁不需要 content_zh，減少數據傳輸
   const { data, error } = await supabase
     .from('generated_articles')
-    .select('id, title_zh, content_zh, published_at, source_published_at, view_count, share_count, created_at, brands, car_models, categories, tags, cover_image')
+    .select('id, title_zh, published_at, source_published_at, view_count, share_count, brands, categories, cover_image, primary_brand')
     .eq('published', true)
-    .eq('primary_brand', brand)  // 只顯示主要品牌匹配的文章
+    .eq('primary_brand', brand)
     .order('published_at', { ascending: false })
-    .order('created_at', { ascending: false })
     .limit(50)
 
   if (error) {

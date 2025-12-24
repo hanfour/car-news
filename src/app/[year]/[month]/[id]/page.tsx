@@ -17,6 +17,7 @@ import { ArticleViewTracker } from '@/components/ArticleViewTracker'
 import { SanitizedContent } from '@/components/SanitizedContent'
 import { ArticleImage } from '@/types/article'
 import Script from 'next/script'
+import { cache } from 'react'
 
 interface PageProps {
   params: Promise<{
@@ -26,7 +27,8 @@ interface PageProps {
   }>
 }
 
-async function getArticle(id: string) {
+// 使用 React cache() 來去重複請求（metadata 和 page 共用同一個請求）
+const getArticle = cache(async (id: string) => {
   const supabase = createServiceClient()
 
   const { data, error } = await supabase
@@ -40,10 +42,8 @@ async function getArticle(id: string) {
     return null
   }
 
-  // View count is now handled by client-side API call
-  // to avoid blocking server-side rendering
   return data
-}
+})
 
 async function getComments(articleId: string) {
   const supabase = createServiceClient()
@@ -92,11 +92,32 @@ async function getComments(articleId: string) {
 async function getRelatedArticles(articleId: string, brands: string[], categories: string[]) {
   const supabase = createServiceClient()
 
+  // 優化：只選擇必要的欄位，並使用品牌過濾
+  const primaryBrand = brands[0]
+
+  if (primaryBrand) {
+    // 優先查找同品牌的文章
+    const { data, error } = await supabase
+      .from('generated_articles')
+      .select('id, title_zh, published_at, cover_image, view_count')
+      .eq('published', true)
+      .neq('id', articleId)
+      .contains('brands', [primaryBrand])
+      .order('published_at', { ascending: false })
+      .limit(4)
+
+    if (!error && data && data.length >= 2) {
+      return data
+    }
+  }
+
+  // 回退：查找最新的文章
   const { data, error } = await supabase
     .from('generated_articles')
-    .select('id, title_zh, published_at, cover_image, view_count, brands, categories')
+    .select('id, title_zh, published_at, cover_image, view_count')
     .eq('published', true)
     .neq('id', articleId)
+    .order('published_at', { ascending: false })
     .limit(4)
 
   if (error) {
@@ -204,8 +225,11 @@ export default async function ArticlePage({ params }: PageProps) {
     notFound()
   }
 
-  const comments = await getComments(id)
-  const relatedArticles = await getRelatedArticles(id, article.brands || [], article.categories || [])
+  // 並行查詢評論和相關文章，提升效能
+  const [comments, relatedArticles] = await Promise.all([
+    getComments(id),
+    getRelatedArticles(id, article.brands || [], article.categories || [])
+  ])
 
   // Generate JSON-LD structured data for SEO
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://wantcar.autos'
