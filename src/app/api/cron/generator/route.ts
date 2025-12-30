@@ -344,12 +344,12 @@ async function handleCronJob(request: NextRequest) {
         console.log(`[${brand}] → Successfully stored ${storedImages.length}/${sourceImages.length} images`)
 
         // 3.4.2 決定封面圖片來源
-        let coverImage = generated.coverImage
-        let imageCredit = generated.imageCredit
+        let coverImage: string | undefined = undefined
+        let imageCredit: string | undefined = undefined
 
-        // 優先順序：1. AI選取的coverImage  2. 來源文章第一張圖  3. 智能 AI 生成
+        // 優先順序：1. 來源文章的coverImage  2. 其他已下載的來源圖片  3. AI 生成
         if (generated.coverImage) {
-          // 檢查 coverImage 是否來自來源文章（而非 AI 生成）
+          // 檢查 coverImage 是否來自來源文章
           const matchingSource = sourceImages.find(img => {
             if (img.url === generated.coverImage) return true
             try {
@@ -362,7 +362,7 @@ async function handleCronJob(request: NextRequest) {
 
           const credit = matchingSource
             ? matchingSource.credit
-            : (generated.imageCredit || 'AI Generated')
+            : (generated.imageCredit || 'Unknown')
 
           console.log(`[${brand}] → Downloading cover image (credit: ${credit})...`)
           const storedCover = await downloadAndStoreImage(
@@ -373,25 +373,28 @@ async function handleCronJob(request: NextRequest) {
           if (storedCover) {
             coverImage = storedCover.url
             imageCredit = storedCover.credit
-            console.log(`[${brand}] → ✓ Cover image stored (from: ${matchingSource ? 'source' : 'AI'})`)
+            console.log(`[${brand}] → ✓ Cover image stored (from: ${matchingSource ? 'source' : 'external'})`)
+          } else {
+            console.log(`[${brand}] → ✗ Cover image download failed, trying fallback...`)
           }
-        } else if (storedImages.length > 0) {
-          // 使用來源文章的第一張圖片作為封面
+        }
+
+        // Fallback 1: 使用其他已下載的來源圖片
+        if (!coverImage && storedImages.length > 0) {
           coverImage = storedImages[0].url
           imageCredit = storedImages[0].credit
-          console.log(`[${brand}] → Using first source image as cover`)
-        } else {
-          // 沒有可用圖片時的智能策略
-          // 注意：sourceImages 可能存在但下載失敗（storedImages.length === 0）
+          console.log(`[${brand}] → Using first stored source image as cover`)
+        }
+
+        // Fallback 2: AI 生成（僅當完全沒有可用圖片時）
+        if (!coverImage) {
           console.log(`[${brand}] → No images available (source: ${sourceImages.length}, stored: ${storedImages.length})`)
 
-          // 智能判斷是否生成 AI 圖片
           // 成本考量：DALL-E 3 ($0.08/張) vs Gemini 文字 ($0.000675/篇) = 100x 差異
-          // 可通過環境變數 ENABLE_AI_IMAGE_GENERATION 控制（默認啟用）
           const enableAIGeneration = process.env.ENABLE_AI_IMAGE_GENERATION !== 'false'
 
           if (enableAIGeneration) {
-            console.log(`[${brand}] → No source images, generating AI cover (cost: $0.08)...`)
+            console.log(`[${brand}] → Generating AI cover with DALL-E 3 (cost: $0.08)...`)
             const aiImage = await generateAndSaveCoverImage(
               generated.title_zh,
               generated.content_zh,
@@ -403,11 +406,10 @@ async function handleCronJob(request: NextRequest) {
               imageCredit = aiImage.credit
               console.log(`[${brand}] ✓ AI cover image generated and saved`)
             } else {
-              console.log(`[${brand}] ✗ AI image generation failed`)
+              console.log(`[${brand}] ✗ AI image generation failed, article will have no cover`)
             }
           } else {
-            console.log(`[${brand}] ⏭️  AI image generation disabled (ENABLE_AI_IMAGE_GENERATION=false)`)
-            // AI 圖片生成已關閉，文章將沒有封面圖
+            console.log(`[${brand}] ⏭️  AI image generation disabled, article will have no cover`)
           }
         }
 
