@@ -51,11 +51,11 @@ export async function checkEmbeddingSimilarity(
   // 獲取最近同品牌的已發布文章（含 embedding）
   const { data: recentArticles, error } = await supabase
     .from('generated_articles')
-    .select('id, title_zh, embedding')
+    .select('id, title_zh, content_embedding')
     .eq('published', true)
     .eq('primary_brand', brand)
     .gte('published_at', windowDate.toISOString())
-    .not('embedding', 'is', null)
+    .not('content_embedding', 'is', null)
     .order('published_at', { ascending: false })
     .limit(20)
 
@@ -65,7 +65,17 @@ export async function checkEmbeddingSimilarity(
 
   // 比較每篇文章的 embedding
   for (const article of recentArticles) {
-    const similarity = cosineSimilarity(newEmbedding, article.embedding as number[])
+    // 處理字串格式的 embedding（資料庫可能回傳 JSON 字串）
+    let embedding = article.content_embedding
+    if (typeof embedding === 'string') {
+      try {
+        embedding = JSON.parse(embedding)
+      } catch {
+        continue
+      }
+    }
+
+    const similarity = cosineSimilarity(newEmbedding, embedding as number[])
 
     if (similarity >= similarityThreshold) {
       return {
