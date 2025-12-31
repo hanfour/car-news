@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('generated_articles')
-    .select('id, title_zh, published, published_at, created_at, confidence, primary_brand, categories, view_count', { count: 'exact' })
+    .select('id, title_zh, content_zh, cover_image, published, published_at, created_at, confidence, primary_brand, categories, view_count', { count: 'exact' })
     .order('created_at', { ascending: false })
 
   // 應用篩選

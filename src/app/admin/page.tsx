@@ -9,6 +9,8 @@ type ArticleSortBy = 'date' | 'confidence'
 interface Article {
   id: string
   title_zh: string
+  content_zh: string
+  cover_image: string | null
   published: boolean
   published_at: string | null
   created_at: string
@@ -904,7 +906,7 @@ export default function AdminDashboard() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       <input
                         type="checkbox"
                         checked={selectedIds.size === filteredArticles.length && filteredArticles.length > 0}
@@ -912,28 +914,25 @@ export default function AdminDashboard() {
                         className="rounded"
                       />
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ID
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Cover
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Title
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Article
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Brand
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Date
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Conf
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Views
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -941,7 +940,7 @@ export default function AdminDashboard() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredArticles.map((article) => (
                     <tr key={article.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <input
                           type="checkbox"
                           checked={selectedIds.has(article.id)}
@@ -949,30 +948,50 @@ export default function AdminDashboard() {
                           className="rounded"
                         />
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-                        {article.id}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 max-w-md">
-                        {article.published && article.published_at ? (
-                          <a
-                            href={`/${article.published_at.split('T')[0].slice(0, 7).replace(/-/g, '/')}/${article.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="hover:text-blue-600 hover:underline"
-                          >
-                            {article.title_zh}
-                          </a>
+                      <td className="px-4 py-3">
+                        {article.cover_image ? (
+                          <img
+                            src={article.cover_image}
+                            alt=""
+                            className="w-24 h-16 object-cover rounded border"
+                          />
                         ) : (
-                          <span className="text-gray-600">{article.title_zh}</span>
+                          <div className="w-24 h-16 bg-gray-200 rounded border flex items-center justify-center text-gray-400 text-xs">
+                            No Image
+                          </div>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-4 py-3 text-sm text-gray-900 max-w-lg">
+                        <div className="space-y-1">
+                          <div className="font-medium">
+                            {article.published && article.published_at ? (
+                              <a
+                                href={`/${article.published_at.split('T')[0].slice(0, 7).replace(/-/g, '/')}/${article.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:text-blue-600 hover:underline"
+                              >
+                                {article.title_zh}
+                              </a>
+                            ) : (
+                              <span>{article.title_zh}</span>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-500 line-clamp-2">
+                            {article.content_zh?.slice(0, 120)}...
+                          </div>
+                          <div className="text-xs text-gray-400 font-mono">
+                            ID: {article.id}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
                         {article.primary_brand || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
                         {article.published_at || article.created_at.split('T')[0]}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <td className="px-4 py-3 whitespace-nowrap text-sm">
                         <span className={`font-medium ${
                           article.confidence >= 80 ? 'text-green-600' :
                           article.confidence >= 60 ? 'text-yellow-600' :
@@ -981,10 +1000,7 @@ export default function AdminDashboard() {
                           {article.confidence}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {article.view_count}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                           article.published
                             ? 'bg-green-100 text-green-800'
@@ -993,7 +1009,7 @@ export default function AdminDashboard() {
                           {article.published ? 'Published' : 'Draft'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                      <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium space-x-2">
                         <a
                           href={`/admin/articles/${article.id}`}
                           className="text-blue-600 hover:text-blue-900"
