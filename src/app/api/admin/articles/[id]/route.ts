@@ -42,6 +42,31 @@ async function verifyAuth(request: NextRequest): Promise<boolean> {
   return false
 }
 
+// GET /api/admin/articles/[id] - 獲取單篇文章
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!(await verifyAuth(request))) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { id } = await params
+  const supabase = createServiceClient()
+
+  const { data, error } = await supabase
+    .from('generated_articles')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 404 })
+  }
+
+  return NextResponse.json({ article: data })
+}
+
 // PATCH /api/admin/articles/[id] - 更新文章
 export async function PATCH(
   request: NextRequest,

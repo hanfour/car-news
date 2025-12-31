@@ -994,6 +994,12 @@ export default function AdminDashboard() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                        <a
+                          href={`/admin/articles/${article.id}`}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
+                          Edit
+                        </a>
                         <button
                           onClick={() => handleTogglePublish(article.id, article.published)}
                           className={`${

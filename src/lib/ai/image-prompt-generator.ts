@@ -104,7 +104,8 @@ Respond with valid JSON only, no markdown.`
       // 如果 JSON 解析失败，尝试提取关键信息
       console.warn('⚠ JSON parse failed, trying regex extraction...')
 
-      const fullPromptMatch = jsonText.match(/"fullPrompt"\s*:\s*"([^"]+(?:\\"[^"]*)*[^"]*)"/s)
+      const fullPromptMatch = jsonText.match(/"fullPrompt"\s*:\s*"([^"]+(?:\\"[^"]*)*[^"]*)"/)
+
       const subjectMatch = jsonText.match(/"subject"\s*:\s*"([^"]+)"/)
 
       if (fullPromptMatch) {
