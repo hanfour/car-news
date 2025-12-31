@@ -1,5 +1,9 @@
 #!/usr/bin/env tsx
 
+/**
+ * 检查所有已发布文章的封面图状态
+ */
+
 import * as dotenv from 'dotenv'
 import * as path from 'path'
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
@@ -9,43 +13,71 @@ import { createServiceClient } from '../src/lib/supabase'
 async function checkCoverImages() {
   const supabase = createServiceClient()
 
-  const { data: articles } = await supabase
+  const { data: articles, error } = await supabase
     .from('generated_articles')
-    .select('id, title_zh, cover_image, images')
-    .in('id', ['mHNNoHo', '2Ly1pyl'])
+    .select('id, title_zh, cover_image, image_credit')
+    .eq('published', true)
 
-  console.log('🔍 檢查封面圖片來源...\n')
-
-  for (const article of articles || []) {
-    console.log(`【文章 ${article.id}】`)
-    console.log(`標題: ${article.title_zh}`)
-    console.log(`封面圖: ${article.cover_image}`)
-    console.log(`圖片陣列長度: ${article.images?.length || 0}`)
-
-    if (article.images?.length > 0) {
-      console.log(`\n第一張圖片 (用作封面):`)
-      console.log(JSON.stringify(article.images[0], null, 2))
-    }
-
-    // 測試封面圖 URL 是否可訪問
-    if (article.cover_image) {
-      console.log(`\n測試封面圖 URL...`)
-      try {
-        const response = await fetch(article.cover_image, { method: 'HEAD' })
-        console.log(`HTTP Status: ${response.status} ${response.statusText}`)
-        console.log(`Content-Type: ${response.headers.get('content-type')}`)
-
-        if (response.status === 403) {
-          console.log(`⚠️  防盜連！需要重新生成或替換封面圖`)
-        } else if (response.status === 200) {
-          console.log(`✅ 圖片可正常訪問`)
-        }
-      } catch (error: any) {
-        console.log(`❌ 測試失敗: ${error.message}`)
-      }
-    }
-    console.log('-'.repeat(80) + '\n')
+  if (error) {
+    console.error('Error:', error.message)
+    process.exit(1)
   }
+
+  // 统计各种图片来源
+  let noImage = 0
+  let aiGenerated = 0
+  let supabaseStorage = 0
+  let original = 0
+  let other = 0
+
+  const noImageArticles: Array<{ id: string; title: string }> = []
+
+  for (const article of articles) {
+    if (!article.cover_image) {
+      noImage++
+      noImageArticles.push({
+        id: article.id,
+        title: article.title_zh.slice(0, 50)
+      })
+    } else if (article.cover_image.includes('supabase.co/storage')) {
+      if (article.image_credit?.includes('AI')) {
+        aiGenerated++
+      } else {
+        supabaseStorage++
+      }
+    } else if (article.image_credit === 'original' || article.image_credit === '來源網站') {
+      original++
+    } else {
+      other++
+    }
+  }
+
+  console.log('='.repeat(60))
+  console.log('📊 封面图统计')
+  console.log('='.repeat(60))
+  console.log('')
+  console.log(`总文章数: ${articles.length}`)
+  console.log('')
+  console.log(`✅ 有封面图: ${articles.length - noImage}`)
+  console.log(`   - AI 生成: ${aiGenerated}`)
+  console.log(`   - Supabase 存储: ${supabaseStorage}`)
+  console.log(`   - 原文图片: ${original}`)
+  console.log(`   - 其他来源: ${other}`)
+  console.log('')
+  console.log(`❌ 无封面图: ${noImage}`)
+
+  if (noImageArticles.length > 0) {
+    console.log('')
+    console.log('缺少封面的文章:')
+    for (const a of noImageArticles.slice(0, 20)) {
+      console.log(`   - ${a.id}: ${a.title}...`)
+    }
+    if (noImageArticles.length > 20) {
+      console.log(`   ... 还有 ${noImageArticles.length - 20} 篇`)
+    }
+  }
+  console.log('')
+  console.log('='.repeat(60))
 }
 
 checkCoverImages().catch(console.error)

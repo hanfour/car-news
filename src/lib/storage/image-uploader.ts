@@ -69,7 +69,7 @@ export async function uploadImageFromUrl(
       console.log('→ Adding AI watermark...')
       const { addWatermark: addWatermarkFn } = await import('@/lib/utils/watermark')
       buffer = await addWatermarkFn(buffer, {
-        text: 'AI 生成模擬圖',
+        text: 'AI 示意圖（非官方）',
         position: 'bottom-right',
         opacity: 0.7
       })

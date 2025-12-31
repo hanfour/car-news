@@ -1,10 +1,13 @@
 /**
  * AI 圖片生成工具
  * 使用 DALL-E 3 為沒有圖片的文章生成封面圖
+ *
+ * 改进：使用 Gemini 智能分析文章内容，确保图文匹配
  */
 
 import OpenAI from 'openai'
 import { getErrorMessage } from '@/lib/utils/error'
+import { generateImagePromptFromArticle } from './image-prompt-generator'
 
 // Lazy initialization to ensure env vars are loaded first
 let openai: OpenAI | null = null
@@ -26,6 +29,7 @@ interface ImageGenerationResult {
 
 /**
  * 為汽車新聞生成封面圖片
+ * 使用 Gemini 智能分析 + DALL-E 3 生成
  */
 export async function generateCoverImage(
   title: string,
@@ -33,10 +37,14 @@ export async function generateCoverImage(
   brands?: string[]
 ): Promise<ImageGenerationResult | null> {
   try {
-    // 構建圖片生成提示詞
-    const prompt = buildImagePrompt(title, content, brands)
+    // 使用 Gemini 智能分析文章，生成精准的图片描述
+    console.log('→ Step 1: Analyzing article with Gemini...')
+    const promptResult = await generateImagePromptFromArticle(title, content, brands)
 
-    console.log('→ Generating cover image with DALL-E 3...')
+    // 使用智能生成的 prompt
+    const prompt = promptResult.fullPrompt
+
+    console.log('→ Step 2: Generating cover image with DALL-E 3...')
     console.log(`   Prompt: ${prompt.slice(0, 100)}...`)
 
     const response = await getOpenAI().images.generate({

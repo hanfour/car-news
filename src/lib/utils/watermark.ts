@@ -21,7 +21,7 @@ export async function addWatermark(
   options: WatermarkOptions = {}
 ): Promise<Buffer> {
   const {
-    text = 'AI 生成模擬圖',
+    text = 'AI 示意圖（非官方）',
     position = 'bottom-right',
     opacity = 0.6,
     fontSize = 40
@@ -152,7 +152,7 @@ function createWatermarkSvg(
         fill="white"
         opacity="${opacity * 0.8}"
         text-anchor="${textAnchor}"
-      >此圖片由 AI 生成，僅供參考</text>
+      >此為新聞示意圖，非品牌官方圖片</text>
     </svg>
   `
 }

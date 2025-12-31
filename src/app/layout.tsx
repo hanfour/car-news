@@ -4,6 +4,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { ToastProvider } from '@/components/ToastContainer';
 import LoadingScreen from '@/components/LoadingScreen';
 import NavigationProgress from '@/components/NavigationProgress';
+import { Footer } from '@/components/Footer';
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -37,6 +38,7 @@ export default function RootLayout({
         <ToastProvider>
           <AuthProvider>
             {children}
+            <Footer />
           </AuthProvider>
         </ToastProvider>
         <Analytics />

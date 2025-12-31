@@ -18,6 +18,7 @@ import { SanitizedContent } from '@/components/SanitizedContent'
 import { ArticleImage } from '@/types/article'
 import Script from 'next/script'
 import { cache } from 'react'
+import { SourceBanner } from '@/components/SourceBanner'
 
 interface PageProps {
   params: Promise<{
@@ -388,6 +389,11 @@ export default async function ArticlePage({ params }: PageProps) {
             <div className="text-sm text-gray-600 mb-6 pb-6 border-b border-gray-200">
               文：玩咖 AI 整理
             </div>
+
+            {/* 3.5 Source Banner - High visibility source attribution */}
+            {article.source_urls && article.source_urls.length > 0 && (
+              <SourceBanner sourceUrls={article.source_urls} />
+            )}
 
             {/* 4. Cover Image */}
             {article.cover_image && (

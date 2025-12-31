@@ -1,20 +1,27 @@
 import { createServiceClient } from '@/lib/supabase'
 import crypto from 'crypto'
 import { getErrorMessage } from '@/lib/utils/error'
+import { isLegalImageSource, getImageSourceCredit } from '@/config/image-sources'
 
 /**
  * 圖片下載和存儲服務
  *
- * 功能：
- * 1. 從外部 URL 下載圖片
- * 2. 上傳到 Supabase Storage
- * 3. 返回公開訪問 URL
+ * ⚠️ 法律合規版本 - 2024/12 更新
  *
- * 優勢：
- * - 避免外部圖片失效（404）
- * - 提升加載速度（CDN 加速）
- * - 完整控制圖片生命週期
- * - 支持 SEO 優化
+ * 重要變更：
+ * - 只下載來自官方 Newsroom 的合法圖片
+ * - 非官方來源的圖片將被跳過，改用 AI 生成
+ * - 所有圖片必須標註來源
+ *
+ * 合法來源：
+ * 1. 官方品牌 Newsroom / Media Center
+ * 2. 已授權的圖片服務 (CDN)
+ * 3. AI 生成圖片
+ *
+ * 禁止來源：
+ * - 私人網站 / 部落格
+ * - 未授權的新聞媒體圖片
+ * - 社群媒體直連圖片（應使用嵌入）
  */
 
 export interface StoredImage {
@@ -89,10 +96,12 @@ function tryCompressUrl(url: string): string {
 /**
  * 下載圖片並存儲到 Supabase Storage
  *
+ * ⚠️ 法律合規版本：只處理合法來源的圖片
+ *
  * @param imageUrl 外部圖片 URL
  * @param articleId 文章 ID（用於組織文件結構）
  * @param credit 圖片來源標註
- * @returns 存儲後的圖片信息，失敗返回 null
+ * @returns 存儲後的圖片信息，非法來源返回 null
  */
 export async function downloadAndStoreImage(
   imageUrl: string,
@@ -100,6 +109,19 @@ export async function downloadAndStoreImage(
   credit: string = 'Unknown'
 ): Promise<StoredImage | null> {
   try {
+    // ⚠️ 法律合規檢查：只下載合法來源的圖片
+    const sourceCheck = isLegalImageSource(imageUrl)
+
+    if (!sourceCheck.isLegal) {
+      console.warn(`[Image Storage] ⚠️ 非法來源，跳過下載: ${sourceCheck.domain}`)
+      console.warn(`[Image Storage] 原始 URL: ${imageUrl}`)
+      console.warn(`[Image Storage] 建議：使用 AI 生成圖片替代`)
+      return null
+    }
+
+    // 使用合法來源的標註
+    const legalCredit = getImageSourceCredit(imageUrl)
+    console.log(`[Image Storage] ✓ 合法來源: ${sourceCheck.source} (${sourceCheck.domain})`)
     console.log(`[Image Storage] Downloading: ${imageUrl}`)
 
     // 1. 下載圖片
@@ -177,7 +199,7 @@ export async function downloadAndStoreImage(
 
     return {
       url: publicUrl,
-      credit,
+      credit: legalCredit, // 使用合法來源標註
       originalUrl: imageUrl,
       size,
       mimeType: blob.type,
