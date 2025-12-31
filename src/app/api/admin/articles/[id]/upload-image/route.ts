@@ -56,7 +56,7 @@ export async function POST(
 
     // 1. 讀取檔案
     const arrayBuffer = await file.arrayBuffer()
-    let buffer = Buffer.from(arrayBuffer)
+    let buffer: Buffer = Buffer.from(new Uint8Array(arrayBuffer))
 
     console.log(`→ Processing uploaded image for article ${id}`)
     console.log(`   File size: ${(buffer.length / 1024).toFixed(1)} KB`)
