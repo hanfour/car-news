@@ -8,6 +8,7 @@ import { getErrorMessage } from '@/lib/utils/error'
 
 interface WatermarkOptions {
   text?: string
+  subText?: string | null  // 副標題，設為 null 則不顯示
   position?: 'bottom-right' | 'bottom-left' | 'center' | 'top-right'
   opacity?: number
   fontSize?: number
@@ -22,6 +23,7 @@ export async function addWatermark(
 ): Promise<Buffer> {
   const {
     text = 'AI 示意圖（非官方）',
+    subText = '此為新聞示意圖，非品牌官方圖片',  // null 則不顯示
     position = 'bottom-right',
     opacity = 0.6,
     fontSize = 40
@@ -41,7 +43,8 @@ export async function addWatermark(
       height,
       position,
       opacity,
-      fontSize
+      fontSize,
+      subText
     )
 
     // 3. 合成圖片
@@ -74,7 +77,8 @@ function createWatermarkSvg(
   imageHeight: number,
   position: string,
   opacity: number,
-  fontSize: number
+  fontSize: number,
+  subText?: string | null
 ): string {
   // 計算文字位置
   const padding = 30
@@ -102,6 +106,10 @@ function createWatermarkSvg(
 
   const textAnchor = position.includes('right') ? 'end' : 'start'
 
+  // 計算背景矩形大小（根據文字長度動態調整）
+  const textWidth = Math.max(text.length * fontSize * 0.6, 200)
+  const rectHeight = subText ? fontSize + 45 : fontSize + 20
+
   // 創建帶有陰影效果的 SVG 浮水印
   return `
     <svg width="${imageWidth}" height="${imageHeight}">
@@ -121,10 +129,10 @@ function createWatermarkSvg(
 
       <!-- 背景半透明矩形 -->
       <rect
-        x="${x - (position.includes('right') ? 220 : 10)}"
+        x="${x - (position.includes('right') ? textWidth + 10 : 10)}"
         y="${y - fontSize - 10}"
-        width="230"
-        height="${fontSize + 20}"
+        width="${textWidth + 20}"
+        height="${rectHeight}"
         fill="black"
         opacity="${opacity * 0.5}"
         rx="5"
@@ -143,6 +151,7 @@ function createWatermarkSvg(
         filter="url(#shadow)"
       >${text}</text>
 
+      ${subText ? `
       <!-- 小字說明 -->
       <text
         x="${x}"
@@ -152,7 +161,8 @@ function createWatermarkSvg(
         fill="white"
         opacity="${opacity * 0.8}"
         text-anchor="${textAnchor}"
-      >此為新聞示意圖，非品牌官方圖片</text>
+      >${subText}</text>
+      ` : ''}
     </svg>
   `
 }

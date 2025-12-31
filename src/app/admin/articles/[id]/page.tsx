@@ -31,12 +31,17 @@ export default function ArticleEditPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [regeneratingImage, setRegeneratingImage] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
   // Form state
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
+
+  // Image upload state
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [imageCredit, setImageCredit] = useState('圖片來源：網路')
 
   useEffect(() => {
     fetchArticle()
@@ -142,6 +147,47 @@ export default function ArticleEditPage() {
       }
     } catch (err) {
       setError('Failed to update publish status')
+    }
+  }
+
+  const handleUploadImage = async () => {
+    if (!selectedFile) {
+      setError('請選擇圖片檔案')
+      return
+    }
+
+    if (!imageCredit.trim()) {
+      setError('請輸入圖片來源')
+      return
+    }
+
+    setUploadingImage(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', selectedFile)
+      formData.append('imageCredit', imageCredit.trim())
+
+      const response = await fetch(`/api/admin/articles/${id}/upload-image`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to upload image')
+      }
+
+      setSuccess('圖片已上傳並添加浮水印！')
+      setSelectedFile(null)
+      fetchArticle()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upload image')
+    } finally {
+      setUploadingImage(false)
     }
   }
 
@@ -258,7 +304,7 @@ export default function ArticleEditPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-sm font-medium text-gray-700 mb-4">封面圖片</h3>
               {article.cover_image ? (
-                <div className="space-y-4">
+                <div className="space-y-2">
                   <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-100">
                     <Image
                       src={article.cover_image}
@@ -276,13 +322,49 @@ export default function ArticleEditPage() {
                   無封面圖
                 </div>
               )}
-              <button
-                onClick={handleRegenerateImage}
-                disabled={regeneratingImage}
-                className="mt-4 w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-              >
-                {regeneratingImage ? '生成中...' : '🎨 重新生成 AI 圖片'}
-              </button>
+
+              {/* Upload custom image */}
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <h4 className="text-xs font-medium text-gray-600 mb-2">📤 上傳自訂圖片</h4>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                  className="w-full text-xs mb-2"
+                />
+                {selectedFile && (
+                  <div className="text-xs text-gray-500 mb-2">
+                    已選擇: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+                  </div>
+                )}
+                <input
+                  type="text"
+                  value={imageCredit}
+                  onChange={(e) => setImageCredit(e.target.value)}
+                  placeholder="圖片來源（會顯示為浮水印）"
+                  className="w-full text-sm border border-gray-300 rounded px-2 py-1 mb-2"
+                />
+                <button
+                  onClick={handleUploadImage}
+                  disabled={uploadingImage || !selectedFile}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
+                >
+                  {uploadingImage ? '上傳中...' : '上傳並添加浮水印'}
+                </button>
+              </div>
+
+              {/* Regenerate AI image */}
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <h4 className="text-xs font-medium text-gray-600 mb-2">🎨 AI 生成圖片</h4>
+                <button
+                  onClick={handleRegenerateImage}
+                  disabled={regeneratingImage}
+                  className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 text-sm"
+                >
+                  {regeneratingImage ? '生成中...' : '重新生成 AI 圖片'}
+                </button>
+                <p className="text-xs text-gray-400 mt-1">使用 DALL-E 3 生成（約 $0.04/次）</p>
+              </div>
             </div>
 
             {/* Metadata */}
