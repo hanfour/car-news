@@ -1,10 +1,13 @@
 import { RawArticle, ArticleCluster } from '@/types/database'
 import { cosineSimilarity } from './embeddings'
 
+// 新增：最大 cluster 大小限制，避免生成過於廣泛的文章
+const MAX_CLUSTER_SIZE = 15
+
 export async function clusterArticles(
   articles: RawArticle[],
   minClusterSize: number = 3,
-  similarityThreshold: number = 0.7
+  similarityThreshold: number = 0.82  // 提高閾值：0.7 → 0.82，生成更具體的話題 cluster
 ): Promise<ArticleCluster[]> {
   if (articles.length < minClusterSize) {
     return []
@@ -33,9 +36,10 @@ export async function clusterArticles(
     const cluster: RawArticle[] = [validArticles[i]]
     used.add(validArticles[i].id)
 
-    // 找到相似的文章
+    // 找到相似的文章（限制 cluster 大小）
     for (let j = i + 1; j < validArticles.length; j++) {
       if (used.has(validArticles[j].id)) continue
+      if (cluster.length >= MAX_CLUSTER_SIZE) break  // 達到上限時停止
 
       const similarity = cosineSimilarity(
         validArticles[i].embedding,

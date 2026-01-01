@@ -34,14 +34,14 @@ export function cosineSimilarity(vec1: number[], vec2: number[]): number {
  * @param newEmbedding 新文章的 embedding
  * @param brand 品牌名稱
  * @param windowDays 檢查窗口（天數）
- * @param similarityThreshold 相似度閾值（預設 0.90）
+ * @param similarityThreshold 相似度閾值（預設 0.95）
  * @returns 如果發現重複，返回重複文章信息
  */
 export async function checkEmbeddingSimilarity(
   newEmbedding: number[],
   brand: string,
   windowDays: number = 3,
-  similarityThreshold: number = 0.90
+  similarityThreshold: number = 0.95  // 提高閾值：0.90 → 0.95，避免誤判不同新聞事件
 ): Promise<{ id: string; title_zh: string; similarity: number } | null> {
   const supabase = createServiceClient()
 
