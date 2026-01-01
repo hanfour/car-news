@@ -7,7 +7,7 @@ const MAX_CLUSTER_SIZE = 15
 export async function clusterArticles(
   articles: RawArticle[],
   minClusterSize: number = 3,
-  similarityThreshold: number = 0.82  // 提高閾值：0.7 → 0.82，生成更具體的話題 cluster
+  similarityThreshold: number = 0.75  // 調整閾值：0.7 → 0.75，配合 MAX_CLUSTER_SIZE 限制
 ): Promise<ArticleCluster[]> {
   if (articles.length < minClusterSize) {
     return []
