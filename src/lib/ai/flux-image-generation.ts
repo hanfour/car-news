@@ -230,56 +230,5 @@ export async function generateWithFluxImg2Img(
   }
 }
 
-/**
- * 使用 IP-Adapter 進行風格參考
- * 適合保持圖片風格但改變內容
- */
-export async function generateWithFluxIPAdapter(
-  referenceImageUrl: string,
-  prompt: string,
-  options: {
-    ipAdapterScale?: number  // IP-Adapter 強度 (0-1)
-  } = {}
-): Promise<ImageGenerationResult | null> {
-  try {
-    configureFal()
-
-    const { ipAdapterScale = 0.7 } = options
-
-    console.log('→ Generating with Flux + IP-Adapter...')
-
-    const result = await fal.subscribe('fal-ai/flux-general', {
-      input: {
-        prompt,
-        image_size: 'landscape_16_9',
-        num_images: 1,
-        ip_adapters: [{
-          ip_adapter_image_url: referenceImageUrl,
-          ip_adapter_scale: ipAdapterScale
-        }],
-        enable_safety_checker: true
-      },
-      logs: false
-    }) as { data: FluxGenerationResult }
-
-    const imageUrl = result.data?.images?.[0]?.url
-
-    if (!imageUrl) {
-      console.error('✗ Flux IP-Adapter returned no image URL')
-      return null
-    }
-
-    console.log('✓ Flux IP-Adapter generated successfully')
-
-    return {
-      url: imageUrl,
-      revisedPrompt: prompt,
-      provider: 'flux',
-      cost: 0.025
-    }
-
-  } catch (error) {
-    console.error('✗ Flux IP-Adapter failed:', getErrorMessage(error))
-    return null
-  }
-}
+// IP-Adapter 功能暫時停用，待 fal.ai SDK 類型更新後再啟用
+// export async function generateWithFluxIPAdapter(...) { ... }
