@@ -69,6 +69,18 @@ export async function addWatermark(
 }
 
 /**
+ * 跳脫 XML/SVG 特殊字元
+ */
+function escapeXml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;')
+}
+
+/**
  * 創建浮水印 SVG
  */
 function createWatermarkSvg(
@@ -80,6 +92,9 @@ function createWatermarkSvg(
   fontSize: number,
   subText?: string | null
 ): string {
+  // 跳脫特殊字元避免破壞 SVG
+  const safeText = escapeXml(text)
+  const safeSubText = subText ? escapeXml(subText) : null
   // 計算文字位置
   const padding = 30
   let x = padding
@@ -107,12 +122,13 @@ function createWatermarkSvg(
   const textAnchor = position.includes('right') ? 'end' : 'start'
 
   // 計算背景矩形大小（根據文字長度動態調整）
+  // 使用原始 text 計算長度，因為跳脫後的字元會變長
   const textWidth = Math.max(text.length * fontSize * 0.6, 200)
-  const rectHeight = subText ? fontSize + 45 : fontSize + 20
+  const rectHeight = safeSubText ? fontSize + 45 : fontSize + 20
 
   // 創建帶有陰影效果的 SVG 浮水印
   return `
-    <svg width="${imageWidth}" height="${imageHeight}">
+<svg width="${imageWidth}" height="${imageHeight}" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
@@ -149,9 +165,9 @@ function createWatermarkSvg(
         opacity="${opacity}"
         text-anchor="${textAnchor}"
         filter="url(#shadow)"
-      >${text}</text>
+      >${safeText}</text>
 
-      ${subText ? `
+      ${safeSubText ? `
       <!-- 小字說明 -->
       <text
         x="${x}"
@@ -161,7 +177,7 @@ function createWatermarkSvg(
         fill="white"
         opacity="${opacity * 0.8}"
         text-anchor="${textAnchor}"
-      >${subText}</text>
+      >${safeSubText}</text>
       ` : ''}
     </svg>
   `
