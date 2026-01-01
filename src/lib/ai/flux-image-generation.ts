@@ -253,10 +253,10 @@ export async function generateWithFluxIPAdapter(
         prompt,
         image_size: 'landscape_16_9',
         num_images: 1,
-        ip_adapter: {
+        ip_adapters: [{
           ip_adapter_image_url: referenceImageUrl,
           ip_adapter_scale: ipAdapterScale
-        },
+        }],
         enable_safety_checker: true
       },
       logs: false
