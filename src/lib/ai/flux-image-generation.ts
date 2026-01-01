@@ -175,3 +175,111 @@ export function buildFluxPrompt(
 
   return prompt
 }
+
+/**
+ * 使用參考圖片生成新圖片（Image-to-Image）
+ * 可以基於原文配圖風格生成更準確的封面
+ */
+export async function generateWithFluxImg2Img(
+  referenceImageUrl: string,
+  prompt: string,
+  options: {
+    strength?: number  // 0.0 保留原圖, 1.0 完全重繪
+  } = {}
+): Promise<ImageGenerationResult | null> {
+  try {
+    configureFal()
+
+    const { strength = 0.75 } = options
+
+    console.log('→ Generating image with Flux Image-to-Image...')
+    console.log(`   Reference: ${referenceImageUrl.slice(0, 60)}...`)
+    console.log(`   Strength: ${strength}`)
+
+    const result = await fal.subscribe('fal-ai/flux/dev/image-to-image', {
+      input: {
+        image_url: referenceImageUrl,
+        prompt,
+        strength,
+        num_inference_steps: 28,
+        guidance_scale: 3.5,
+        enable_safety_checker: true
+      },
+      logs: false
+    }) as { data: FluxGenerationResult }
+
+    const imageUrl = result.data?.images?.[0]?.url
+
+    if (!imageUrl) {
+      console.error('✗ Flux img2img returned no image URL')
+      return null
+    }
+
+    console.log('✓ Flux img2img generated successfully')
+
+    return {
+      url: imageUrl,
+      revisedPrompt: prompt,
+      provider: 'flux',
+      cost: 0.025  // img2img 成本約 $0.025/張
+    }
+
+  } catch (error) {
+    console.error('✗ Flux img2img failed:', getErrorMessage(error))
+    return null
+  }
+}
+
+/**
+ * 使用 IP-Adapter 進行風格參考
+ * 適合保持圖片風格但改變內容
+ */
+export async function generateWithFluxIPAdapter(
+  referenceImageUrl: string,
+  prompt: string,
+  options: {
+    ipAdapterScale?: number  // IP-Adapter 強度 (0-1)
+  } = {}
+): Promise<ImageGenerationResult | null> {
+  try {
+    configureFal()
+
+    const { ipAdapterScale = 0.7 } = options
+
+    console.log('→ Generating with Flux + IP-Adapter...')
+
+    const result = await fal.subscribe('fal-ai/flux-general', {
+      input: {
+        prompt,
+        image_size: 'landscape_16_9',
+        num_images: 1,
+        ip_adapter: {
+          ip_adapter_image_url: referenceImageUrl,
+          ip_adapter_scale: ipAdapterScale
+        },
+        enable_safety_checker: true
+      },
+      logs: false
+    }) as { data: FluxGenerationResult }
+
+    const imageUrl = result.data?.images?.[0]?.url
+
+    if (!imageUrl) {
+      console.error('✗ Flux IP-Adapter returned no image URL')
+      return null
+    }
+
+    console.log('✓ Flux IP-Adapter generated successfully')
+
+    return {
+      url: imageUrl,
+      revisedPrompt: prompt,
+      provider: 'flux',
+      cost: 0.025
+    }
+
+  } catch (error) {
+    console.error('✗ Flux IP-Adapter failed:', getErrorMessage(error))
+    return null
+  }
+}

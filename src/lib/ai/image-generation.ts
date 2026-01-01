@@ -8,7 +8,7 @@
 import OpenAI from 'openai'
 import { getErrorMessage } from '@/lib/utils/error'
 import { generateImagePromptFromArticle } from './image-prompt-generator'
-import { generateWithFlux, buildFluxPrompt } from './flux-image-generation'
+import { generateWithFlux, generateWithFluxImg2Img, buildFluxPrompt } from './flux-image-generation'
 
 // 圖片生成提供商選項
 export type ImageProvider = 'flux' | 'dalle' | 'auto'
@@ -301,16 +301,58 @@ export async function generateAndSaveCoverImage(
   referenceImages?: Array<{ url: string; caption?: string; size?: number }>
 ): Promise<{ url: string; credit: string } | null> {
 
-  // 策略 1: 如果有參考圖片，優先使用圖生圖（Image Variation）
+  // 策略 1: 如果有參考圖片，優先使用 Flux Image-to-Image
   if (referenceImages && referenceImages.length > 0) {
-    console.log(`→ Found ${referenceImages.length} reference images, trying variation generation first...`)
+    console.log(`→ Found ${referenceImages.length} reference images, trying Flux img2img first...`)
 
+    // 選擇最大的圖片作為參考（通常品質最好）
+    const bestRef = referenceImages.reduce((best, current) => {
+      const currentSize = current.size || 0
+      const bestSize = best.size || 0
+      return currentSize > bestSize ? current : best
+    }, referenceImages[0])
+
+    // 只有在有 FAL_KEY 時才嘗試 Flux img2img
+    if (process.env.FAL_KEY && bestRef.url) {
+      try {
+        // 使用 Gemini 分析文章生成 prompt
+        const promptResult = await generateImagePromptFromArticle(title, content, brands)
+        const fluxPrompt = buildFluxPrompt(promptResult.subject, brands?.[0])
+
+        const img2imgResult = await generateWithFluxImg2Img(
+          bestRef.url,
+          fluxPrompt,
+          { strength: 0.7 }  // 保留 30% 原圖特徵
+        )
+
+        if (img2imgResult && img2imgResult.url && !img2imgResult.error) {
+          console.log('✓ Successfully generated cover from reference with Flux img2img')
+
+          // 上傳到永久存儲
+          const { uploadImageFromUrl } = await import('@/lib/storage/image-uploader')
+          const timestamp = Date.now()
+          const brandPrefix = brands && brands.length > 0 ? brands[0].toLowerCase() : 'auto'
+          const fileName = `flux-ref-${brandPrefix}-${timestamp}`
+
+          const permanentUrl = await uploadImageFromUrl(img2imgResult.url, fileName, true)
+
+          return {
+            url: permanentUrl || img2imgResult.url,
+            credit: 'AI 生成示意圖 (Flux + 參考圖)'
+          }
+        }
+      } catch (error) {
+        console.warn('⚠ Flux img2img error:', getErrorMessage(error))
+      }
+    }
+
+    // Fallback: 嘗試舊的 DALL-E variation 方法
     try {
       const { generateCoverFromBestReference } = await import('@/lib/ai/image-variation')
       const variationResult = await generateCoverFromBestReference(referenceImages)
 
       if (variationResult && variationResult.url) {
-        console.log('✓ Successfully generated cover from reference image')
+        console.log('✓ Successfully generated cover from reference image (DALL-E variation)')
         return variationResult
       } else {
         console.log('⚠ Variation generation failed, falling back to text-to-image...')
