@@ -43,6 +43,9 @@ export default function ArticleEditPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [imageCredit, setImageCredit] = useState('圖片來源：網路')
 
+  // AI generation method
+  const [generationMethod, setGenerationMethod] = useState<'auto' | 'flux-dev' | 'flux-schnell' | 'dalle'>('auto')
+
   useEffect(() => {
     fetchArticle()
   }, [id])
@@ -104,7 +107,20 @@ export default function ArticleEditPage() {
   }
 
   const handleRegenerateImage = async () => {
-    if (!confirm('確定要重新生成封面圖嗎？這將使用 DALL-E 3 生成新圖片（約 $0.04）。')) {
+    const costMap = {
+      'auto': '~$0.008',
+      'flux-dev': '$0.008',
+      'flux-schnell': '$0.003',
+      'dalle': '$0.040'
+    }
+    const methodName = {
+      'auto': 'Auto（Flux 優先）',
+      'flux-dev': 'Flux Dev',
+      'flux-schnell': 'Flux Schnell（快速）',
+      'dalle': 'DALL-E 3'
+    }
+
+    if (!confirm(`確定要使用 ${methodName[generationMethod]} 重新生成封面圖嗎？\n預估成本：${costMap[generationMethod]}`)) {
       return
     }
 
@@ -115,15 +131,18 @@ export default function ArticleEditPage() {
     try {
       const response = await fetch(`/api/admin/articles/${id}/regenerate-image`, {
         method: 'POST',
-        credentials: 'include'
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ method: generationMethod })
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        const data = await response.json()
         throw new Error(data.error || 'Failed to regenerate image')
       }
 
-      setSuccess('封面圖已重新生成！')
+      setSuccess(`封面圖已重新生成！使用 ${data.provider}，成本 $${data.cost?.toFixed(3) || '?'}`)
       fetchArticle()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to regenerate image')
@@ -356,6 +375,16 @@ export default function ArticleEditPage() {
               {/* Regenerate AI image */}
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <h4 className="text-xs font-medium text-gray-600 mb-2">🎨 AI 生成圖片</h4>
+                <select
+                  value={generationMethod}
+                  onChange={(e) => setGenerationMethod(e.target.value as typeof generationMethod)}
+                  className="w-full text-sm border border-gray-300 rounded px-2 py-1.5 mb-2"
+                >
+                  <option value="auto">Auto（Flux 優先）~$0.008</option>
+                  <option value="flux-dev">Flux Dev - $0.008</option>
+                  <option value="flux-schnell">Flux Schnell（快速）- $0.003</option>
+                  <option value="dalle">DALL-E 3（高品質）- $0.040</option>
+                </select>
                 <button
                   onClick={handleRegenerateImage}
                   disabled={regeneratingImage}
@@ -363,7 +392,12 @@ export default function ArticleEditPage() {
                 >
                   {regeneratingImage ? '生成中...' : '重新生成 AI 圖片'}
                 </button>
-                <p className="text-xs text-gray-400 mt-1">使用 DALL-E 3 生成（約 $0.04/次）</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {generationMethod === 'flux-schnell' && '⚡ 最快速度，適合快速預覽'}
+                  {generationMethod === 'flux-dev' && '✨ 平衡品質與成本'}
+                  {generationMethod === 'dalle' && '🎯 最高品質，5 倍成本'}
+                  {generationMethod === 'auto' && '🔄 自動選擇最佳方案'}
+                </p>
               </div>
             </div>
 
