@@ -22,8 +22,8 @@ export async function addWatermark(
   options: WatermarkOptions = {}
 ): Promise<Buffer> {
   const {
-    text = 'AI 示意圖（非官方）',
-    subText = '此為新聞示意圖，非品牌官方圖片',  // null 則不顯示
+    text = 'AI Generated',  // 使用英文避免 Vercel 無中文字體問題
+    subText = 'For illustration only',
     position = 'bottom-right',
     opacity = 0.6,
     fontSize = 40

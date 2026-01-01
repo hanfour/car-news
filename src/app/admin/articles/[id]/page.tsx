@@ -41,7 +41,7 @@ export default function ArticleEditPage() {
 
   // Image upload state
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [imageCredit, setImageCredit] = useState('圖片來源：網路')
+  const [imageCredit, setImageCredit] = useState('Source: Web')
 
   // AI generation method
   const [generationMethod, setGenerationMethod] = useState<'auto' | 'flux-dev' | 'flux-schnell' | 'dalle'>('auto')
@@ -360,9 +360,10 @@ export default function ArticleEditPage() {
                   type="text"
                   value={imageCredit}
                   onChange={(e) => setImageCredit(e.target.value)}
-                  placeholder="圖片來源（會顯示為浮水印）"
+                  placeholder="Image source (English only)"
                   className="w-full text-sm border border-gray-300 rounded px-2 py-1 mb-2"
                 />
+                <p className="text-xs text-yellow-600 mb-2">⚠️ Use English only (no Chinese fonts on server)</p>
                 <button
                   onClick={handleUploadImage}
                   disabled={uploadingImage || !selectedFile}

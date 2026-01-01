@@ -62,10 +62,11 @@ export async function POST(
     console.log(`   File size: ${(buffer.length / 1024).toFixed(1)} KB`)
     console.log(`   Image credit: ${imageCredit}`)
 
-    // 2. 添加浮水印（使用自訂來源文字，不顯示副標題）
+    // 2. 添加浮水印（使用自訂來源文字）
+    // ⚠️ 注意：Vercel 無中文字體，中文會變亂碼，建議使用英文
     buffer = await addWatermark(buffer, {
       text: imageCredit,
-      subText: null,  // 不顯示副標題
+      subText: null,
       position: 'bottom-right',
       opacity: 0.7,
       fontSize: 32

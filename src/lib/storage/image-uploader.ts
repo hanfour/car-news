@@ -64,14 +64,16 @@ export async function uploadImageFromUrl(
     const arrayBuffer = await response.arrayBuffer()
     let buffer: Buffer = Buffer.from(arrayBuffer)
 
-    // 2.1 如果需要添加浮水印
+    // 2.1 如果需要添加浮水印（使用英文避免 Vercel 無中文字體問題）
     if (addWatermark) {
       console.log('→ Adding AI watermark...')
       const { addWatermark: addWatermarkFn } = await import('@/lib/utils/watermark')
       buffer = await addWatermarkFn(buffer, {
-        text: 'AI 示意圖（非官方）',
+        text: 'AI Generated',
+        subText: 'For illustration only',
         position: 'bottom-right',
-        opacity: 0.7
+        opacity: 0.6,
+        fontSize: 36
       })
     }
 
