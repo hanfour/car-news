@@ -1,6 +1,6 @@
 /**
  * AI 圖片生成工具
- * 使用 DALL-E 3 為沒有圖片的文章生成封面圖
+ * 優先使用 Flux（$0.008/張），DALL-E 3 作為備選（$0.04/張）
  *
  * 改进：使用 Gemini 智能分析文章内容，确保图文匹配
  */
@@ -8,6 +8,10 @@
 import OpenAI from 'openai'
 import { getErrorMessage } from '@/lib/utils/error'
 import { generateImagePromptFromArticle } from './image-prompt-generator'
+import { generateWithFlux, buildFluxPrompt } from './flux-image-generation'
+
+// 圖片生成提供商選項
+export type ImageProvider = 'flux' | 'dalle' | 'auto'
 
 // Lazy initialization to ensure env vars are loaded first
 let openai: OpenAI | null = null
@@ -25,52 +29,99 @@ interface ImageGenerationResult {
   url: string
   revisedPrompt?: string
   error?: string
+  provider?: 'flux' | 'dalle'
+  cost?: number
 }
 
 /**
  * 為汽車新聞生成封面圖片
- * 使用 Gemini 智能分析 + DALL-E 3 生成
+ * 優先使用 Flux（便宜），失敗時 fallback 到 DALL-E 3
+ *
+ * @param provider - 'flux' | 'dalle' | 'auto'（預設 auto，優先 Flux）
  */
 export async function generateCoverImage(
   title: string,
   content: string,
-  brands?: string[]
+  brands?: string[],
+  provider: ImageProvider = 'auto'
 ): Promise<ImageGenerationResult | null> {
   try {
     // 使用 Gemini 智能分析文章，生成精准的图片描述
     console.log('→ Step 1: Analyzing article with Gemini...')
     const promptResult = await generateImagePromptFromArticle(title, content, brands)
-
-    // 使用智能生成的 prompt
     const prompt = promptResult.fullPrompt
 
-    console.log('→ Step 2: Generating cover image with DALL-E 3...')
-    console.log(`   Prompt: ${prompt.slice(0, 100)}...`)
+    // 決定使用哪個提供商
+    const useFlux = provider === 'flux' || (provider === 'auto' && process.env.FAL_KEY)
+    const useDalle = provider === 'dalle' || !useFlux
 
-    const response = await getOpenAI().images.generate({
-      model: 'dall-e-3',
-      prompt,
-      n: 1,
-      size: '1792x1024', // 橫向圖片，適合文章封面
-      quality: 'standard', // 使用 standard 降低成本
-      style: 'natural' // 自然風格，更適合新聞
-    })
+    // 嘗試 Flux（更便宜：$0.008/張）
+    if (useFlux) {
+      console.log('→ Step 2: Generating cover image with Flux (fal.ai)...')
+      console.log(`   Cost: ~$0.008 per image`)
 
-    const imageUrl = response.data?.[0]?.url
-    const revisedPrompt = response.data?.[0]?.revised_prompt
+      const fluxPrompt = buildFluxPrompt(promptResult.subject, brands?.[0])
+      const fluxResult = await generateWithFlux(fluxPrompt)
 
-    if (!imageUrl) {
-      console.error('✗ DALL-E 3 returned no image URL')
-      return null
+      if (fluxResult && fluxResult.url && !fluxResult.error) {
+        console.log('✓ Flux image generated successfully')
+        return {
+          url: fluxResult.url,
+          revisedPrompt: fluxPrompt,
+          provider: 'flux',
+          cost: 0.008
+        }
+      }
+
+      // Flux 失敗，如果是 auto 模式則 fallback 到 DALL-E
+      if (provider === 'auto') {
+        console.log('⚠ Flux failed, falling back to DALL-E 3...')
+      } else {
+        // 明確指定 Flux 但失敗
+        return {
+          url: '',
+          error: fluxResult?.error || 'Flux generation failed',
+          provider: 'flux',
+          cost: 0
+        }
+      }
     }
 
-    console.log('✓ Image generated successfully')
-    console.log(`   URL: ${imageUrl.slice(0, 60)}...`)
+    // 使用 DALL-E 3（$0.04/張）
+    if (useDalle || provider === 'auto') {
+      console.log('→ Step 2: Generating cover image with DALL-E 3...')
+      console.log(`   Cost: ~$0.04 per image`)
+      console.log(`   Prompt: ${prompt.slice(0, 100)}...`)
 
-    return {
-      url: imageUrl,
-      revisedPrompt
+      const response = await getOpenAI().images.generate({
+        model: 'dall-e-3',
+        prompt,
+        n: 1,
+        size: '1792x1024',
+        quality: 'standard',
+        style: 'natural'
+      })
+
+      const imageUrl = response.data?.[0]?.url
+      const revisedPrompt = response.data?.[0]?.revised_prompt
+
+      if (!imageUrl) {
+        console.error('✗ DALL-E 3 returned no image URL')
+        return null
+      }
+
+      console.log('✓ DALL-E 3 image generated successfully')
+      console.log(`   URL: ${imageUrl.slice(0, 60)}...`)
+
+      return {
+        url: imageUrl,
+        revisedPrompt,
+        provider: 'dalle',
+        cost: 0.04
+      }
     }
+
+    return null
 
   } catch (error) {
     console.error('✗ Image generation failed:', getErrorMessage(error))
@@ -270,10 +321,10 @@ export async function generateAndSaveCoverImage(
     }
   }
 
-  // 策略 2: Fallback 到純文字生成（DALL-E 3）
-  console.log('→ Using text-to-image generation (DALL-E 3)...')
+  // 策略 2: Fallback 到純文字生成（優先 Flux，備選 DALL-E 3）
+  console.log('→ Using text-to-image generation (Flux preferred, DALL-E 3 fallback)...')
 
-  const result = await generateCoverImage(title, content, brands)
+  const result = await generateCoverImage(title, content, brands, 'auto')
 
   if (!result || !result.url) {
     return null
@@ -284,22 +335,27 @@ export async function generateAndSaveCoverImage(
 
   const timestamp = Date.now()
   const brandPrefix = brands && brands.length > 0 ? brands[0].toLowerCase() : 'auto'
-  const fileName = `ai-${brandPrefix}-${timestamp}`
+  const providerPrefix = result.provider === 'flux' ? 'flux' : 'dalle'
+  const fileName = `${providerPrefix}-${brandPrefix}-${timestamp}`
 
   console.log('→ Uploading AI-generated image to permanent storage...')
   const permanentUrl = await uploadImageFromUrl(result.url, fileName, true)
 
+  // 根據使用的提供商設定 credit
+  const providerName = result.provider === 'flux' ? 'Flux' : 'DALL-E 3'
+  const costInfo = result.cost ? ` ($${result.cost.toFixed(3)})` : ''
+
   if (!permanentUrl) {
-    console.warn('⚠ Failed to upload to storage, using temporary DALL-E URL')
+    console.warn('⚠ Failed to upload to storage, using temporary URL')
     return {
       url: result.url,
-      credit: 'AI Generated (DALL-E 3) - Temporary URL'
+      credit: `AI 生成示意圖 (${providerName})${costInfo} - Temporary URL`
     }
   }
 
-  console.log('✓ Image saved to permanent storage')
+  console.log(`✓ Image saved to permanent storage (provider: ${providerName}, cost: ${costInfo})`)
   return {
     url: permanentUrl,
-    credit: 'AI Generated (DALL-E 3)'
+    credit: `AI 生成示意圖 (${providerName})`
   }
 }
