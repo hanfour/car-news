@@ -154,11 +154,11 @@ function createWatermarkSvg(
         rx="5"
       />
 
-      <!-- 浮水印文字 -->
+      <!-- 浮水印文字（使用 Vercel Linux 上可用的字體）-->
       <text
         x="${x}"
         y="${y}"
-        font-family="Noto Sans TC, PingFang TC, Microsoft JhengHei, sans-serif"
+        font-family="DejaVu Sans, Liberation Sans, Arial, Helvetica, sans-serif"
         font-size="${fontSize}"
         font-weight="bold"
         fill="white"
@@ -172,7 +172,7 @@ function createWatermarkSvg(
       <text
         x="${x}"
         y="${y + 25}"
-        font-family="Noto Sans TC, PingFang TC, Microsoft JhengHei, sans-serif"
+        font-family="DejaVu Sans, Liberation Sans, Arial, Helvetica, sans-serif"
         font-size="${fontSize * 0.4}"
         fill="white"
         opacity="${opacity * 0.8}"
