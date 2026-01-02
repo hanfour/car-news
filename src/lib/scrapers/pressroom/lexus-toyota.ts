@@ -32,7 +32,7 @@ export class LexusToyotaScraper extends BasePressroomScraper {
     const urls: string[] = []
 
     // 方法 1: 從 <article> 標籤中提取
-    $('article.post-box').each((_, el) => {
+    $('article.post-box').each((_: number, el: Element) => {
       const link = $(el).find('a').first().attr('href')
       if (link && this.isValidArticleUrl(link)) {
         urls.push(link)
@@ -41,7 +41,17 @@ export class LexusToyotaScraper extends BasePressroomScraper {
 
     // 方法 2: 從文章連結中提取（備用）
     if (urls.length === 0) {
-      $('a[href*="pressroom.lexus.com/"], a[href*="pressroom.toyota.com/"]').each((_, el) => {
+      $('a[href*="pressroom.lexus.com/"], a[href*="pressroom.toyota.com/"]').each((_: number, el: Element) => {
+        const href = $(el).attr('href')
+        if (href && this.isValidArticleUrl(href)) {
+          urls.push(href)
+        }
+      })
+    }
+
+    // 方法 3: 從 read-more-link 提取
+    if (urls.length === 0) {
+      $('a.read-more-link').each((_: number, el: Element) => {
         const href = $(el).attr('href')
         if (href && this.isValidArticleUrl(href)) {
           urls.push(href)
@@ -64,7 +74,6 @@ export class LexusToyotaScraper extends BasePressroomScraper {
       '/vehicle/',
       '/page/',
       '/wp-content/',
-      '/event/',
       '/contacts/',
       '/whats-new',
       '/historic-vehicles/',
@@ -74,13 +83,20 @@ export class LexusToyotaScraper extends BasePressroomScraper {
       '/newsroom-connection/',
       '/media-events/',
       '/concept/',
-      '/corporate/',
+      '/corporate/',  // 排除分類頁，但文章 slug 不在 /corporate/ 下
       '/motorsports/',
       '/product/',
       '/wp-json/',
       '/history-lexus/',
       '/feed/',
+      '/xmlrpc',
     ]
+
+    // 確認是正確域名的文章
+    const baseUrl = this.config.baseUrl
+    if (!url.startsWith(baseUrl)) {
+      return false
+    }
 
     // 檢查是否為排除的路徑
     for (const pattern of excludePatterns) {
@@ -89,15 +105,10 @@ export class LexusToyotaScraper extends BasePressroomScraper {
       }
     }
 
-    // 確認是正確域名的文章
-    const baseUrl = this.config.baseUrl
-    if (!url.startsWith(baseUrl)) {
-      return false
-    }
-
-    // 文章 URL 格式：/slug/
+    // 文章 URL 格式：/slug/ 或 /slug（允許大寫字母和數字）
     const path = url.replace(baseUrl, '')
-    const slugMatch = path.match(/^\/([a-z0-9\-]+)\/?$/)
+    // 匹配 /slug-name-here/ 格式，允許多個單詞用連字號連接
+    const slugMatch = path.match(/^\/([a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\/?$/)
 
     return !!slugMatch
   }
@@ -123,7 +134,7 @@ export class LexusToyotaScraper extends BasePressroomScraper {
     const publishedAt = publishedTimeStr ? new Date(publishedTimeStr) : new Date()
 
     // 3. 提取內容
-    const contentEl = $('.entry-content, .post-content, .article-content, .single-post--content').first()
+    const contentEl = $('.entry-content, .post-content, .article-content, .single-post--content, .story-page--article-content').first()
     const content = contentEl.length > 0 ? htmlToText(contentEl.html() || '') : ''
 
     if (!content) {

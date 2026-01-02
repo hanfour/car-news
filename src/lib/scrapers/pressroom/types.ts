@@ -78,7 +78,7 @@ export const PRESSROOM_CONFIGS: Record<string, PressroomScraperConfig> = {
   lexus: {
     brand: 'Lexus',
     baseUrl: 'https://pressroom.lexus.com',
-    newsListUrl: 'https://pressroom.lexus.com/releases',
+    newsListUrl: 'https://pressroom.lexus.com/corporate/latest-news/',
     maxArticles: 20,
     maxAgeDays: 7,
     requestDelay: 1000,
@@ -86,7 +86,7 @@ export const PRESSROOM_CONFIGS: Record<string, PressroomScraperConfig> = {
   toyota: {
     brand: 'Toyota',
     baseUrl: 'https://pressroom.toyota.com',
-    newsListUrl: 'https://pressroom.toyota.com/releases',
+    newsListUrl: 'https://pressroom.toyota.com/corporate/latest-news/',
     maxArticles: 20,
     maxAgeDays: 7,
     requestDelay: 1000,
@@ -118,7 +118,7 @@ export const PRESSROOM_CONFIGS: Record<string, PressroomScraperConfig> = {
   kia: {
     brand: 'Kia',
     baseUrl: 'https://www.kiamedia.com',
-    newsListUrl: 'https://www.kiamedia.com/us/en/media/pressreleases',
+    newsListUrl: 'https://www.kiamedia.com/us/en/media/pressreleases/list',
     maxArticles: 20,
     maxAgeDays: 7,
     requestDelay: 1000,
