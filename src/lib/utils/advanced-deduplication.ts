@@ -248,7 +248,7 @@ export async function comprehensiveDuplicateCheck(params: {
 
   // 3. Embedding 語義相似度檢查
   if (embedding) {
-    const embeddingCheck = await checkEmbeddingSimilarity(embedding, brand, 3, 0.90)
+    const embeddingCheck = await checkEmbeddingSimilarity(embedding, brand, 3, 0.96)
     if (embeddingCheck) {
       return {
         isDuplicate: true,
