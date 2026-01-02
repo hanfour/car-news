@@ -3,6 +3,8 @@ export interface RawArticle {
   url: string
   title: string
   content: string
+  source?: string            // 來源網站域名
+  source_type?: 'official' | 'news' | 'aggregator'  // 來源類型：official=官方新聞室, news=新聞媒體, aggregator=聚合站
   scraped_at: string
   source_published_at?: string  // 來源文章的原始發布時間（UTC）
   expires_at: string

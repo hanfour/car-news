@@ -326,15 +326,38 @@ async function handleCronJob(request: NextRequest) {
         // =======================================================
 
         // 3.5 收集該 cluster 所有圖片（外部 URL）
-        const sourceImages: Array<{ url: string; credit: string; caption?: string }> = []
+        // 優先順序：official（官方新聞室）> news（新聞媒體）> 其他
+        const sourceImages: Array<{
+          url: string
+          credit: string
+          caption?: string
+          sourceType?: string
+          isOfficial?: boolean
+        }>  = []
         for (const article of cluster.articles) {
           if (article.image_url) {
+            const isOfficial = (article as { source_type?: string }).source_type === 'official'
             sourceImages.push({
               url: article.image_url,
               credit: article.image_credit || 'Unknown',
-              caption: article.title.slice(0, 100) // 使用文章標題作為圖片說明
+              caption: article.title.slice(0, 100),
+              sourceType: (article as { source_type?: string }).source_type,
+              isOfficial,
             })
           }
+        }
+
+        // 將官方圖片排在前面
+        sourceImages.sort((a, b) => {
+          if (a.isOfficial && !b.isOfficial) return -1
+          if (!a.isOfficial && b.isOfficial) return 1
+          return 0
+        })
+
+        // 檢查是否有官方圖片
+        const hasOfficialImage = sourceImages.some(img => img.isOfficial)
+        if (hasOfficialImage) {
+          console.log(`[${brand}] → Found official pressroom image!`)
         }
 
         console.log(`[${brand}] → Found ${sourceImages.length} source images, downloading and storing...`)
