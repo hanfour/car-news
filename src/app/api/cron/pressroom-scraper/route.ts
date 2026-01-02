@@ -4,7 +4,7 @@
  * 定時從各品牌官方新聞室爬取新聞稿和高畫質圖片
  *
  * 排程建議：每 6 小時執行一次
- * 0 */6 * * *
+ * Cron: 0 0,6,12,18 * * *
  */
 
 import { NextRequest, NextResponse } from 'next/server'

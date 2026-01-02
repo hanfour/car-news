@@ -5,8 +5,16 @@
 export * from './types'
 export * from './base'
 export { createLexusScraper, createToyotaScraper, LexusToyotaScraper } from './lexus-toyota'
+export { createBMWScraper, BMWScraper } from './bmw'
+export { createPorscheScraper, PorscheScraper } from './porsche'
+export { createVolkswagenScraper, VolkswagenScraper } from './volkswagen'
+export { createKiaScraper, KiaScraper } from './kia'
 
 import { createLexusScraper, createToyotaScraper } from './lexus-toyota'
+import { createBMWScraper } from './bmw'
+import { createPorscheScraper } from './porsche'
+import { createVolkswagenScraper } from './volkswagen'
+import { createKiaScraper } from './kia'
 import { createServiceClient } from '@/lib/supabase'
 import type { ScraperResult, PressroomArticle } from './types'
 import { SUPPORTED_PRESSROOM_BRANDS } from './types'
@@ -19,7 +27,7 @@ export async function scrapeAllPressrooms(brands?: string[]): Promise<{
   totalNew: number
   totalErrors: number
 }> {
-  const targetBrands = brands || ['lexus', 'toyota']
+  const targetBrands = brands || ['lexus', 'toyota', 'bmw', 'porsche', 'volkswagen', 'kia']
   const results: Record<string, ScraperResult> = {}
   let totalNew = 0
   let totalErrors = 0
@@ -38,10 +46,19 @@ export async function scrapeAllPressrooms(brands?: string[]): Promise<{
         case 'toyota':
           scraper = createToyotaScraper()
           break
-        // TODO: 新增更多品牌
-        // case 'bmw':
-        //   scraper = createBMWScraper()
-        //   break
+        case 'bmw':
+          scraper = createBMWScraper()
+          break
+        case 'porsche':
+          scraper = createPorscheScraper()
+          break
+        case 'volkswagen':
+          scraper = createVolkswagenScraper()
+          break
+        case 'kia':
+          scraper = createKiaScraper()
+          break
+        // TODO: 新增更多品牌（Mercedes-Benz, Audi, Ford, Honda, Hyundai - 需要處理防爬機制）
         default:
           console.warn(`[Pressroom] Unknown brand: ${brand}`)
           continue

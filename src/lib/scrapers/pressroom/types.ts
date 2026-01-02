@@ -107,6 +107,22 @@ export const PRESSROOM_CONFIGS: Record<string, PressroomScraperConfig> = {
     maxAgeDays: 7,
     requestDelay: 1000,
   },
+  volkswagen: {
+    brand: 'Volkswagen',
+    baseUrl: 'https://www.volkswagen-newsroom.com',
+    newsListUrl: 'https://www.volkswagen-newsroom.com/en/press-releases',
+    maxArticles: 20,
+    maxAgeDays: 7,
+    requestDelay: 1000,
+  },
+  kia: {
+    brand: 'Kia',
+    baseUrl: 'https://www.kiamedia.com',
+    newsListUrl: 'https://www.kiamedia.com/us/en/media/pressreleases',
+    maxArticles: 20,
+    maxAgeDays: 7,
+    requestDelay: 1000,
+  },
 }
 
 /**

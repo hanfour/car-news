@@ -8,6 +8,8 @@
  * 圖片託管在 AWS S3：lexus-cms-media.s3.us-east-2.amazonaws.com
  */
 
+import * as cheerio from 'cheerio'
+import type { Element } from 'domhandler'
 import { BasePressroomScraper, cleanText, htmlToText } from './base'
 import type { PressroomArticle, PressroomImage, PressroomScraperConfig } from './types'
 import { PRESSROOM_CONFIGS } from './types'
@@ -167,7 +169,7 @@ export class LexusToyotaScraper extends BasePressroomScraper {
   /**
    * 提取文章中的圖片
    */
-  private extractImages($: cheerio.CheerioAPI, articleUrl: string): PressroomImage[] {
+  private extractImages($: ReturnType<typeof cheerio.load>, articleUrl: string): PressroomImage[] {
     const images: PressroomImage[] = []
     const seenUrls = new Set<string>()
 
@@ -206,7 +208,7 @@ export class LexusToyotaScraper extends BasePressroomScraper {
     }
 
     // 3. 從內容區域提取其他圖片
-    $('.entry-content img, .post-content img, .article-content img').each((_, el) => {
+    $('.entry-content img, .post-content img, .article-content img').each((_: number, el: Element) => {
       const src = $(el).attr('src') || $(el).attr('data-src')
       if (!src || seenUrls.has(src)) return
 
@@ -228,7 +230,7 @@ export class LexusToyotaScraper extends BasePressroomScraper {
     })
 
     // 4. 從圖片廊提取
-    $('.gallery-item img, .wp-block-gallery img').each((_, el) => {
+    $('.gallery-item img, .wp-block-gallery img').each((_: number, el: Element) => {
       const src = $(el).attr('src') || $(el).attr('data-src')
       if (!src || seenUrls.has(src)) return
 
