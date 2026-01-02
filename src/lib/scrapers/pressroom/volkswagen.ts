@@ -78,7 +78,11 @@ export class VolkswagenScraper extends BasePressroomScraper {
     const category = this.extractCategory($)
 
     // 4. 提取內容
-    const contentEl = $('article, .article-content, .press-release-content, main').first()
+    // VW 使用 .page-item--text 作為內容容器
+    let contentEl = $('.page-item--text').first()
+    if (contentEl.length === 0) {
+      contentEl = $('article, .article-content, .press-release-content, main').first()
+    }
     contentEl.find('nav, .related, .share-buttons, .breadcrumb, header, footer').remove()
     const content = contentEl.length > 0 ? htmlToText(contentEl.html() || '') : ''
 
