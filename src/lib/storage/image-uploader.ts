@@ -64,17 +64,11 @@ export async function uploadImageFromUrl(
     const arrayBuffer = await response.arrayBuffer()
     let buffer: Buffer = Buffer.from(arrayBuffer)
 
-    // 2.1 如果需要添加浮水印（使用英文避免 Vercel 無中文字體問題）
+    // 2.1 浮水印功能已停用
+    // Vercel serverless 環境沒有字體支援，SVG 文字會變成方塊
+    // 改為依賴網站顯示的 image_credit 欄位（如：「圖片來源：AI生成示意圖(Flux)」）
     if (addWatermark) {
-      console.log('→ Adding AI watermark...')
-      const { addWatermark: addWatermarkFn } = await import('@/lib/utils/watermark')
-      buffer = await addWatermarkFn(buffer, {
-        text: 'AI Generated',
-        subText: 'For illustration only',
-        position: 'bottom-right',
-        opacity: 0.6,
-        fontSize: 36
-      })
+      console.log('→ Watermark disabled (no font support on Vercel serverless)')
     }
 
     // 2.2 優化和轉換圖片為 WebP 格式

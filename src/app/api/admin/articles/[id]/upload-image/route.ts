@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { verifySessionToken } from '@/lib/admin/session'
-import { addWatermark } from '@/lib/utils/watermark'
 import sharp from 'sharp'
 import crypto from 'crypto'
 
@@ -62,15 +61,10 @@ export async function POST(
     console.log(`   File size: ${(buffer.length / 1024).toFixed(1)} KB`)
     console.log(`   Image credit: ${imageCredit}`)
 
-    // 2. 添加浮水印（使用自訂來源文字）
-    // ⚠️ 注意：Vercel 無中文字體，中文會變亂碼，建議使用英文
-    buffer = await addWatermark(buffer, {
-      text: imageCredit,
-      subText: null,
-      position: 'bottom-right',
-      opacity: 0.7,
-      fontSize: 32
-    })
+    // 2. 浮水印功能已停用
+    // Vercel serverless 環境沒有字體支援，SVG 文字會變成方塊
+    // 改為依賴網站顯示的 image_credit 欄位
+    console.log('→ Watermark disabled (no font support on Vercel serverless)')
 
     // 3. 優化並轉換為 WebP
     buffer = await sharp(buffer)
