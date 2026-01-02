@@ -155,7 +155,7 @@ export async function generateWithFluxSchnell(
 }
 
 /**
- * 為汽車新聞優化的 Flux prompt
+ * 為汽車新聞優化的 Flux prompt（純文字生成用）
  */
 export function buildFluxPrompt(
   basePrompt: string,
@@ -172,6 +172,76 @@ export function buildFluxPrompt(
 
   // 添加品質標籤
   prompt += '. High resolution, studio lighting, clean background, editorial quality, no text or watermarks.'
+
+  return prompt
+}
+
+/**
+ * 從標題中提取具體車款名稱
+ * 例如：「Tesla Model Y 改款登場」→「Tesla Model Y」
+ */
+export function extractCarModel(title: string, brand?: string): string | null {
+  // 常見車款模式
+  const modelPatterns = [
+    // 英文品牌 + 英文/數字型號
+    /\b(Tesla|BMW|Mercedes|Audi|Porsche|Volkswagen|Toyota|Honda|Nissan|Mazda|Lexus|Ford|Chevrolet|Rivian|Lucid|Hyundai|Kia|Genesis|Volvo|Polestar|Jaguar|Ferrari|Lamborghini|McLaren|Bentley|Rolls-Royce|Aston Martin)\s+([A-Za-z0-9\-]+(?:\s+[A-Za-z0-9\-]+)?)/i,
+    // 中文品牌 + 英文/數字型號
+    /\b(比亞迪|蔚來|小鵬|理想|吉利|長城|威馬|哪吒|零跑|極氪|智己|蔚來|極越|小米|問界|奇瑞)\s*([A-Za-z0-9\-]+(?:\s+[A-Za-z0-9\-]+)?)/,
+    // NIO/BYD 等國際名稱
+    /\b(NIO|BYD|XPeng|Li Auto|Zeekr|AITO|Xiaomi)\s+([A-Za-z0-9\-]+(?:\s+[A-Za-z0-9\-]+)?)/i,
+    // 只有型號的模式（如果已知品牌）
+    /\b(Model\s+[3YSX]|EQS|EQE|iX\d*|i[47]|ID\.\d|e-tron|Taycan|Mustang\s+Mach-E|F-150\s+Lightning|Cybertruck|ES\d|ET\d|EC\d|G\d{2}|P\d|L\d{2}|SU7|M7|M9)\b/i,
+  ]
+
+  for (const pattern of modelPatterns) {
+    const match = title.match(pattern)
+    if (match) {
+      // 如果匹配到完整品牌+型號
+      if (match[2]) {
+        return `${match[1]} ${match[2]}`.trim()
+      }
+      // 如果只匹配到型號，加上品牌
+      if (brand && match[1]) {
+        return `${brand} ${match[1]}`.trim()
+      }
+      return match[1]
+    }
+  }
+
+  return null
+}
+
+/**
+ * 為 img2img 建立專用 prompt
+ * 更具體地描述車款，確保生成圖片與原圖更相似
+ */
+export function buildImg2ImgPrompt(
+  title: string,
+  brand?: string,
+  vehicleDescription?: string
+): string {
+  const carModel = extractCarModel(title, brand)
+
+  let prompt = 'Professional automotive press photo, '
+
+  // 如果提取到具體車款，使用它
+  if (carModel) {
+    prompt += `${carModel}, `
+  } else if (brand) {
+    prompt += `${brand} vehicle, `
+  }
+
+  // 添加車輛描述
+  if (vehicleDescription) {
+    prompt += `${vehicleDescription}, `
+  }
+
+  // 強調保持原始設計特徵
+  prompt += 'maintaining original vehicle design proportions and styling, '
+  prompt += 'same body shape and distinctive features, '
+  prompt += 'professional studio lighting, clean background, '
+  prompt += 'sharp focus on vehicle details, editorial quality, '
+  prompt += 'no text, no watermarks, no logos.'
 
   return prompt
 }

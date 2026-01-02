@@ -8,7 +8,7 @@
 import OpenAI from 'openai'
 import { getErrorMessage } from '@/lib/utils/error'
 import { generateImagePromptFromArticle } from './image-prompt-generator'
-import { generateWithFlux, generateWithFluxImg2Img, buildFluxPrompt } from './flux-image-generation'
+import { generateWithFlux, generateWithFluxImg2Img, buildFluxPrompt, buildImg2ImgPrompt } from './flux-image-generation'
 
 // 圖片生成提供商選項
 export type ImageProvider = 'flux' | 'dalle' | 'auto'
@@ -315,14 +315,17 @@ export async function generateAndSaveCoverImage(
     // 只有在有 FAL_KEY 時才嘗試 Flux img2img
     if (process.env.FAL_KEY && bestRef.url) {
       try {
-        // 使用 Gemini 分析文章生成 prompt
+        // 使用 Gemini 分析文章生成車輛描述
         const promptResult = await generateImagePromptFromArticle(title, content, brands)
-        const fluxPrompt = buildFluxPrompt(promptResult.subject, brands?.[0])
+
+        // 為 img2img 建立專用 prompt，包含具體車款名稱
+        const img2imgPrompt = buildImg2ImgPrompt(title, brands?.[0], promptResult.vehicleType)
+        console.log(`   Img2Img Prompt: ${img2imgPrompt.slice(0, 100)}...`)
 
         const img2imgResult = await generateWithFluxImg2Img(
           bestRef.url,
-          fluxPrompt,
-          { strength: 0.7 }  // 保留 30% 原圖特徵
+          img2imgPrompt,
+          { strength: 0.45 }  // 保留 55% 原圖特徵，提高與實際車款相似度
         )
 
         if (img2imgResult && img2imgResult.url && !img2imgResult.error) {
