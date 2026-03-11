@@ -222,20 +222,25 @@ export async function downloadAndStoreImages(
   articleId: string
 ): Promise<Array<{ url: string; credit: string; caption?: string }>> {
   const results: Array<{ url: string; credit: string; caption?: string }> = []
+  const CHUNK_SIZE = 3
 
-  for (const image of images) {
-    const stored = await downloadAndStoreImage(image.url, articleId, image.credit)
+  for (let i = 0; i < images.length; i += CHUNK_SIZE) {
+    const chunk = images.slice(i, i + CHUNK_SIZE)
+    const chunkResults = await Promise.allSettled(
+      chunk.map(image => downloadAndStoreImage(image.url, articleId, image.credit))
+    )
 
-    if (stored) {
-      results.push({
-        url: stored.url,
-        credit: stored.credit,
-        caption: image.caption,
-      })
-    } else {
-      // 如果下載失敗（例如 403 Forbidden），跳過這張圖片
-      // 不使用原 URL 作為 fallback，因為用戶端也無法訪問
-      console.warn(`[Image Storage] Skipping image (download failed): ${image.url}`)
+    for (let j = 0; j < chunkResults.length; j++) {
+      const result = chunkResults[j]
+      if (result.status === 'fulfilled' && result.value) {
+        results.push({
+          url: result.value.url,
+          credit: result.value.credit,
+          caption: chunk[j].caption,
+        })
+      } else {
+        console.warn(`[Image Storage] Skipping image (download failed): ${chunk[j].url}`)
+      }
     }
   }
 
