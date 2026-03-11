@@ -30,7 +30,7 @@ CREATE INDEX IF NOT EXISTS idx_raw_articles_source_type
 
 | 頁面 | 現行 revalidate | 調整後 |
 |------|-----------------|--------|
-| 首頁 `src/app/page.tsx` | 10s | 60s |
+| 首頁 `src/app/page.tsx` | 10s | 60s（production）；開發環境可保持 10s |
 | 分類頁 `src/app/category/[slug]/page.tsx` | 60s | 維持 60s |
 
 搜尋 API 加 response header：`Cache-Control: public, max-age=300`
@@ -54,18 +54,18 @@ CREATE INDEX IF NOT EXISTS idx_raw_articles_source_type
 ### 2.2 圖片下載改為並行
 
 `src/lib/storage/image-downloader.ts` 中的 `downloadAndStoreImages()`：
-- 改用 `Promise.allSettled()` 取代循序 `for` 迴圈
-- 並行上限 3（避免壓垮 Supabase Storage）
+- 改用 chunk-based 方式：將圖片陣列分為每組 3 張，每組用 `Promise.allSettled()` 並行處理，完成後再處理下一組
 - 單張失敗不影響其他圖片
 
 ### 2.3 修復 Generator 競態條件
 
 **Raw Article 重複處理**（`src/app/api/cron/generator/route.ts`）：
-- `markRawArticlesAsUsed` 加條件 `.eq('used', false)`
-- 只有成功更新的才納入處理，避免兩個 job 搶同批文章
+- `markRawArticlesAsUsed` 加條件 `.is('used_in_article_id', null)`（該欄位為 nullable string/FK，非 boolean）
+- 檢查回傳的更新行數是否與預期一致，不一致則跳過該批次
 
 **Topic Lock**：
-- 改用 `upsert` with `onConflict('topic_hash')` 取代 check-then-create
+- 確認實際 unique constraint 為 `(date, topic_hash)` 複合鍵
+- 改用 `upsert` with `onConflict('date,topic_hash')` 取代 check-then-create
 
 ### 2.4 修復 CRON_SECRET 驗證
 
@@ -83,6 +83,8 @@ CREATE INDEX IF NOT EXISTS idx_raw_articles_source_type
 - 新增 `src/lib/utils/rate-limiter.ts`：in-memory Map + 滑動視窗
 - 每 IP 每分鐘 30 次
 - 超限返回 429
+- 每 60 秒清除過期的 Map 條目，防止記憶體無限增長
+- 注意：Vercel serverless 冷啟動會重置 Map，限速在多實例間不共享（可接受的折衷）
 
 ### 3.2 登入限速 fail-closed
 
@@ -159,6 +161,8 @@ export const pressroomConfigs: Record<string, PressroomConfig> = {
 - 成功：`{ success: true, data: ... }`
 - 錯誤：`{ error: string, code?: string }`
 - HTTP status code 保持語義正確（200、201、400、401、404、429、500）
+
+**遷移策略**：先審計所有現有 route 的回應格式，同步更新前端消費端程式碼。對於已發布的公開 API（如 search、feed），保持向後相容，在過渡期同時回傳舊格式欄位。
 
 ---
 
