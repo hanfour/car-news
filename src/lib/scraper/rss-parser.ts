@@ -2,7 +2,7 @@ import Parser from 'rss-parser'
 import { NewsSource } from '@/types/database'
 
 const parser = new Parser({
-  timeout: 10000,
+  timeout: 30000,
   headers: {
     'User-Agent': 'Mozilla/5.0 (compatible; CarNewsAI/1.0)'
   }
