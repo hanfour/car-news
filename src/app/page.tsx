@@ -10,8 +10,7 @@ import { POPULAR_BRANDS, BRANDS_BY_COUNTRY } from '@/config/brands'
 import type { Article, ArticleWithContent, ArticleWithBrands, Tag } from '@/types/article'
 import { Metadata } from 'next'
 
-export const revalidate = 10 // 每10秒重新验证（更快看到新文章，適合開發環境）
-// 注意：生產環境建議使用 30-60 秒以減少服務器負載
+export const revalidate = 60
 
 /**
  * Homepage SEO metadata
