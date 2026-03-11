@@ -30,7 +30,10 @@ export async function GET(request: NextRequest) {
       return await fallbackSearch(supabase, query)
     }
 
-    return NextResponse.json({ articles: data || [] })
+    return NextResponse.json(
+      { articles: data || [] },
+      { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' } }
+    )
   } catch (error) {
     console.error('Search error:', error)
     return NextResponse.json({ articles: [] })
@@ -53,7 +56,7 @@ async function fallbackSearch(supabase: SupabaseClient, query: string) {
     .from('generated_articles')
     .select('id, title_zh, content_zh, published_at, cover_image, categories')
     .eq('published', true)
-    .or(`title_zh.ilike.%${sanitizedQuery}%,content_zh.ilike.%${sanitizedQuery}%`)
+    .or(`title_zh.ilike.%${sanitizedQuery}%`)
     .order('published_at', { ascending: false })
     .limit(30)
 
@@ -62,5 +65,8 @@ async function fallbackSearch(supabase: SupabaseClient, query: string) {
     return NextResponse.json({ articles: [] })
   }
 
-  return NextResponse.json({ articles: data || [] })
+  return NextResponse.json(
+    { articles: data || [] },
+    { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' } }
+  )
 }
