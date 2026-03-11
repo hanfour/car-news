@@ -1,8 +1,6 @@
 import OpenAI from 'openai'
-import { GoogleGenerativeAI } from '@google/generative-ai'
 
 let openai: OpenAI | null = null
-let gemini: GoogleGenerativeAI | null = null
 
 function getOpenAI() {
   if (!openai) {
@@ -11,13 +9,6 @@ function getOpenAI() {
     })
   }
   return openai
-}
-
-function getGemini() {
-  if (!gemini) {
-    gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
-  }
-  return gemini
 }
 
 export async function generateEmbedding(text: string): Promise<number[]> {
@@ -32,10 +23,26 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 }
 
 async function generateEmbeddingWithGemini(text: string): Promise<number[]> {
-  const gemini = getGemini()
-  const model = gemini.getGenerativeModel({ model: 'text-embedding-004' })
+  const apiKey = process.env.GEMINI_API_KEY!
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'models/gemini-embedding-001',
+        content: { parts: [{ text: text.slice(0, 8000) }] },
+        outputDimensionality: 768
+      })
+    }
+  )
 
-  const result = await model.embedContent(text.slice(0, 8000))
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Gemini embedding API error ${response.status}: ${errorText}`)
+  }
+
+  const result = await response.json()
   return result.embedding.values
 }
 
