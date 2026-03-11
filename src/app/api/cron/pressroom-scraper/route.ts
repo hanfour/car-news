@@ -14,7 +14,7 @@ import { scrapeAllPressrooms, getSupportedBrands } from '@/lib/scrapers/pressroo
 export const runtime = 'nodejs'
 export const maxDuration = 300  // 5 分鐘超時
 
-const CRON_SECRET = process.env.CRON_SECRET
+const CRON_SECRET = process.env.CRON_SECRET?.trim()
 
 /**
  * GET /api/cron/pressroom-scraper
@@ -22,15 +22,15 @@ const CRON_SECRET = process.env.CRON_SECRET
  * 執行官方 Pressroom 爬蟲
  */
 export async function GET(request: NextRequest) {
-  // 驗證 Cron Secret（Vercel Cron 會自動帶上）
+  // 驗證 Cron Secret（fail-closed：無 secret 或不匹配時一律拒絕）
   const authHeader = request.headers.get('authorization')
-  if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
-    // 也檢查 x-vercel-cron-signature（Vercel 自動 Cron）
-    const vercelCron = request.headers.get('x-vercel-cron-signature')
-    if (!vercelCron) {
-      console.warn('[Pressroom Cron] Unauthorized request')
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  const vercelCron = request.headers.get('x-vercel-cron-signature')
+  const isVercelCron = !!vercelCron
+  const isManualTrigger = CRON_SECRET && authHeader === `Bearer ${CRON_SECRET}`
+
+  if (!isVercelCron && !isManualTrigger) {
+    console.warn('[Pressroom Cron] Unauthorized request')
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const startTime = Date.now()
