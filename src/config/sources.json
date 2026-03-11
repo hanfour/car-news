@@ -41,7 +41,8 @@
     "name": "Autocar",
     "url": "http://www.autocar.co.uk/rss",
     "type": "rss",
-    "enabled": true
+    "enabled": false,
+    "note": "Bot access blocked (403) - disabled 2026-03-11"
   },
   {
     "id": "insideevs",
