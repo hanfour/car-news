@@ -151,14 +151,30 @@ export async function createTopicLock(
 
   const { error } = await supabase
     .from('daily_topic_locks')
-    .insert({
-      date: today,
-      topic_hash: topicHash,
-      article_id: articleId
-    })
+    .upsert(
+      {
+        date: today,
+        topic_hash: topicHash,
+        article_id: articleId
+      },
+      { onConflict: 'date,topic_hash', ignoreDuplicates: true }
+    )
 
   if (error) {
     console.error('[Topic Lock] Failed to create lock:', error)
+    return false
+  }
+
+  // Verify we own the lock (ignoreDuplicates silently succeeds even if another process won)
+  const { data: lock } = await supabase
+    .from('daily_topic_locks')
+    .select('article_id')
+    .eq('date', today)
+    .eq('topic_hash', topicHash)
+    .single()
+
+  if (lock?.article_id !== articleId) {
+    console.warn(`[Topic Lock] Lock already held by article ${lock?.article_id}, skipping`)
     return false
   }
 
@@ -174,14 +190,20 @@ export async function markRawArticlesAsUsed(
 ): Promise<boolean> {
   const supabase = createServiceClient()
 
-  const { error } = await supabase
+  const { data, error, count } = await supabase
     .from('raw_articles')
     .update({ used_in_article_id: generatedArticleId })
     .in('id', rawArticleIds)
+    .is('used_in_article_id', null)
+    .select('id', { count: 'exact' })
 
   if (error) {
-    console.error('[Raw Articles] Failed to mark as used:', error)
+    console.error('[Dedup] Failed to mark raw articles as used:', error)
     return false
+  }
+
+  if (count !== rawArticleIds.length) {
+    console.warn(`[Dedup] Expected to mark ${rawArticleIds.length} articles, but only ${count} were available (rest already claimed)`)
   }
 
   return true
