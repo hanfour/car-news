@@ -6,6 +6,6 @@ CREATE INDEX IF NOT EXISTS idx_articles_published_date
 CREATE INDEX IF NOT EXISTS idx_articles_categories
   ON generated_articles USING GIN(categories);
 
--- 爬蟲查詢加速
-CREATE INDEX IF NOT EXISTS idx_raw_articles_source_type
-  ON raw_articles(source_type, created_at DESC);
+-- 爬蟲查詢加速（raw_articles 按爬取時間排序）
+CREATE INDEX IF NOT EXISTS idx_raw_articles_scraped_at
+  ON raw_articles(scraped_at DESC);
