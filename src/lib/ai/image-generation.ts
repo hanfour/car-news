@@ -60,7 +60,7 @@ export async function generateCoverImage(
       console.log('→ Step 2: Generating cover image with Flux (fal.ai)...')
       console.log(`   Cost: ~$0.008 per image`)
 
-      const fluxPrompt = buildFluxPrompt(promptResult.subject, brands?.[0])
+      const fluxPrompt = buildFluxPrompt(promptResult.fullPrompt, title, brands?.[0])
       const fluxResult = await generateWithFlux(fluxPrompt)
 
       if (fluxResult && fluxResult.url && !fluxResult.error) {
@@ -325,7 +325,7 @@ export async function generateAndSaveCoverImage(
         const img2imgResult = await generateWithFluxImg2Img(
           bestRef.url,
           img2imgPrompt,
-          { strength: 0.45 }  // 保留 55% 原圖特徵，提高與實際車款相似度
+          { strength: 0.3 }  // 保留 70% 原圖特徵，最大化與實際車款的相似度
         )
 
         if (img2imgResult && img2imgResult.url && !img2imgResult.error) {

@@ -62,18 +62,19 @@ Content: ${content.slice(0, 800)}
 Brand: ${brands?.[0] || 'generic'}
 
 Rules:
-1. This is a NEWS ILLUSTRATION, not an official photo
-2. Describe the vehicle by design style, NOT by brand name
-3. Use descriptive terms like "minimalist electric sedan" instead of "Tesla Model 3"
+1. This is a NEWS ILLUSTRATION for an automotive news website
+2. You MUST use the exact brand name and car model name (e.g., "Tesla Model Y", "BMW iX3") — this is critical for accuracy
+3. Describe the vehicle's specific design features: grille shape, headlight style, body lines, wheel design
+4. Include the exact body type: sedan, SUV, hatchback, coupe, pickup truck, etc.
 
 Output a JSON object with these fields:
-- subject: main visual subject (e.g., "front view of a sleek electric sedan")
-- vehicleType: type of vehicle
-- brandStyle: design language description (without brand names)
+- subject: main visual subject with brand and model name (e.g., "Tesla Model Y compact electric SUV, front three-quarter view")
+- vehicleType: specific type of vehicle (e.g., "compact electric SUV")
+- brandStyle: design language description with brand-specific details
 - setting: environment/location
-- keyElements: array of 3 key visual elements
+- keyElements: array of 3 key visual elements specific to this car
 - mood: overall atmosphere
-- fullPrompt: complete English prompt for DALL-E (150-200 words), starting with "Professional automotive news illustration, editorial style." and ending with "Clean composition, no text or logos, suitable for news article."
+- fullPrompt: complete English prompt for image generation (150-200 words). MUST include the exact brand and model name. Start with "Professional automotive photography." Describe the specific vehicle appearance in detail: body shape, proportions, signature design elements, color if mentioned. End with "Sharp focus, editorial quality, no text or watermarks."
 
 Respond with valid JSON only, no markdown.`
 

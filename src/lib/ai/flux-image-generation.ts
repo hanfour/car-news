@@ -156,22 +156,32 @@ export async function generateWithFluxSchnell(
 
 /**
  * 為汽車新聞優化的 Flux prompt（純文字生成用）
+ * @param fullPrompt - Gemini 生成的完整 prompt（150-200 字）
+ * @param title - 文章標題（用於提取車款名稱）
+ * @param brand - 品牌名稱
  */
 export function buildFluxPrompt(
-  basePrompt: string,
+  fullPrompt: string,
+  title?: string,
   brand?: string
 ): string {
-  // Flux 對 prompt 的要求比 DALL-E 簡單
+  // 嘗試從標題提取具體車款名稱
+  const carModel = title ? extractCarModel(title, brand) : null
+
   let prompt = 'Professional automotive photography, '
 
-  if (brand) {
+  // 優先加入具體車款名稱
+  if (carModel) {
+    prompt += `${carModel}, `
+  } else if (brand) {
     prompt += `${brand} vehicle, `
   }
 
-  prompt += basePrompt
+  // 使用 Gemini 生成的完整 prompt
+  prompt += fullPrompt
 
-  // 添加品質標籤
-  prompt += '. High resolution, studio lighting, clean background, editorial quality, no text or watermarks.'
+  // 品質標籤
+  prompt += ' High resolution, sharp focus, editorial quality, no text or watermarks.'
 
   return prompt
 }
