@@ -94,7 +94,7 @@ export const metadata: Metadata = {
 - `inLanguage: "zh-TW"`
 - `url: articleUrl`（完整文章 URL，與 `mainEntityOfPage.@id` 重複但有利於不解析 mainEntityOfPage 的 parser）
 - `isAccessibleForFree: true`
-- `wordCount`：使用 `article.content_zh.replace(/[#*_\[\]()>-]/g, '').trim().length` 計算（先移除 Markdown 語法字元再計算中文字數）
+- `wordCount`：使用 `article.content_zh.replace(/[-#*_\[\]()>]/g, '').trim().length` 計算（先移除 Markdown 語法字元再計算中文字數）
 
 同時修正 publisher logo 引用：
 ```typescript
@@ -223,6 +223,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 - `/sitemap.xml` — sitemap index，列出所有子 sitemap
 - `/sitemap-articles.xml?page=1` — 文章子 sitemap（每頁 500 篇）
 - `/sitemap-pages.xml` — 靜態頁面 + 品牌 + 分類
+
+檔案結構：所有路由共用 `src/app/sitemap.xml/route.ts` 一個檔案。透過 `request.nextUrl.pathname` 判斷請求的是哪個 sitemap，再搭配 `next.config.ts` 的 `rewrites()` 將 `/sitemap-articles.xml` 和 `/sitemap-pages.xml` 重寫到 `/sitemap.xml`。
 
 實作方式：在 `sitemap.xml/route.ts` 中先查詢文章總數，若 > 1000 則輸出 sitemap index 格式，否則維持現有單一 sitemap。子 sitemap 通過 query parameter `?page=N` 分頁。
 
