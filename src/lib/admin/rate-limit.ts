@@ -56,8 +56,7 @@ export async function checkLoginRateLimit(
 
   if (error) {
     console.error('[Rate Limit] Failed to check rate limit:', error)
-    // 出錯時保守處理,允許登入
-    return { allowed: true, remainingAttempts: 5 }
+    return { allowed: false, remainingAttempts: 0 }
   }
 
   const failedCount = count || 0
