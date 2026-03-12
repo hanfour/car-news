@@ -1,11 +1,29 @@
 import { createClient } from '@/lib/supabase'
 import { notFound } from 'next/navigation'
+import { Metadata } from 'next'
 import { StickyHeader } from '@/components/StickyHeader'
 import { POPULAR_BRANDS, BRANDS_BY_COUNTRY } from '@/config/brands'
 import { ArticleCard } from '@/components/ArticleCard'
 import { ArticleListSidebar } from '@/components/ArticleListSidebar'
 
 export const revalidate = 60
+
+export async function generateMetadata({ params }: { params: Promise<{ name: string }> }): Promise<Metadata> {
+  const { name } = await params
+  const brandName = decodeURIComponent(name)
+  return {
+    title: `${brandName} 最新消息 - 玩咖 WANT CAR`,
+    description: `${brandName} 最新汽車新聞、車款資訊與產業動態`,
+    alternates: { canonical: `/brand/${brandName}` },
+    openGraph: {
+      title: `${brandName} 最新消息`,
+      description: `${brandName} 最新汽車新聞、車款資訊與產業動態`,
+      type: 'website',
+      siteName: '玩咖 WANT CAR',
+      locale: 'zh_TW',
+    },
+  }
+}
 
 async function getArticlesByBrand(brand: string) {
   const supabase = createClient()
@@ -33,8 +51,24 @@ export default async function BrandPage({ params }: { params: Promise<{ name: st
 
   const articles = await getArticlesByBrand(brand)
 
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://wantcar.autos'
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: `${brand} 最新消息`,
+    url: `${baseUrl}/brand/${brand}`,
+    description: `${brand} 最新汽車新聞`,
+    inLanguage: 'zh-TW',
+    isPartOf: { '@type': 'WebSite', name: '玩咖 WANT CAR', url: baseUrl },
+  }
+
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <div className="flex flex-col min-h-screen bg-gray-50">
       {/* Sticky Header */}
       <StickyHeader popularBrands={POPULAR_BRANDS} brandsByCountry={BRANDS_BY_COUNTRY} showBrands={false} currentPath={`/brand/${brand}`} />
 
@@ -90,6 +124,7 @@ export default async function BrandPage({ params }: { params: Promise<{ name: st
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+    </>
   )
 }
