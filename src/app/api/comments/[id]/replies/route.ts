@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createAuthenticatedClient } from '@/lib/auth'
 import { moderateComment } from '@/lib/ai/claude'
 import { createServiceClient } from '@/lib/supabase'
 import { getErrorMessage } from '@/lib/utils/error'
@@ -85,58 +84,14 @@ export async function POST(
       )
     }
 
-    // Get auth token
-    const authHeader = request.headers.get('Authorization')
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const auth = await createAuthenticatedClient(request)
+    if (!auth) {
       return NextResponse.json(
         { error: '請先登入' },
         { status: 401 }
       )
     }
-
-    const token = authHeader.replace('Bearer ', '')
-
-    // Create auth client to verify user
-    const cookieStore = await cookies()
-    const authClient = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            try {
-              cookieStore.set({ name, value, ...options })
-            } catch {
-              // Ignore errors
-            }
-          },
-          remove(name: string, options: CookieOptions) {
-            try {
-              cookieStore.set({ name, value: '', ...options })
-            } catch {
-              // Ignore errors
-            }
-          },
-        },
-      }
-    )
-
-    // Verify user
-    const { data: { user }, error: authError } = await authClient.auth.getUser(token)
-
-    // Use service client for database operations
-    const supabase = createServiceClient()
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: '請先登入' },
-        { status: 401 }
-      )
-    }
+    const { supabase, userId } = auth
 
     // Get parent comment to extract article_id
     const { data: parentComment, error: parentError } = await supabase
@@ -170,7 +125,7 @@ export async function POST(
       .insert({
         article_id: parentComment.article_id,
         parent_id: parentId,
-        user_id: user.id,
+        user_id: userId,
         content: content.trim(),
         moderation_result: {
           passed: moderation.passed,
@@ -194,7 +149,7 @@ export async function POST(
     const { data: profile } = await supabase
       .from('profiles')
       .select('id, display_name, avatar_url')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single()
 
     return NextResponse.json({

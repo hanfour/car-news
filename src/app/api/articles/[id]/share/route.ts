@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 import { createServiceClient } from '@/lib/supabase'
+import { createAuthenticatedClient } from '@/lib/auth'
 import { getErrorMessage } from '@/lib/utils/error'
 
 // POST: Record a share event
@@ -25,44 +24,9 @@ export async function POST(
     // Use service client for database operations
     const supabase = createServiceClient()
 
-    // Get auth token from header (optional for shares)
-    const authHeader = request.headers.get('Authorization')
-    let userId: string | null = null
-
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.replace('Bearer ', '')
-
-      // Create auth client to verify user
-      const cookieStore = await cookies()
-      const authClient = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            get(name: string) {
-              return cookieStore.get(name)?.value
-            },
-            set(name: string, value: string, options: CookieOptions) {
-              try {
-                cookieStore.set({ name, value, ...options })
-              } catch {
-                // Ignore errors
-              }
-            },
-            remove(name: string, options: CookieOptions) {
-              try {
-                cookieStore.set({ name, value: '', ...options })
-              } catch {
-                // Ignore errors
-              }
-            },
-          },
-        }
-      )
-
-      const { data: { user } } = await authClient.auth.getUser(token)
-      userId = user?.id || null
-    }
+    // Auth is optional for shares
+    const auth = await createAuthenticatedClient(request)
+    const userId = auth?.userId || null
 
     // Record share event
     const { error: insertError } = await supabase

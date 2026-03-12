@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase'
-import { createServerClient } from '@supabase/ssr'
+import { createAuthenticatedClient } from '@/lib/auth'
 import { getErrorMessage } from '@/lib/utils/error'
 
 export async function POST(
@@ -17,36 +16,11 @@ export async function POST(
       return NextResponse.json({ error: '無效的檢舉原因' }, { status: 400 })
     }
 
-    // Get user (required for reporting)
-    const authHeader = request.headers.get('Authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: '需要登入才能檢舉' }, { status: 401 })
+    const auth = await createAuthenticatedClient(request)
+    if (!auth) {
+      return NextResponse.json({ error: '請先登入' }, { status: 401 })
     }
-
-    const token = authHeader.replace('Bearer ', '')
-
-    // Verify user with auth client
-    const authClient = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return []
-          },
-          setAll() {},
-        },
-      }
-    )
-
-    const { data: { user }, error: authError } = await authClient.auth.getUser(token)
-
-    if (authError || !user) {
-      return NextResponse.json({ error: '認證失敗' }, { status: 401 })
-    }
-
-    // Use service client for database operations
-    const supabase = createServiceClient()
+    const { supabase, userId } = auth
 
     // Check if comment exists
     const { data: comment, error: commentError } = await supabase
@@ -64,7 +38,7 @@ export async function POST(
       .from('comment_reports')
       .select('id')
       .eq('comment_id', commentId)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .maybeSingle()
 
     if (existingReport) {
@@ -76,7 +50,7 @@ export async function POST(
       .from('comment_reports')
       .insert({
         comment_id: commentId,
-        user_id: user.id,
+        user_id: userId,
         reason,
         description: description || null,
         status: 'pending'

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { createServiceClient } from '@/lib/supabase'
+import { createAuthenticatedClient } from '@/lib/auth'
 import { getErrorMessage } from '@/lib/utils/error'
 
 // POST: Toggle like on a comment
@@ -12,65 +13,21 @@ export async function POST(
   try {
     const { id: commentId } = await params
 
-    // Get auth token from header
-    const authHeader = request.headers.get('Authorization')
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const auth = await createAuthenticatedClient(request)
+    if (!auth) {
       return NextResponse.json(
         { error: '請先登入' },
         { status: 401 }
       )
     }
-
-    const token = authHeader.replace('Bearer ', '')
-
-    // Create auth client to verify user
-    const cookieStore = await cookies()
-    const authClient = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            try {
-              cookieStore.set({ name, value, ...options })
-            } catch {
-              // Ignore errors in API routes
-            }
-          },
-          remove(name: string, options: CookieOptions) {
-            try {
-              cookieStore.set({ name, value: '', ...options })
-            } catch {
-              // Ignore errors in API routes
-            }
-          },
-        },
-      }
-    )
-
-    // Verify user
-    const { data: { user }, error: authError } = await authClient.auth.getUser(token)
-
-    // Use service client for database operations (bypasses RLS)
-    const supabase = createServiceClient()
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: '請先登入' },
-        { status: 401 }
-      )
-    }
+    const { supabase, userId } = auth
 
     // Check if already liked
     const { data: existingLike, error: checkError } = await supabase
       .from('comment_likes')
       .select('comment_id, user_id')
       .eq('comment_id', commentId)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .maybeSingle()
 
     if (checkError) {
@@ -87,7 +44,7 @@ export async function POST(
         .from('comment_likes')
         .delete()
         .eq('comment_id', commentId)
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
 
       if (deleteError) {
         console.error('[Like API] Error removing like:', deleteError)
@@ -115,7 +72,7 @@ export async function POST(
         .from('comment_likes')
         .insert({
           comment_id: commentId,
-          user_id: user.id
+          user_id: userId
         })
 
       if (insertError) {

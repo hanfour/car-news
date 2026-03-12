@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 import { createServiceClient } from '@/lib/supabase'
+import { createAuthenticatedClient } from '@/lib/auth'
 import { moderateComment } from '@/lib/ai/claude'
 import { getErrorMessage } from '@/lib/utils/error'
 
@@ -87,54 +86,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 獲取當前用戶（從 Authorization header 讀取 token）
-    const authHeader = request.headers.get('Authorization')
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const auth = await createAuthenticatedClient(request)
+    if (!auth) {
       return NextResponse.json(
         { error: '請先登入' },
         { status: 401 }
       )
     }
-
-    const token = authHeader.replace('Bearer ', '')
-
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            try {
-              cookieStore.set({ name, value, ...options })
-            } catch {
-              // Ignore errors in API routes
-            }
-          },
-          remove(name: string, options: CookieOptions) {
-            try {
-              cookieStore.set({ name, value: '', ...options })
-            } catch {
-              // Ignore errors in API routes
-            }
-          },
-        },
-      }
-    )
-
-    // 使用 token 驗證用戶
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: '請先登入' },
-        { status: 401 }
-      )
-    }
+    const { supabase, userId } = auth
 
     // AI 審核
     const moderation = await moderateComment(content)
@@ -147,14 +106,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 保存評論（使用 service client 繞過 RLS）
-    const serviceClient = createServiceClient()
-
-    const { data, error } = await serviceClient
+    const { data, error } = await supabase
       .from('comments')
       .insert({
         article_id,
-        user_id: user.id,
+        user_id: userId,
         content,
         moderation_result: {
           passed: moderation.passed,
