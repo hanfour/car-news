@@ -36,7 +36,6 @@ Crawl-delay: 1
 
 # Sitemaps
 Sitemap: ${baseUrl}/sitemap.xml
-Sitemap: ${baseUrl}/feed.xml
 
 # Specific bot rules
 User-agent: Googlebot
@@ -50,6 +49,23 @@ Crawl-delay: 0
 User-agent: Slurp
 Allow: /
 Crawl-delay: 1
+
+# AI search engine bots (allow but rate-limit)
+User-agent: GPTBot
+Crawl-delay: 5
+
+User-agent: PerplexityBot
+Crawl-delay: 5
+
+User-agent: ClaudeBot
+Crawl-delay: 5
+
+User-agent: anthropic-ai
+Crawl-delay: 5
+
+# Block training-only crawlers
+User-agent: CCBot
+Disallow: /
 
 # Block bad bots
 User-agent: AhrefsBot
