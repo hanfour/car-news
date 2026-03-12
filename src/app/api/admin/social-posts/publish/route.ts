@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
         result = await postToThreads(
           {
             accessToken: credentials.access_token,
-            threadsUserId: credentials.instagram_account_id // Threads 使用 IG account ID
+            threadsUserId: credentials.threads_user_id || credentials.instagram_account_id
           },
           {
             text: content,
