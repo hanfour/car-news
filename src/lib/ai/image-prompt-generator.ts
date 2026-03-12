@@ -93,8 +93,12 @@ Respond with valid JSON only, no markdown.`
     // 尝试修复常见的 JSON 问题
     // 1. 移除可能的 BOM
     jsonText = jsonText.replace(/^\uFEFF/, '')
-    // 2. 移除控制字符
-    jsonText = jsonText.replace(/[\x00-\x1F\x7F]/g, ' ')
+    // 2. 移除控制字符（保留換行符以利後續處理）
+    jsonText = jsonText.replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]/g, ' ')
+    // 3. 將單引號屬性名修復為雙引號（常見 Gemini 問題）
+    jsonText = jsonText.replace(/([{,]\s*)'([^']+)'\s*:/g, '$1"$2":')
+    // 4. 移除尾隨逗號
+    jsonText = jsonText.replace(/,\s*([}\]])/g, '$1')
 
     let parsed: ImagePromptResult
 
