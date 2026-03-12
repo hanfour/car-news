@@ -1,12 +1,26 @@
 import { createClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { checkRateLimit } from '@/lib/utils/rate-limiter'
 
 /**
  * Full-text search API using PostgreSQL tsvector
  * 10x faster than ILIKE queries
  */
 export async function GET(request: NextRequest) {
+  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  const { allowed } = checkRateLimit(clientIp, 30)
+
+  if (!allowed) {
+    return NextResponse.json(
+      { error: '請求過於頻繁，請稍後再試' },
+      {
+        status: 429,
+        headers: { 'Retry-After': '60' }
+      }
+    )
+  }
+
   const searchParams = request.nextUrl.searchParams
   const query = searchParams.get('q')
 
