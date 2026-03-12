@@ -190,20 +190,21 @@ export async function markRawArticlesAsUsed(
 ): Promise<boolean> {
   const supabase = createServiceClient()
 
-  const { data, error, count } = await supabase
+  const { data, error } = await supabase
     .from('raw_articles')
     .update({ used_in_article_id: generatedArticleId })
     .in('id', rawArticleIds)
     .is('used_in_article_id', null)
-    .select('id', { count: 'exact' })
+    .select('id')
 
   if (error) {
     console.error('[Dedup] Failed to mark raw articles as used:', error)
     return false
   }
 
-  if (count !== rawArticleIds.length) {
-    console.warn(`[Dedup] Expected to mark ${rawArticleIds.length} articles, but only ${count} were available (rest already claimed)`)
+  const updatedCount = data?.length ?? 0
+  if (updatedCount !== rawArticleIds.length) {
+    console.warn(`[Dedup] Expected to mark ${rawArticleIds.length} articles, but only ${updatedCount} were available (rest already claimed)`)
   }
 
   return true
