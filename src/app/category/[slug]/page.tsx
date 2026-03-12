@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase'
 import { notFound } from 'next/navigation'
+import { Metadata } from 'next'
 import { StickyHeader } from '@/components/StickyHeader'
 import { POPULAR_BRANDS, BRANDS_BY_COUNTRY } from '@/config/brands'
 import { ArticleCard } from '@/components/ArticleCard'
@@ -7,6 +8,26 @@ import { ArticleListSidebar } from '@/components/ArticleListSidebar'
 import { CATEGORIES, getCategoryBySlug, isValidCategory } from '@/config/categories'
 
 export const revalidate = 60
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
+  const category = decodeURIComponent(slug)
+  const categoryInfo = getCategoryBySlug(category)
+  const displayName = categoryInfo?.name || category
+
+  return {
+    title: `${displayName} - 玩咖 WANT CAR`,
+    description: `${displayName}相關汽車新聞與產業動態`,
+    alternates: { canonical: `/category/${category}` },
+    openGraph: {
+      title: `${displayName} - 玩咖 WANT CAR`,
+      description: `${displayName}相關汽車新聞與產業動態`,
+      type: 'website',
+      siteName: '玩咖 WANT CAR',
+      locale: 'zh_TW',
+    },
+  }
+}
 
 async function getArticlesByCategory(category: string) {
   const supabase = createClient()
@@ -40,8 +61,25 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   const categoryInfo = getCategoryBySlug(category)
   const articles = await getArticlesByCategory(category)
 
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://wantcar.autos'
+  const displayName = categoryInfo?.name || category
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: displayName,
+    url: `${baseUrl}/category/${category}`,
+    description: `${displayName}相關汽車新聞`,
+    inLanguage: 'zh-TW',
+    isPartOf: { '@type': 'WebSite', name: '玩咖 WANT CAR', url: baseUrl },
+  }
+
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <div className="flex flex-col min-h-screen bg-gray-50">
       {/* Sticky Header */}
       <StickyHeader popularBrands={POPULAR_BRANDS} brandsByCountry={BRANDS_BY_COUNTRY} showBrands={false} currentPath={`/category/${category}`} />
 
@@ -97,6 +135,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+    </>
   )
 }
