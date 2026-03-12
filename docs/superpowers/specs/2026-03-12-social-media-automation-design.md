@@ -18,6 +18,10 @@
 - `supabase/migrations/20251123_add_social_posts.sql` — social_posts + meta_credentials 表
 - `supabase/migrations/20260312_add_threads_user_id.sql` — threads_user_id 欄位
 
+### 欄位名稱對照
+
+DB `generated_articles` 表使用 `title_zh`、`content_zh` 欄位名。本文件及所有新程式碼統一使用這些欄位名。現有 `social-posts/route.ts` 中的 `title`/`content` 別名查詢需在重構時一併修正。
+
 ---
 
 ## 1. 自動化發文流程
@@ -35,15 +39,17 @@ export async function createSocialPostsForArticle(article: {
   id: string
   title_zh: string
   content_zh: string
+  slug_en: string
   cover_image?: string | null
 }): Promise<void>
 ```
 
 流程：
-1. 計算文章 URL（從 `published_at` 取 year/month + id）
-2. 呼叫 `generateMultiPlatformContent()` 生成 3 平台貼文內容
-3. 在 `social_posts` 表為每個平台建立一筆記錄
-4. 檢查 `SOCIAL_AUTO_PUBLISH` 環境變數：
+1. 計算文章 URL：使用 `slug_en` 欄位（格式 `${baseUrl}/${slug_en}`），與現有程式碼一致
+2. 檢查是否已有此 `article_id` 的社群貼文（防止重複建立），有則跳過對應平台
+3. 呼叫 `generateMultiPlatformContent()` 生成 3 平台貼文內容（內部使用 `Promise.all` 平行呼叫，約 3-5 秒完成全部）
+4. 在 `social_posts` 表為每個平台建立一筆記錄
+5. 檢查 `SOCIAL_AUTO_PUBLISH` 環境變數：
    - `true`：直接呼叫 `publishSocialPost()` 發布，狀態設為 `posted` 或 `failed`
    - `false`（預設）：狀態設為 `pending`，等待 Admin UI 手動審核
 
@@ -60,11 +66,16 @@ export async function publishSocialPost(postId: string): Promise<{
 ```
 
 此函式：
-1. 從 `social_posts` 取得貼文資料
-2. 從 `meta_credentials` 取得對應平台認證
+1. 從 `social_posts` 取得貼文資料（含關聯的 `article_id` 以取得 `cover_image`）
+2. 從 `meta_credentials` 取得對應平台認證（`WHERE is_active = true`）
 3. 呼叫 `formatPostContent()` 格式化內容
-4. 呼叫對應平台 API 發布
+4. 呼叫對應平台 API 發布：
+   - **Facebook**：使用 `postToFacebook()`，傳入 `message` + `link`（文章 URL）
+   - **Instagram**：使用 `postToInstagram()`，需傳入 `image_url`（文章的 `cover_image` URL，非文章頁面 URL）。若文章無 `cover_image`，則跳過 Instagram 發布並將狀態設為 `failed`，記錄 `error_message: 'No cover image available'`
+   - **Threads**：使用 `postToThreads()`，傳入 `text`
 5. 更新 `social_posts` 狀態（`posted` + `post_url` 或 `failed` + `error_message`）
+
+**Instagram image_url 修正**：需修改 `meta-client.ts` 的 `postToInstagram()` 參數，新增 `imageUrl` 欄位，取代原本誤用 `link` 作為 `image_url` 的行為。
 
 `publish/route.ts` 改為呼叫此函式，避免重複程式碼。
 
@@ -126,7 +137,7 @@ SOCIAL_AUTO_PUBLISH=true|false  # 預設 false（需審核模式）
 - `POST /api/admin/social-posts/publish` — 發布單篇貼文
 
 需新增：
-- `POST /api/admin/social-posts/batch-publish` — 批量發布所有 pending 貼文
+- `POST /api/admin/social-posts/batch-publish` — 批量發布 pending 貼文
 
 ### 2.4 新增 API：batch-publish
 
@@ -137,9 +148,10 @@ POST /api/admin/social-posts/batch-publish
 ```
 
 流程：
-1. 查詢所有 `status = 'pending'` 的貼文
-2. 依序呼叫 `publishSocialPost()` 發布每篇
+1. 查詢所有 `status = 'pending'` 的貼文，上限 30 筆（避免超時）
+2. 依序呼叫 `publishSocialPost()` 發布每篇，每次間隔 1 秒（Meta API rate limit 約 200 calls/hour）
 3. 回傳結果摘要：`{ total, published, failed, results: [...] }`
+4. 設定 `maxDuration`：若使用 Vercel，設定 `export const maxDuration = 60`（秒）
 
 ### 2.5 GET API 篩選擴充
 
@@ -162,6 +174,7 @@ try {
     id: articleId,
     title_zh: article.title_zh,
     content_zh: article.content_zh,
+    slug_en: article.slug_en,
     cover_image: coverImageUrl,
   })
 } catch (socialError) {
@@ -172,19 +185,27 @@ try {
 
 ### 3.2 時間預算
 
-Generator cron 有 5 分鐘限制。社群貼文生成（Claude AI）約需 3-5 秒/平台，3 平台約 10-15 秒。自動發布（API 呼叫）每平台約 2-3 秒。
+Generator cron 有 5 分鐘限制。社群貼文生成使用 `Promise.all` 平行呼叫 3 平台 Claude AI，約需 3-5 秒完成。自動發布（API 呼叫）每平台約 2-3 秒。
 
 在 generator 的時間預算檢查中，如果剩餘時間 < 30 秒則跳過社群貼文建立。
 
 ---
 
+## 已知限制
+
+- **`meta_credentials` unique constraint**：目前 `UNIQUE (platform, is_active)` 限制每個平台只能有一筆 inactive 記錄。若未來需要輪替認證，應改為 partial unique index `WHERE is_active = true`。
+- **DB `approved` 狀態**：`social_posts` 的 CHECK constraint 包含 `approved` 狀態，但本設計未使用。留作未來兩步驟審核流程擴充。
+
+---
+
 ## 執行順序
 
-1. **auto-publisher.ts** — 新增自動發文模組（核心邏輯）
-2. **publish/route.ts** — 重構為呼叫 publishSocialPost()
-3. **social-posts/route.ts** — GET API 加入篩選
-4. **batch-publish/route.ts** — 新增批量發布 API
-5. **generator/route.ts** — 整合社群發文
-6. **admin/page.tsx** — 新增社群貼文管理 UI
+1. **meta-client.ts** — 修正 Instagram `postToInstagram()` 參數，新增 `imageUrl` 欄位
+2. **auto-publisher.ts** — 新增自動發文模組（核心邏輯 + 重複檢查）
+3. **publish/route.ts** — 重構為呼叫 publishSocialPost()
+4. **social-posts/route.ts** — GET API 加入篩選 + 修正欄位名
+5. **batch-publish/route.ts** — 新增批量發布 API（含 rate limiting）
+6. **generator/route.ts** — 整合社群發文
+7. **admin/page.tsx** — 新增社群貼文管理 UI
 
 每步完成後驗證 build 通過。
