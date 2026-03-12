@@ -1,0 +1,23 @@
+# 玩咖 WANT CAR
+
+> AI 驅動的繁體中文汽車新聞平台
+
+## 關於本站
+玩咖 WANT CAR 是一個 AI 驅動的汽車新聞聚合平台，提供繁體中文的最新汽車資訊。
+內容涵蓋電動車、傳統燃油車、品牌動態、產業分析等主題。
+
+## 主要頁面
+- [首頁](https://wantcar.autos/) — 最新汽車新聞總覽
+- [最新文章](https://wantcar.autos/latest) — 按時間排序的所有文章
+- [Toyota 品牌頁](https://wantcar.autos/brand/Toyota) — 品牌專屬新聞（各品牌皆有對應頁面）
+- [電動車分類](https://wantcar.autos/category/ev) — 按主題分類的新聞
+
+## 資料格式
+- [RSS Feed](https://wantcar.autos/feed.xml) — RSS 2.0，包含最新文章
+- [Sitemap](https://wantcar.autos/sitemap.xml) — 完整頁面索引
+
+## 內容特色
+- 語言：繁體中文（zh-TW）
+- 更新頻率：每小時自動更新
+- 來源：聚合 30+ 國際汽車媒體
+- 免費閱讀，無付費牆
