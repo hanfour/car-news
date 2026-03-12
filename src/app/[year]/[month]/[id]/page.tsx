@@ -239,6 +239,10 @@ export default async function ArticlePage({ params }: PageProps) {
   const month = String(publishedDate.getMonth() + 1).padStart(2, '0')
   const articleUrl = `${baseUrl}/${year}/${month}/${id}`
 
+  const wordCount = article.content_zh
+    .replace(/[-#*_\[\]()>]/g, '')
+    .trim().length
+
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'NewsArticle',
@@ -258,13 +262,19 @@ export default async function ArticlePage({ params }: PageProps) {
       url: baseUrl,
       logo: {
         '@type': 'ImageObject',
-        url: `${baseUrl}/logo.png`
+        url: `${baseUrl}/logo-wide.png`,
+        width: 600,
+        height: 60
       }
     },
     mainEntityOfPage: {
       '@type': 'WebPage',
       '@id': articleUrl
     },
+    url: articleUrl,
+    inLanguage: 'zh-TW',
+    isAccessibleForFree: true,
+    wordCount,
     articleSection: article.categories?.[0] || 'news',
     keywords: [...(article.brands || []), ...(article.categories || []), ...(article.tags || [])].join(', ')
   }
