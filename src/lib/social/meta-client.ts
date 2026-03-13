@@ -19,6 +19,7 @@ export type MetaPlatform = 'facebook' | 'instagram'
 export interface PostParams {
   message: string // 貼文內容
   link: string // 文章連結
+  imageUrl?: string // Instagram 用圖片 URL
 }
 
 /**
@@ -128,9 +129,15 @@ export async function postToInstagram(
     }
   }
 
+  if (!params.imageUrl) {
+    return {
+      success: false,
+      error: 'Missing imageUrl for Instagram post'
+    }
+  }
+
   try {
     // Step 1: 創建 Media Container
-    // 注意：Instagram 需要圖片，這裡我們使用 Open Graph image from link
     const containerResponse = await fetch(
       `${GRAPH_API_BASE_URL}/${instagramAccountId}/media`,
       {
@@ -140,8 +147,7 @@ export async function postToInstagram(
         },
         body: JSON.stringify({
           caption: params.message,
-          // 使用文章的 Open Graph image（需要文章頁面有 og:image meta tag）
-          image_url: params.link,
+          image_url: params.imageUrl,
           access_token: accessToken
         })
       }

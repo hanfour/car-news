@@ -72,6 +72,26 @@ interface DuplicateMonitorStats {
   }>
 }
 
+interface SocialPost {
+  id: string
+  article_id: string
+  platform: 'facebook' | 'instagram' | 'threads'
+  content: string
+  article_url: string
+  status: 'pending' | 'posted' | 'failed'
+  post_url: string | null
+  error_message: string | null
+  posted_at: string | null
+  created_at: string
+  article?: {
+    id: string
+    title_zh: string
+    slug_en: string
+    brand_tags: string[]
+    created_at: string
+  }
+}
+
 export default function AdminDashboard() {
   const router = useRouter()
   const [articles, setArticles] = useState<Article[]>([])
@@ -93,6 +113,14 @@ export default function AdminDashboard() {
   const [showDuplicates, setShowDuplicates] = useState(false)
   const [duplicateStats, setDuplicateStats] = useState<DuplicateMonitorStats | null>(null)
   const [duplicateLoading, setDuplicateLoading] = useState(false)
+
+  // Social posts
+  const [showSocialPosts, setShowSocialPosts] = useState(false)
+  const [socialPosts, setSocialPosts] = useState<SocialPost[]>([])
+  const [socialLoading, setSocialLoading] = useState(false)
+  const [socialFilter, setSocialFilter] = useState<{ status: string; platform: string }>({ status: '', platform: '' })
+  const [socialPublishing, setSocialPublishing] = useState<string | null>(null)
+  const [socialBatchPublishing, setSocialBatchPublishing] = useState(false)
 
   useEffect(() => {
     fetchArticles()
@@ -162,6 +190,74 @@ export default function AdminDashboard() {
       console.error('Failed to fetch duplicate stats:', error)
     } finally {
       setDuplicateLoading(false)
+    }
+  }
+
+  const fetchSocialPosts = async (status?: string, platform?: string) => {
+    setSocialLoading(true)
+    try {
+      const params = new URLSearchParams()
+      const s = status ?? socialFilter.status
+      const p = platform ?? socialFilter.platform
+      if (s) params.set('status', s)
+      if (p) params.set('platform', p)
+
+      const response = await fetch(`/api/admin/social-posts?${params.toString()}`, {
+        credentials: 'include'
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setSocialPosts(data.posts || [])
+      }
+    } catch (error) {
+      console.error('Failed to fetch social posts:', error)
+    } finally {
+      setSocialLoading(false)
+    }
+  }
+
+  const handlePublishSocialPost = async (postId: string) => {
+    setSocialPublishing(postId)
+    try {
+      const response = await fetch('/api/admin/social-posts/publish', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId })
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        alert('發布成功！')
+        fetchSocialPosts()
+      } else {
+        alert(`發布失敗：${data.error}`)
+      }
+    } catch (error) {
+      alert('發布失敗')
+    } finally {
+      setSocialPublishing(null)
+    }
+  }
+
+  const handleBatchPublishSocial = async () => {
+    if (!confirm('確定要批量發布所有 pending 貼文？')) return
+
+    setSocialBatchPublishing(true)
+    try {
+      const response = await fetch('/api/admin/social-posts/batch-publish', {
+        method: 'POST',
+        credentials: 'include'
+      })
+
+      const data = await response.json()
+      alert(`批量發布完成：${data.published} 成功，${data.failed} 失敗（共 ${data.total} 篇）`)
+      fetchSocialPosts()
+    } catch (error) {
+      alert('批量發布失敗')
+    } finally {
+      setSocialBatchPublishing(false)
     }
   }
 
@@ -810,6 +906,203 @@ export default function AdminDashboard() {
                   <div className="text-sm text-green-700 mt-1">
                     過去 7 天的 {duplicateStats.stats.totalArticles} 篇文章未發現重複內容
                   </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Social Posts Section */}
+        <div className="bg-white rounded-lg shadow mb-8">
+          <div
+            className="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50"
+            onClick={() => {
+              setShowSocialPosts(!showSocialPosts)
+              if (!showSocialPosts && socialPosts.length === 0) {
+                fetchSocialPosts()
+              }
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-gray-900">Social Posts</h2>
+              {socialPosts.length > 0 && (
+                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                  {socialPosts.filter(p => p.status === 'pending').length} pending
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  fetchSocialPosts()
+                }}
+                disabled={socialLoading}
+                className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              >
+                {socialLoading ? 'Loading...' : 'Refresh'}
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleBatchPublishSocial()
+                }}
+                disabled={socialBatchPublishing || socialPosts.filter(p => p.status === 'pending').length === 0}
+                className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+              >
+                {socialBatchPublishing ? 'Publishing...' : 'Batch Publish'}
+              </button>
+              <span className="text-gray-400">{showSocialPosts ? '▼' : '▶'}</span>
+            </div>
+          </div>
+
+          {showSocialPosts && (
+            <div className="p-4 border-t space-y-4">
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-yellow-50 p-3 rounded">
+                  <div className="text-xs text-gray-600 mb-1">Pending</div>
+                  <div className="text-xl font-bold text-yellow-600">
+                    {socialPosts.filter(p => p.status === 'pending').length}
+                  </div>
+                </div>
+                <div className="bg-green-50 p-3 rounded">
+                  <div className="text-xs text-gray-600 mb-1">Posted</div>
+                  <div className="text-xl font-bold text-green-600">
+                    {socialPosts.filter(p => p.status === 'posted').length}
+                  </div>
+                </div>
+                <div className="bg-red-50 p-3 rounded">
+                  <div className="text-xs text-gray-600 mb-1">Failed</div>
+                  <div className="text-xl font-bold text-red-600">
+                    {socialPosts.filter(p => p.status === 'failed').length}
+                  </div>
+                </div>
+              </div>
+
+              {/* Filters */}
+              <div className="flex gap-4">
+                <div>
+                  <label className="text-sm text-gray-600 mr-2">Status:</label>
+                  <select
+                    value={socialFilter.status}
+                    onChange={(e) => {
+                      const newFilter = { ...socialFilter, status: e.target.value }
+                      setSocialFilter(newFilter)
+                      fetchSocialPosts(e.target.value, socialFilter.platform)
+                    }}
+                    className="border rounded px-2 py-1 text-sm"
+                  >
+                    <option value="">All</option>
+                    <option value="pending">Pending</option>
+                    <option value="posted">Posted</option>
+                    <option value="failed">Failed</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm text-gray-600 mr-2">Platform:</label>
+                  <select
+                    value={socialFilter.platform}
+                    onChange={(e) => {
+                      const newFilter = { ...socialFilter, platform: e.target.value }
+                      setSocialFilter(newFilter)
+                      fetchSocialPosts(socialFilter.status, e.target.value)
+                    }}
+                    className="border rounded px-2 py-1 text-sm"
+                  >
+                    <option value="">All</option>
+                    <option value="facebook">Facebook</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="threads">Threads</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Posts List */}
+              {socialLoading ? (
+                <div className="text-center py-4 text-gray-500">Loading...</div>
+              ) : socialPosts.length === 0 ? (
+                <div className="text-center py-4 text-gray-500">No social posts found</div>
+              ) : (
+                <div className="space-y-3">
+                  {socialPosts.map((post) => (
+                    <div key={post.id} className="border rounded-lg p-3 hover:bg-gray-50">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
+                              post.platform === 'facebook' ? 'bg-blue-100 text-blue-800' :
+                              post.platform === 'instagram' ? 'bg-pink-100 text-pink-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {post.platform === 'facebook' ? 'FB' :
+                               post.platform === 'instagram' ? 'IG' : 'Threads'}
+                            </span>
+                            <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
+                              post.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              post.status === 'posted' ? 'bg-green-100 text-green-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {post.status}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              {new Date(post.created_at).toLocaleString('zh-TW')}
+                            </span>
+                          </div>
+                          {post.article && (
+                            <div className="text-sm font-medium text-gray-900 mb-1">
+                              <a
+                                href={`/${post.article.slug_en}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:text-blue-600 hover:underline"
+                              >
+                                {post.article.title_zh}
+                              </a>
+                            </div>
+                          )}
+                          <div className="text-sm text-gray-600 line-clamp-2">
+                            {post.content}
+                          </div>
+                          {post.error_message && (
+                            <div className="text-xs text-red-600 mt-1">
+                              Error: {post.error_message}
+                            </div>
+                          )}
+                          {post.post_url && (
+                            <a
+                              href={post.post_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-600 hover:underline mt-1 inline-block"
+                            >
+                              View post
+                            </a>
+                          )}
+                        </div>
+                        <div className="ml-3 flex-shrink-0">
+                          {post.status === 'pending' && (
+                            <button
+                              onClick={() => handlePublishSocialPost(post.id)}
+                              disabled={socialPublishing === post.id}
+                              className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                            >
+                              {socialPublishing === post.id ? '...' : 'Publish'}
+                            </button>
+                          )}
+                          {post.status === 'failed' && (
+                            <button
+                              onClick={() => handlePublishSocialPost(post.id)}
+                              disabled={socialPublishing === post.id}
+                              className="px-3 py-1 text-sm bg-yellow-600 text-white rounded hover:bg-yellow-700 disabled:opacity-50"
+                            >
+                              {socialPublishing === post.id ? '...' : 'Retry'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

@@ -7,33 +7,45 @@ export const dynamic = 'force-dynamic'
 
 /**
  * GET /api/admin/social-posts
- * 獲取待審核的社群貼文列表
+ * 獲取社群貼文列表，支援 status 和 platform 篩選
  */
 export async function GET(request: NextRequest) {
   try {
-    // Verify admin authentication
     const isAuthorized = await verifyAdminAuth(request)
     if (!isAuthorized) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { searchParams } = new URL(request.url)
+    const status = searchParams.get('status')
+    const platform = searchParams.get('platform')
+
     const supabase = createServiceClient()
 
-    // 獲取所有待審核的貼文，按建立時間排序
-    const { data: posts, error } = await supabase
+    let query = supabase
       .from('social_posts')
       .select(`
         *,
         article:generated_articles(
           id,
-          title,
-          slug,
+          title_zh,
+          slug_en,
           brand_tags,
           created_at
         )
       `)
       .order('created_at', { ascending: false })
       .limit(100)
+
+    if (status) {
+      query = query.eq('status', status)
+    }
+
+    if (platform) {
+      query = query.eq('platform', platform)
+    }
+
+    const { data: posts, error } = await query
 
     if (error) {
       console.error('[Social Posts] Failed to fetch posts:', error)
@@ -59,7 +71,6 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Verify admin authentication
     const isAuthorized = await verifyAdminAuth(request)
     if (!isAuthorized) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -80,10 +91,9 @@ export async function POST(request: NextRequest) {
 
     const supabase = createServiceClient()
 
-    // 獲取文章資訊
     const { data: article, error: articleError } = await supabase
       .from('generated_articles')
-      .select('id, title, content, slug')
+      .select('id, title_zh, content_zh, slug_en')
       .eq('id', articleId)
       .single()
 
@@ -95,21 +105,18 @@ export async function POST(request: NextRequest) {
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://wantcar.autos'
-    const articleUrl = `${baseUrl}/${article.slug}`
+    const articleUrl = `${baseUrl}/${article.slug_en}`
 
-    // 為每個平台生成貼文
     const createdPosts = []
 
     for (const platform of platforms) {
-      // 生成社群媒體摘要
       const summary = await generateSocialSummary(
-        article.title,
-        article.content,
+        article.title_zh,
+        article.content_zh,
         articleUrl,
         platform
       )
 
-      // 創建待審核貼文
       const { data: post, error: postError } = await supabase
         .from('social_posts')
         .insert({

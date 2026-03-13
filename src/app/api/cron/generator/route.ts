@@ -18,6 +18,7 @@ import {
 } from '@/lib/utils/deduplication'
 import { comprehensiveDuplicateCheck, checkBrandFrequency } from '@/lib/utils/advanced-deduplication'
 import { collectByRoundRobin, sortBrandsByPriority } from '@/lib/generator/round-robin'
+import { createSocialPostsForArticle } from '@/lib/social/auto-publisher'
 
 export const maxDuration = 300 // Vercel Pro限制：最长5分钟
 
@@ -526,6 +527,28 @@ async function handleCronJob(request: NextRequest) {
           console.log(`[${brand}] ⚠ Failed to create topic lock (non-fatal)`)
         }
         // =======================================================
+
+        // ============ Social Media Posts ============
+        // 為文章建立社群貼文（若剩餘時間足夠）
+        const elapsedSoFar = Date.now() - startTime
+        if (article && elapsedSoFar < TIMEOUT_CONFIG.MAX_DURATION_MS - 30000) {
+          try {
+            const socialResult = await createSocialPostsForArticle({
+              id: shortId,
+              title_zh: generated.title_zh,
+              content_zh: generated.content_zh,
+              slug_en: generated.slug_en,
+              cover_image: coverImage || null
+            })
+            console.log(`[${brand}] 📱 Social posts: ${socialResult.created} created, ${socialResult.published} published`)
+            if (socialResult.errors.length > 0) {
+              console.log(`[${brand}] ⚠ Social errors: ${socialResult.errors.join(', ')}`)
+            }
+          } catch (socialError) {
+            console.error(`[${brand}] ⚠ Social post creation failed (non-fatal):`, getErrorMessage(socialError))
+          }
+        }
+        // =============================================
 
         results.push({
           id: shortId,
