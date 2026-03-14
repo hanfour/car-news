@@ -1,7 +1,7 @@
-import { createServiceClient } from '@/lib/supabase'
 import crypto from 'crypto'
 import { getErrorMessage } from '@/lib/utils/error'
 import { isLegalImageSource, getImageSourceCredit } from '@/config/image-sources'
+import { uploadToR2 } from './r2-client'
 
 /**
  * 圖片下載和存儲服務
@@ -36,18 +36,12 @@ export interface StoredImage {
  * 從 URL 生成唯一的文件名
  */
 function generateFilename(url: string, articleId: string): string {
-  // 使用 URL 的 hash 確保相同圖片不會重複上傳
   const urlHash = crypto.createHash('md5').update(url).digest('hex').slice(0, 8)
-
-  // 提取文件擴展名
   const urlWithoutQuery = url.split('?')[0]
   const ext = urlWithoutQuery.split('.').pop()?.toLowerCase() || 'jpg'
-
-  // 只允許常見圖片格式
   const allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'gif']
   const finalExt = allowedExts.includes(ext) ? ext : 'jpg'
 
-  // 格式：{articleId}-{timestamp}-{hash}.{ext}
   return `${articleId}/${Date.now()}-${urlHash}.${finalExt}`
 }
 
@@ -58,29 +52,23 @@ function tryCompressUrl(url: string): string {
   try {
     const urlObj = new URL(url)
 
-    // The Verge / Vox Media 圖片服務
     if (urlObj.hostname.includes('theverge.com') || urlObj.hostname.includes('vox-cdn.com')) {
-      // 將 quality=90 降低到 quality=60，並限制寬度
       urlObj.searchParams.set('quality', '60')
       urlObj.searchParams.set('w', '1200')
       return urlObj.toString()
     }
 
-    // Electrek 圖片服務
     if (urlObj.hostname.includes('electrek.co')) {
       urlObj.searchParams.set('quality', '70')
       urlObj.searchParams.set('w', '1200')
       return urlObj.toString()
     }
 
-    // Autocar 圖片服務
     if (urlObj.hostname.includes('autocar.co.uk')) {
-      // 如果有 itok 參數，移除並添加壓縮參數
       urlObj.searchParams.delete('itok')
       return urlObj.toString()
     }
 
-    // 通用降級：如果有 quality 參數，降低它
     if (urlObj.searchParams.has('quality')) {
       const currentQuality = parseInt(urlObj.searchParams.get('quality') || '90')
       urlObj.searchParams.set('quality', Math.min(60, currentQuality - 20).toString())
@@ -94,14 +82,9 @@ function tryCompressUrl(url: string): string {
 }
 
 /**
- * 下載圖片並存儲到 Supabase Storage
+ * 下載圖片並存儲到 Cloudflare R2
  *
  * ⚠️ 法律合規版本：只處理合法來源的圖片
- *
- * @param imageUrl 外部圖片 URL
- * @param articleId 文章 ID（用於組織文件結構）
- * @param credit 圖片來源標註
- * @returns 存儲後的圖片信息，非法來源返回 null
  */
 export async function downloadAndStoreImage(
   imageUrl: string,
@@ -109,7 +92,7 @@ export async function downloadAndStoreImage(
   credit: string = 'Unknown'
 ): Promise<StoredImage | null> {
   try {
-    // ⚠️ 法律合規檢查：只下載合法來源的圖片
+    // ⚠️ 法律合規檢查
     const sourceCheck = isLegalImageSource(imageUrl)
 
     if (!sourceCheck.isLegal) {
@@ -119,7 +102,6 @@ export async function downloadAndStoreImage(
       return null
     }
 
-    // 使用合法來源的標註
     const legalCredit = getImageSourceCredit(imageUrl)
     console.log(`[Image Storage] ✓ 合法來源: ${sourceCheck.source} (${sourceCheck.domain})`)
     console.log(`[Image Storage] Downloading: ${imageUrl}`)
@@ -129,7 +111,7 @@ export async function downloadAndStoreImage(
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; CarNewsAI/1.0)',
       },
-      signal: AbortSignal.timeout(30000), // 30秒超時
+      signal: AbortSignal.timeout(30000),
     })
 
     if (!response.ok) {
@@ -137,31 +119,27 @@ export async function downloadAndStoreImage(
       return null
     }
 
-    // 檢查是否為圖片
     const contentType = response.headers.get('content-type')
     if (!contentType?.startsWith('image/')) {
       console.error(`[Image Storage] Invalid content type: ${contentType}`)
       return null
     }
 
-    // 2. 轉換為 Blob
-    const blob = await response.blob()
-    const size = blob.size
+    // 2. 轉換為 Buffer
+    const arrayBuffer = await response.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+    const size = buffer.length
 
     console.log(`[Image Storage] Downloaded ${size} bytes, type: ${contentType}`)
 
-    // 檢查圖片是否過小 (可能是縮圖或佔位符)
     if (size < 5000) {
       console.warn(`[Image Storage] Image too small (${size} bytes), likely a placeholder or thumbnail`)
-      console.warn(`[Image Storage] Skipping image: ${imageUrl}`)
       return null
     }
 
-    // 檢查文件大小（限制 10MB）
     if (size > 10 * 1024 * 1024) {
       console.warn(`[Image Storage] File too large (${size} bytes), attempting to fetch compressed version...`)
 
-      // 嘗試從 URL 參數降低品質
       const compressedUrl = tryCompressUrl(imageUrl)
       if (compressedUrl !== imageUrl) {
         console.log(`[Image Storage] Retrying with compressed URL: ${compressedUrl}`)
@@ -172,37 +150,18 @@ export async function downloadAndStoreImage(
       return null
     }
 
-    // 3. 生成文件名
+    // 3. 生成文件名並上傳到 R2
     const filename = generateFilename(imageUrl, articleId)
-
-    // 4. 上傳到 Supabase Storage
-    const supabase = createServiceClient()
-    const { data, error } = await supabase.storage
-      .from('article-images')
-      .upload(filename, blob, {
-        contentType: blob.type,
-        cacheControl: '31536000', // 1 year
-        upsert: false, // 不覆蓋已存在的文件
-      })
-
-    if (error) {
-      console.error(`[Image Storage] Upload failed:`, error)
-      return null
-    }
-
-    // 5. 獲取公開 URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('article-images')
-      .getPublicUrl(filename)
+    const publicUrl = await uploadToR2(filename, buffer, contentType)
 
     console.log(`[Image Storage] ✓ Stored successfully: ${publicUrl}`)
 
     return {
       url: publicUrl,
-      credit: legalCredit, // 使用合法來源標註
+      credit: legalCredit,
       originalUrl: imageUrl,
       size,
-      mimeType: blob.type,
+      mimeType: contentType,
     }
   } catch (error) {
     console.error(`[Image Storage] Error:`, getErrorMessage(error))
@@ -212,10 +171,6 @@ export async function downloadAndStoreImage(
 
 /**
  * 批量下載和存儲圖片
- *
- * @param images 圖片列表 {url, credit}
- * @param articleId 文章 ID
- * @returns 成功存儲的圖片列表
  */
 export async function downloadAndStoreImages(
   images: Array<{ url: string; credit: string; caption?: string }>,

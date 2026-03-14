@@ -1,43 +1,14 @@
 /**
  * 圖片上傳工具
- * 將遠端圖片下載並上傳到 Supabase Storage
+ * 將遠端圖片下載並上傳到 Cloudflare R2
  */
 
-import { createServiceClient } from '@/lib/supabase'
 import crypto from 'crypto'
 import { getErrorMessage } from '@/lib/utils/error'
-
-const BUCKET_NAME = 'article-images'
-
-/**
- * 確保 Storage Bucket 存在
- */
-async function ensureBucketExists() {
-  const supabase = createServiceClient()
-
-  // 檢查 bucket 是否存在
-  const { data: buckets } = await supabase.storage.listBuckets()
-  const bucketExists = buckets?.some(b => b.name === BUCKET_NAME)
-
-  if (!bucketExists) {
-    console.log(`Creating storage bucket: ${BUCKET_NAME}`)
-    const { error } = await supabase.storage.createBucket(BUCKET_NAME, {
-      public: true, // 公開訪問
-      fileSizeLimit: 10485760, // 10MB
-      allowedMimeTypes: ['image/png', 'image/jpeg', 'image/webp', 'image/jpg']
-    })
-
-    if (error) {
-      console.error('Failed to create bucket:', error)
-      return false
-    }
-  }
-
-  return true
-}
+import { uploadToR2, listR2Objects, deleteFromR2 } from './r2-client'
 
 /**
- * 從 URL 下載圖片並上傳到 Supabase Storage
+ * 從 URL 下載圖片並上傳到 R2
  */
 export async function uploadImageFromUrl(
   imageUrl: string,
@@ -45,14 +16,7 @@ export async function uploadImageFromUrl(
   addWatermark?: boolean
 ): Promise<string | null> {
   try {
-    // 1. 確保 bucket 存在
-    const bucketReady = await ensureBucketExists()
-    if (!bucketReady) {
-      console.error('Storage bucket not ready')
-      return null
-    }
-
-    // 2. 下載圖片
+    // 1. 下載圖片
     console.log(`→ Downloading image from: ${imageUrl.slice(0, 60)}...`)
     const response = await fetch(imageUrl)
 
@@ -64,60 +28,36 @@ export async function uploadImageFromUrl(
     const arrayBuffer = await response.arrayBuffer()
     let buffer: Buffer = Buffer.from(arrayBuffer)
 
-    // 2.1 浮水印功能已停用
-    // Vercel serverless 環境沒有字體支援，SVG 文字會變成方塊
-    // 改為依賴網站顯示的 image_credit 欄位（如：「圖片來源：AI生成示意圖(Flux)」）
+    // 浮水印功能已停用
     if (addWatermark) {
       console.log('→ Watermark disabled (no font support on Vercel serverless)')
     }
 
-    // 2.2 優化和轉換圖片為 WebP 格式
+    // 2. 優化和轉換圖片為 WebP 格式
     console.log('→ Optimizing and converting to WebP...')
     const sharp = (await import('sharp')).default
     buffer = await sharp(buffer)
       .resize(1792, 1024, {
-        fit: 'inside', // 保持比例，不超過指定尺寸
-        withoutEnlargement: true // 不放大小圖片
+        fit: 'inside',
+        withoutEnlargement: true
       })
       .webp({
-        quality: 85, // 高質量 WebP（平衡質量和大小）
-        effort: 6 // 壓縮努力程度（0-6，6最慢但壓縮最好）
+        quality: 85,
+        effort: 6
       })
       .toBuffer()
 
     console.log('✓ Image optimized and converted to WebP')
 
-    // 3. 生成唯一文件名（使用 .webp 擴展名）
-    const extension = 'webp'
-    const contentType = 'image/webp'
-
+    // 3. 生成唯一文件名
     const hash = crypto.createHash('md5').update(buffer).digest('hex')
     const finalFileName = fileName
-      ? `${fileName}.${extension}`
-      : `${Date.now()}-${hash.slice(0, 8)}.${extension}`
+      ? `${fileName}.webp`
+      : `${Date.now()}-${hash.slice(0, 8)}.webp`
 
-    // 4. 上傳到 Supabase Storage
-    console.log(`→ Uploading to storage: ${finalFileName}`)
-    const supabase = createServiceClient()
-
-    const { data, error } = await supabase.storage
-      .from(BUCKET_NAME)
-      .upload(finalFileName, buffer, {
-        contentType,
-        upsert: true // 如果文件存在則覆蓋
-      })
-
-    if (error) {
-      console.error('✗ Upload failed:', error.message)
-      return null
-    }
-
-    // 5. 獲取公開 URL
-    const { data: publicUrlData } = supabase.storage
-      .from(BUCKET_NAME)
-      .getPublicUrl(data.path)
-
-    const publicUrl = publicUrlData.publicUrl
+    // 4. 上傳到 R2
+    console.log(`→ Uploading to R2: ${finalFileName}`)
+    const publicUrl = await uploadToR2(finalFileName, buffer, 'image/webp')
 
     console.log(`✓ Image uploaded successfully`)
     console.log(`   Public URL: ${publicUrl.slice(0, 60)}...`)
@@ -154,42 +94,26 @@ export async function uploadMultipleImages(
  */
 export async function deleteOldImages(olderThanDays: number = 30): Promise<number> {
   try {
-    const supabase = createServiceClient()
-
-    // 列出所有文件
-    const { data: files, error: listError } = await supabase.storage
-      .from(BUCKET_NAME)
-      .list()
-
-    if (listError || !files) {
-      console.error('Failed to list files:', listError)
-      return 0
-    }
+    const objects = await listR2Objects()
 
     const cutoffDate = new Date()
     cutoffDate.setDate(cutoffDate.getDate() - olderThanDays)
 
-    const filesToDelete = files
-      .filter(file => new Date(file.created_at) < cutoffDate)
-      .map(file => file.name)
+    const toDelete = objects.filter(obj =>
+      obj.lastModified && obj.lastModified < cutoffDate
+    )
 
-    if (filesToDelete.length === 0) {
+    if (toDelete.length === 0) {
       console.log('No old images to delete')
       return 0
     }
 
-    // 批量刪除
-    const { error: deleteError } = await supabase.storage
-      .from(BUCKET_NAME)
-      .remove(filesToDelete)
-
-    if (deleteError) {
-      console.error('Failed to delete files:', deleteError)
-      return 0
+    for (const obj of toDelete) {
+      await deleteFromR2(obj.key)
     }
 
-    console.log(`✓ Deleted ${filesToDelete.length} old images`)
-    return filesToDelete.length
+    console.log(`✓ Deleted ${toDelete.length} old images`)
+    return toDelete.length
 
   } catch (error) {
     console.error('Delete error:', getErrorMessage(error))

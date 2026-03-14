@@ -3,9 +3,9 @@ import { createServiceClient } from '@/lib/supabase'
 import { verifySessionToken } from '@/lib/admin/session'
 import sharp from 'sharp'
 import crypto from 'crypto'
+import { uploadToR2 } from '@/lib/storage/r2-client'
 
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY
-const BUCKET_NAME = 'article-images'
 
 async function verifyAuth(request: NextRequest): Promise<boolean> {
   const authHeader = request.headers.get('authorization')
@@ -62,8 +62,6 @@ export async function POST(
     console.log(`   Image credit: ${imageCredit}`)
 
     // 2. 浮水印功能已停用
-    // Vercel serverless 環境沒有字體支援，SVG 文字會變成方塊
-    // 改為依賴網站顯示的 image_credit 欄位
     console.log('→ Watermark disabled (no font support on Vercel serverless)')
 
     // 3. 優化並轉換為 WebP
@@ -84,29 +82,11 @@ export async function POST(
     const hash = crypto.createHash('md5').update(buffer).digest('hex')
     const fileName = `custom-${id}-${Date.now()}-${hash.slice(0, 8)}.webp`
 
-    // 5. 上傳到 Supabase Storage
+    // 5. 上傳到 R2
+    const publicUrl = await uploadToR2(fileName, buffer, 'image/webp')
+
+    // 6. 更新文章的封面圖片
     const supabase = createServiceClient()
-
-    const { data, error: uploadError } = await supabase.storage
-      .from(BUCKET_NAME)
-      .upload(fileName, buffer, {
-        contentType: 'image/webp',
-        upsert: true
-      })
-
-    if (uploadError) {
-      console.error('✗ Upload failed:', uploadError.message)
-      return NextResponse.json({ error: uploadError.message }, { status: 500 })
-    }
-
-    // 6. 獲取公開 URL
-    const { data: publicUrlData } = supabase.storage
-      .from(BUCKET_NAME)
-      .getPublicUrl(data.path)
-
-    const publicUrl = publicUrlData.publicUrl
-
-    // 7. 更新文章的封面圖片
     const { error: updateError } = await supabase
       .from('generated_articles')
       .update({
