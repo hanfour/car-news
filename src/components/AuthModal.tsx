@@ -83,6 +83,10 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     const supabase = createClient()
 
     try {
+      // 保存當前頁面路徑到 cookie，登入後返回此頁面
+      const currentPath = window.location.pathname + window.location.search
+      document.cookie = `auth_return_url=${encodeURIComponent(currentPath)}; path=/; max-age=600; SameSite=Lax`
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {

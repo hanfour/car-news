@@ -10,6 +10,12 @@ interface Profile {
   display_name?: string
   avatar_url?: string
   bio?: string
+  website?: string
+  location?: string
+  cover_image_url?: string
+  is_favorites_public?: boolean
+  followers_count?: number
+  following_count?: number
 }
 
 interface AuthContextType {
@@ -81,7 +87,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     // 先清除所有 Supabase localStorage keys
     // 這樣可以確保即使 supabase.auth.signOut() 失敗，用戶也會被登出
-    const projectRef = 'daubcanyykdfyptntfco'
+    // 從 NEXT_PUBLIC_SUPABASE_URL 動態取得 project ref
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+    const projectRef = url.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] || ''
     const storageKeys = [
       `sb-${projectRef}-auth-token`,
       `sb-${projectRef}-auth-token-code-verifier`,

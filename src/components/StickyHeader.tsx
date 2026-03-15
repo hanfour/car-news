@@ -8,6 +8,7 @@ import { AuthModal } from '@/components/AuthModal'
 import { useAuth } from '@/contexts/AuthContext'
 import { CATEGORIES } from '@/config/categories'
 import { isValidImageUrl } from '@/lib/security'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { useState, useEffect, useRef } from 'react'
 
 interface Brand {
@@ -155,6 +156,9 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                   </svg>
                 </button>
 
+                {/* 通知鈴鐺 */}
+                {user && <NotificationBell />}
+
                 {/* 會員按鈕 */}
                 {loading ? (
                   <div className="w-8 h-8 flex items-center justify-center">
@@ -202,6 +206,22 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                             </p>
                           )}
                         </div>
+                        <Link
+                          href={`/user/${profile?.username || user.id}`}
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="block px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
+                          style={{ color: 'var(--text-secondary)' }}
+                        >
+                          個人頁面
+                        </Link>
+                        <Link
+                          href="/settings/profile"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="block px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
+                          style={{ color: 'var(--text-secondary)' }}
+                        >
+                          設定
+                        </Link>
                         <button
                           onClick={() => {
                             signOut()
@@ -261,6 +281,9 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                     </svg>
                   </button>
 
+                  {/* 通知鈴鐺 - 收合模式 */}
+                  {user && <NotificationBell />}
+
                   {/* 會員按鈕 - 收合模式 */}
                   {loading ? (
                     <div className="w-8 h-8 flex items-center justify-center">
@@ -307,6 +330,22 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                               </p>
                             )}
                           </div>
+                          <Link
+                            href={`/user/${profile?.username || user.id}`}
+                            onClick={() => setIsUserMenuOpen(false)}
+                            className="block px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
+                            style={{ color: 'var(--text-secondary)' }}
+                          >
+                            個人頁面
+                          </Link>
+                          <Link
+                            href="/settings/profile"
+                            onClick={() => setIsUserMenuOpen(false)}
+                            className="block px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
+                            style={{ color: 'var(--text-secondary)' }}
+                          >
+                            設定
+                          </Link>
                           <button
                             onClick={() => {
                               signOut()
@@ -543,6 +582,42 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                     )}
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* 社群區塊 */}
+            <div className="mt-8 pt-8 border-t" style={{ borderColor: '#cdcdcd' }}>
+              <h3 className="px-4 mb-3 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                社群
+              </h3>
+              <div className="space-y-1">
+                <Link
+                  href="/community"
+                  prefetch={false}
+                  className="block px-4 py-3 text-sm font-medium rounded hover:bg-gray-100 transition-colors"
+                  style={{ color: 'var(--text-secondary)' }}
+                  onClick={() => setIsSidebarOpen(false)}
+                >
+                  討論區
+                </Link>
+                <Link
+                  href="/garage"
+                  prefetch={false}
+                  className="block px-4 py-3 text-sm font-medium rounded hover:bg-gray-100 transition-colors"
+                  style={{ color: 'var(--text-secondary)' }}
+                  onClick={() => setIsSidebarOpen(false)}
+                >
+                  愛車展示
+                </Link>
+                <Link
+                  href="/clubs"
+                  prefetch={false}
+                  className="block px-4 py-3 text-sm font-medium rounded hover:bg-gray-100 transition-colors"
+                  style={{ color: 'var(--text-secondary)' }}
+                  onClick={() => setIsSidebarOpen(false)}
+                >
+                  車友會
+                </Link>
               </div>
             </div>
           </nav>

@@ -5,6 +5,13 @@ let browserClient: SupabaseClient | null = null
 let serviceClient: SupabaseClient | null = null
 let serverAnonClient: SupabaseClient | null = null
 
+// 從 NEXT_PUBLIC_SUPABASE_URL 動態取得 project ref
+function getProjectRef(): string {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+  const match = url.match(/https:\/\/([^.]+)\.supabase\.co/)
+  return match?.[1] || ''
+}
+
 // 共用的 global fetch 配置
 const globalFetchOptions = {
   next: { revalidate: 0 },  // 不快取 API 響應
@@ -20,7 +27,7 @@ export function createClient() {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
           auth: {
-            storageKey: 'sb-daubcanyykdfyptntfco-auth-token',
+            storageKey: `sb-${getProjectRef()}-auth-token`,
             storage: typeof window !== 'undefined' ? window.localStorage : undefined,
             autoRefreshToken: true,
             persistSession: true,

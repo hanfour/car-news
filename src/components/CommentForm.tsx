@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { LoginModal } from './LoginModal'
+import { AuthModal } from './AuthModal'
 import { useAuth } from '@/contexts/AuthContext'
 
 interface CommentFormProps {
@@ -187,7 +187,7 @@ function CommentFormInner({ articleId, onLoginRequired }: CommentFormProps) {
       </form>
 
       {/* Login Modal */}
-      <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
+      <AuthModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
     </>
   )
 }

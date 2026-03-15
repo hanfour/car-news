@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { isValidImageUrl } from '@/lib/security'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/components/ToastContainer'
-import { LoginModal } from './LoginModal'
+import { AuthModal } from './AuthModal'
 import { ReportModal } from './ReportModal'
 
 interface CommentItemProps {
@@ -487,7 +487,7 @@ export function CommentItem({ comment }: CommentItemProps) {
       </div>
 
       {/* Login Modal */}
-      <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
+      <AuthModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
 
       {/* Report Modal */}
       <ReportModal

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/components/ToastContainer'
-import { LoginModal } from '@/components/LoginModal'
+import { AuthModal } from '@/components/AuthModal'
 import { ReportModal } from '@/components/ReportModal'
 
 interface ArticleActionBarProps {
@@ -421,7 +421,7 @@ export function ArticleActionBar({ articleId, title, viewCount, commentCount, in
       </div>
 
       {/* Login Modal */}
-      <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
+      <AuthModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
 
       {/* Report Modal */}
       <ReportModal

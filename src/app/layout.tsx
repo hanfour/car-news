@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { NotificationProvider } from '@/contexts/NotificationContext';
 import { ToastProvider } from '@/components/ToastContainer';
 import LoadingScreen from '@/components/LoadingScreen';
 import NavigationProgress from '@/components/NavigationProgress';
@@ -71,8 +72,10 @@ export default function RootLayout({
         <NavigationProgress />
         <ToastProvider>
           <AuthProvider>
-            {children}
-            <Footer />
+            <NotificationProvider>
+              {children}
+              <Footer />
+            </NotificationProvider>
           </AuthProvider>
         </ToastProvider>
         <Analytics />
