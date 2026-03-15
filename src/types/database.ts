@@ -73,6 +73,7 @@ export interface NewsSource {
   name: string
   url: string
   type: 'rss' | 'scrape' | 'youtube'
+  lang?: string
   selector?: {
     article: string
     title: string

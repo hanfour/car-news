@@ -24,9 +24,9 @@ function extractVideoId(url: string): string | null {
 /**
  * 取得影片字幕並合併為完整文字
  */
-async function getVideoTranscript(videoId: string): Promise<string | null> {
+async function getVideoTranscript(videoId: string, lang?: string): Promise<string | null> {
   try {
-    const segments = await fetchTranscript(videoId, { lang: 'en' })
+    const segments = await fetchTranscript(videoId, lang ? { lang } : undefined)
 
     if (!segments || segments.length === 0) {
       return null
@@ -98,7 +98,7 @@ export async function scrapeYouTubeChannel(source: NewsSource): Promise<ScrapedA
         const videoId = extractVideoId(item.link!)
         if (!videoId) return
 
-        const transcript = await getVideoTranscript(videoId)
+        const transcript = await getVideoTranscript(videoId, source.lang)
         if (!transcript || transcript.length < 50) return
 
         // 安全解析日期

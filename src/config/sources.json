@@ -470,6 +470,7 @@
     "name": "Doug DeMuro",
     "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCsqjHFMB_JYTaEnf_vmTNqg",
     "type": "youtube",
+    "lang": "en",
     "enabled": true,
     "category": "youtube",
     "note": "車評、新車介紹"
@@ -479,6 +480,7 @@
     "name": "Throttle House",
     "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCrMTDMVBxdx3aq3LOCqsj3A",
     "type": "youtube",
+    "lang": "en",
     "enabled": true,
     "category": "youtube",
     "note": "對比測試"
@@ -488,6 +490,7 @@
     "name": "Carwow",
     "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCUhFaUpnq31m6TNX2VKVSVA",
     "type": "youtube",
+    "lang": "en",
     "enabled": true,
     "category": "youtube",
     "note": "加速/煞車測試"
@@ -497,6 +500,7 @@
     "name": "Savagegeese",
     "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCgUvk6jVaf-1s4TYqBP9WHw",
     "type": "youtube",
+    "lang": "en",
     "enabled": true,
     "category": "youtube",
     "note": "深度技術評測"
@@ -506,6 +510,7 @@
     "name": "Engineering Explained",
     "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UClqhvGmHcvWL9w3R48t9QXQ",
     "type": "youtube",
+    "lang": "en",
     "enabled": true,
     "category": "youtube",
     "note": "技術解析"
@@ -515,8 +520,49 @@
     "name": "Out of Spec Reviews",
     "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCovUo3FinWMaR5n1JC_jDhQ",
     "type": "youtube",
+    "lang": "en",
     "enabled": true,
     "category": "youtube",
     "note": "電動車測試"
+  },
+  {
+    "id": "yt-autogefuehl",
+    "name": "Autogefühl",
+    "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCG0__4AhnoCWRH7TPO0PQyg",
+    "type": "youtube",
+    "lang": "en",
+    "enabled": true,
+    "category": "youtube",
+    "note": "德國深度車評（英文字幕）"
+  },
+  {
+    "id": "yt-ucar",
+    "name": "U-CAR 汽車網站",
+    "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCW92-RPH4xq1YqVbON4D0fg",
+    "type": "youtube",
+    "lang": "zh-TW",
+    "enabled": true,
+    "category": "youtube",
+    "note": "台灣汽車新聞、試駕"
+  },
+  {
+    "id": "yt-guanyi",
+    "name": "冠儀試車",
+    "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCDE9Vy4h-96QSqo-GqQYU1g",
+    "type": "youtube",
+    "lang": "zh-TW",
+    "enabled": true,
+    "category": "youtube",
+    "note": "台灣試駕節目"
+  },
+  {
+    "id": "yt-ddcar",
+    "name": "DDCAR 電動車",
+    "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCsz8FSbo457Es7r7aJcDTwQ",
+    "type": "youtube",
+    "lang": "zh-TW",
+    "enabled": true,
+    "category": "youtube",
+    "note": "台灣電動車專門頻道"
   }
 ]
