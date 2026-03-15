@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 const navItems = [
   {
@@ -63,10 +63,36 @@ interface AdminSidebarProps {
 export function AdminSidebar({ onLogout }: AdminSidebarProps) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [activeHash, setActiveHash] = useState('')
+
+  // 監聽 hash 變化
+  useEffect(() => {
+    const updateHash = () => setActiveHash(window.location.hash)
+    updateHash()
+    window.addEventListener('hashchange', updateHash)
+    return () => window.removeEventListener('hashchange', updateHash)
+  }, [])
+
+  const handleNavClick = useCallback((item: typeof navItems[0]) => {
+    setMobileOpen(false)
+    if (item.hash && pathname === '/admin') {
+      // 同頁面 hash 導航，手動滾動到目標區塊
+      const el = document.getElementById(item.hash.slice(1))
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        window.history.replaceState(null, '', item.hash)
+        setActiveHash(item.hash)
+      }
+    }
+  }, [pathname])
 
   const isActive = (item: typeof navItems[0]) => {
-    if (item.hash) return false
-    return pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))
+    if (pathname !== '/admin' && pathname.startsWith('/admin/')) {
+      // 文章編輯頁等子頁面，不 highlight sidebar
+      return false
+    }
+    if (item.hash) return activeHash === item.hash
+    return pathname === item.href && !activeHash
   }
 
   const sidebar = (
@@ -91,7 +117,7 @@ export function AdminSidebar({ onLogout }: AdminSidebarProps) {
             <Link
               key={item.label}
               href={item.href + (item.hash || '')}
-              onClick={() => setMobileOpen(false)}
+              onClick={() => handleNavClick(item)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 active
                   ? 'bg-slate-800 text-white border-l-2 border-[var(--brand-primary)]'

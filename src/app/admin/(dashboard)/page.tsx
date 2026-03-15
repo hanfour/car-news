@@ -126,21 +126,22 @@ export default function AdminDashboard() {
 
   const executeBatch = async (action: 'publish' | 'unpublish' | 'delete') => {
     setBatchProcessing(true)
-    let success = 0, fail = 0
 
-    for (const id of selectedIds) {
-      try {
-        const res = action === 'delete'
-          ? await fetch(`/api/admin/articles/${id}`, { method: 'DELETE', credentials: 'include' })
-          : await fetch(`/api/admin/articles/${id}`, {
+    const results = await Promise.allSettled(
+      Array.from(selectedIds).map(id =>
+        action === 'delete'
+          ? fetch(`/api/admin/articles/${id}`, { method: 'DELETE', credentials: 'include' })
+          : fetch(`/api/admin/articles/${id}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               credentials: 'include',
               body: JSON.stringify({ published: action === 'publish' })
             })
-        res.ok ? success++ : fail++
-      } catch { fail++ }
-    }
+      )
+    )
+
+    const success = results.filter(r => r.status === 'fulfilled' && r.value.ok).length
+    const fail = results.length - success
 
     setBatchProcessing(false)
     setSelectedIds(new Set())
@@ -162,12 +163,13 @@ export default function AdminDashboard() {
 
       {/* Monitor panels */}
       <div className="space-y-4">
-        <GeneratorMonitor />
-        <DuplicateMonitor />
-        <SocialPostsPanel />
+        <div id="generator"><GeneratorMonitor /></div>
+        <div id="duplicates"><DuplicateMonitor /></div>
+        <div id="social"><SocialPostsPanel /></div>
       </div>
 
       {/* Articles */}
+      <div id="articles" />
       <ArticlesTable
         articles={articles}
         loading={loading}

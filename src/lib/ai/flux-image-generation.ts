@@ -343,7 +343,8 @@ function chineseBrandToEnglish(brand: string): string | null {
 export function extractCarModel(title: string, brand?: string): string | null {
   // 先嘗試中文品牌 + 英文型號（最常見模式：「特斯拉 Cybertruck」）
   for (const [zhBrand, enBrand] of Object.entries(CHINESE_BRAND_MAP)) {
-    const zhPattern = new RegExp(`${zhBrand}\\s*([A-Za-z0-9][A-Za-z0-9\\-\\.\\s]*[A-Za-z0-9])`)
+    const escaped = zhBrand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const zhPattern = new RegExp(`${escaped}\\s+([A-Za-z0-9][A-Za-z0-9\\-\\.\\s]*[A-Za-z0-9])`)
     const match = title.match(zhPattern)
     if (match) {
       return `${enBrand} ${match[1].trim()}`
@@ -518,8 +519,15 @@ export function getVehicleVisualDescription(carModel: string): string | null {
     'lm': 'luxury minivan with bold spindle grille, opulent design, premium proportions',
   }
 
+  // 精確匹配優先（完全等於 key 或 "brand key" 格式）
   for (const [key, desc] of Object.entries(descriptions)) {
-    if (model.includes(key)) return desc
+    if (model === key || model.endsWith(` ${key}`)) return desc
+  }
+
+  // Fallback: 最長 key 優先的子字串匹配（避免 'cx-5' 被 'cx-' 短 key 搶先）
+  const sortedKeys = Object.keys(descriptions).sort((a, b) => b.length - a.length)
+  for (const key of sortedKeys) {
+    if (model.includes(key)) return descriptions[key]
   }
 
   return null
