@@ -5,6 +5,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { getErrorMessage } from '@/lib/utils/error'
+import { extractCarModel, getVehicleVisualDescription } from './flux-image-generation'
 
 let genAI: GoogleGenerativeAI | null = null
 
@@ -54,27 +55,38 @@ export async function generateImagePromptFromArticle(
     }
   })
 
-  // 简化的 prompt，只要求生成 fullPrompt
+  // 從標題提取車款資訊，提供給 Gemini 作為參考
+  const detectedModel = extractCarModel(title, brands?.[0])
+  const knownVisualDesc = detectedModel ? getVehicleVisualDescription(detectedModel) : null
+
+  const visualHint = knownVisualDesc
+    ? `\nKNOWN VISUAL REFERENCE for "${detectedModel}": ${knownVisualDesc}\nYou MUST incorporate these visual details into the fullPrompt.`
+    : ''
+
   const prompt = `Generate an image prompt for this automotive news article.
 
 Title: ${title}
 Content: ${content.slice(0, 800)}
 Brand: ${brands?.[0] || 'generic'}
+${visualHint}
 
-Rules:
-1. This is a NEWS ILLUSTRATION for an automotive news website
-2. You MUST use the exact brand name and car model name (e.g., "Tesla Model Y", "BMW iX3") — this is critical for accuracy
-3. Describe the vehicle's specific design features: grille shape, headlight style, body lines, wheel design
-4. Include the exact body type: sedan, SUV, hatchback, coupe, pickup truck, etc.
+CRITICAL RULES:
+1. AI image generators (Flux, DALL-E) CANNOT recognize brand names or logos. They do NOT know what a "Tesla" or "BMW" looks like. You MUST describe the vehicle's PHYSICAL APPEARANCE in extreme detail.
+2. Describe: body shape (angular/rounded/sleek), proportions (long hood/short deck), distinctive design elements (grille shape, headlight style, body lines), surface finish, stance.
+3. BAD prompt: "Tesla Cybertruck pickup truck in a studio" → generates generic Ford-like truck
+4. GOOD prompt: "Angular stainless steel pickup truck with flat geometric body panels, triangular wedge profile, sharp creased edges like folded sheet metal, no curves, brutalist origami-like design, unpainted brushed metal surface, futuristic angular LED light bar across full width"
+5. NEVER use generic descriptions like "modern vehicle" or "sleek car". Every sentence must describe a SPECIFIC visual feature.
+6. Include body type: sedan, SUV, hatchback, coupe, pickup truck, etc.
+7. If the article discusses multiple models, focus on the PRIMARY model mentioned first in the title.
 
 Output a JSON object with these fields:
-- subject: main visual subject with brand and model name (e.g., "Tesla Model Y compact electric SUV, front three-quarter view")
-- vehicleType: specific type of vehicle (e.g., "compact electric SUV")
-- brandStyle: design language description with brand-specific details
+- subject: main visual subject with specific appearance details (50+ words)
+- vehicleType: specific type (e.g., "angular stainless steel electric pickup truck")
+- brandStyle: design language with physical details
 - setting: environment/location
-- keyElements: array of 3 key visual elements specific to this car
+- keyElements: array of 3 unique visual features that distinguish this exact model from all others
 - mood: overall atmosphere
-- fullPrompt: complete English prompt for image generation (150-200 words). MUST include the exact brand and model name. Start with "Professional automotive photography." Describe the specific vehicle appearance in detail: body shape, proportions, signature design elements, color if mentioned. End with "Sharp focus, editorial quality, no text or watermarks."
+- fullPrompt: complete English prompt (200-300 words). Start with "Professional automotive photography." Spend 60%+ of words on the vehicle's unique physical appearance. Include: body shape, panel geometry, headlight/taillight design, grille (or lack thereof), proportions, surface finish, stance height, wheel arch shape. End with "Sharp focus, editorial quality, no text or watermarks."
 
 Respond with valid JSON only, no markdown.`
 
@@ -188,14 +200,22 @@ function createFallbackPrompt(title: string, brands?: string[], content?: string
   // 从标题提取车辆类型
   const vehicleDescription = extractVehicleType(title, content || '')
 
+  // 嘗試從標題提取具體車款的視覺描述
+  const detectedModel = extractCarModel(title, brands?.[0])
+  const visualDesc = detectedModel ? getVehicleVisualDescription(detectedModel) : null
+
+  const vehicleDetail = visualDesc
+    ? `${vehicleDescription}. ${visualDesc}`
+    : `${brandStyle} ${vehicleDescription}`
+
   return {
-    subject: `A ${vehicleDescription} in a professional setting`,
+    subject: `A ${vehicleDetail} in a professional setting`,
     vehicleType: vehicleDescription,
     brandStyle,
     setting: 'professional studio or showroom',
     keyElements: ['clean lines', 'modern design', 'professional lighting'],
     mood: 'professional and sophisticated',
-    fullPrompt: `Professional automotive news illustration, editorial style. A ${brandStyle} ${vehicleDescription} displayed in a clean, professional studio setting. Clean composition with balanced lighting, emphasizing the vehicle's design language. No text, logos, or watermarks. Suitable for news article header image.`
+    fullPrompt: `Professional automotive photography. ${vehicleDetail}, displayed in a clean, professional studio setting. Clean composition with balanced lighting, emphasizing the vehicle's design language. Sharp focus, editorial quality, no text or watermarks.`
   }
 }
 

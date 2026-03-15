@@ -88,7 +88,7 @@ export async function POST(
         article.content_zh,
         brands
       )
-      const fluxPrompt = buildFluxPrompt(promptResult.subject, brands?.[0])
+      const fluxPrompt = buildFluxPrompt(promptResult.fullPrompt, article.title_zh, brands?.[0])
 
       const result = method === 'flux-schnell'
         ? await generateWithFluxSchnell(fluxPrompt)

@@ -414,11 +414,11 @@ async function handleCronJob(request: NextRequest) {
         if (!coverImage) {
           console.log(`[${brand}] → No images available (source: ${sourceImages.length}, stored: ${storedImages.length})`)
 
-          // 成本考量：DALL-E 3 ($0.08/張) vs Gemini 文字 ($0.000675/篇) = 100x 差異
+          // 成本考量：Flux ($0.008/張) / DALL-E 3 ($0.04/張) vs Gemini 文字 ($0.000675/篇)
           const enableAIGeneration = process.env.ENABLE_AI_IMAGE_GENERATION !== 'false'
 
           if (enableAIGeneration) {
-            console.log(`[${brand}] → Generating AI cover with DALL-E 3 (cost: $0.08)...`)
+            console.log(`[${brand}] → Generating AI cover (Flux ~$0.008, DALL-E fallback ~$0.04)...`)
             const aiImage = await generateAndSaveCoverImage(
               generated.title_zh,
               generated.content_zh,
