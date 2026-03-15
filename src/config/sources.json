@@ -464,5 +464,59 @@
     "enabled": true,
     "category": "industry",
     "note": "Added 2026-03-15: Global automotive industry intelligence"
+  },
+  {
+    "id": "yt-doug-demuro",
+    "name": "Doug DeMuro",
+    "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCsqjHFMB_JYTaEnf_vmTNqg",
+    "type": "youtube",
+    "enabled": true,
+    "category": "youtube",
+    "note": "車評、新車介紹"
+  },
+  {
+    "id": "yt-throttle-house",
+    "name": "Throttle House",
+    "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCrMTDMVBxdx3aq3LOCqsj3A",
+    "type": "youtube",
+    "enabled": true,
+    "category": "youtube",
+    "note": "對比測試"
+  },
+  {
+    "id": "yt-carwow",
+    "name": "Carwow",
+    "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCUhFaUpnq31m6TNX2VKVSVA",
+    "type": "youtube",
+    "enabled": true,
+    "category": "youtube",
+    "note": "加速/煞車測試"
+  },
+  {
+    "id": "yt-savagegeese",
+    "name": "Savagegeese",
+    "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCgUvk6jVaf-1s4TYqBP9WHw",
+    "type": "youtube",
+    "enabled": true,
+    "category": "youtube",
+    "note": "深度技術評測"
+  },
+  {
+    "id": "yt-engineering-explained",
+    "name": "Engineering Explained",
+    "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UClqhvGmHcvWL9w3R48t9QXQ",
+    "type": "youtube",
+    "enabled": true,
+    "category": "youtube",
+    "note": "技術解析"
+  },
+  {
+    "id": "yt-out-of-spec",
+    "name": "Out of Spec Reviews",
+    "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCovUo3FinWMaR5n1JC_jDhQ",
+    "type": "youtube",
+    "enabled": true,
+    "category": "youtube",
+    "note": "電動車測試"
   }
 ]

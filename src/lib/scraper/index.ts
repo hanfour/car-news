@@ -1,6 +1,7 @@
 import sources from '@/config/sources.json'
 import { NewsSource } from '@/types/database'
 import { parseRSSFeed, ScrapedArticle } from './rss-parser'
+import { scrapeYouTubeChannel } from './youtube-scraper'
 import { fetchWebpage, extractTextFromHtml } from './fetcher'
 
 export async function scrapeAllSources(): Promise<ScrapedArticle[]> {
@@ -17,6 +18,10 @@ export async function scrapeAllSources(): Promise<ScrapedArticle[]> {
         if (source.type === 'rss') {
           const articles = await parseRSSFeed(source as NewsSource)
           console.log(`  → Found ${articles.length} articles from ${source.name}`)
+          return articles
+        } else if (source.type === 'youtube') {
+          const articles = await scrapeYouTubeChannel(source as NewsSource)
+          console.log(`  → Found ${articles.length} videos with transcripts from ${source.name}`)
           return articles
         } else if (source.type === 'scrape') {
           console.warn(`Scrape type not implemented for ${source.name}`)
