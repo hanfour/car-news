@@ -564,5 +564,158 @@
     "enabled": true,
     "category": "youtube",
     "note": "台灣電動車專門頻道"
+  },
+  {
+    "id": "response-jp",
+    "name": "Response.jp (レスポンス)",
+    "url": "https://response.jp/rss20/index.rdf",
+    "type": "rss",
+    "enabled": true,
+    "category": "news",
+    "note": "日本最大汽車新聞網站"
+  },
+  {
+    "id": "car-watch-jp",
+    "name": "Car Watch",
+    "url": "https://car.watch.impress.co.jp/data/rss/1.0/car/feed.rdf",
+    "type": "rss",
+    "enabled": true,
+    "category": "news",
+    "note": "日本 Impress 汽車新聞"
+  },
+  {
+    "id": "autocar-jp",
+    "name": "AUTOCAR Japan",
+    "url": "https://www.autocar.jp/feed/",
+    "type": "rss",
+    "enabled": true,
+    "category": "news",
+    "note": "英國 Autocar 日本版"
+  },
+  {
+    "id": "bestcarweb",
+    "name": "Best Car Web",
+    "url": "https://bestcarweb.jp/feed",
+    "type": "rss",
+    "enabled": true,
+    "category": "news",
+    "note": "日本人氣汽車雜誌"
+  },
+  {
+    "id": "kuruma-news",
+    "name": "くるまのニュース",
+    "url": "https://kuruma-news.jp/feed",
+    "type": "rss",
+    "enabled": true,
+    "category": "news",
+    "note": "日本綜合汽車新聞"
+  },
+  {
+    "id": "clicccar",
+    "name": "Clicccar",
+    "url": "https://clicccar.com/feed/",
+    "type": "rss",
+    "enabled": true,
+    "category": "news",
+    "note": "日本汽車新聞＋生活"
+  },
+  {
+    "id": "webcg",
+    "name": "webCG",
+    "url": "https://www.webcg.net/list/feed/rss",
+    "type": "rss",
+    "enabled": true,
+    "category": "news",
+    "note": "日本 CAR GRAPHIC 雜誌網路版"
+  },
+  {
+    "id": "webcartop",
+    "name": "WEB CARTOP",
+    "url": "https://www.webcartop.jp/feed",
+    "type": "rss",
+    "enabled": true,
+    "category": "news",
+    "note": "日本汽車新聞（EV、自駕、改裝）"
+  },
+  {
+    "id": "kakakumag-car",
+    "name": "価格.com 自動車",
+    "url": "https://kakakumag.com/rss/?category=car",
+    "type": "rss",
+    "enabled": true,
+    "category": "news",
+    "note": "日本消費者汽車評測比較"
+  },
+  {
+    "id": "motorgraph-kr",
+    "name": "모터그래프 (MotorGraph)",
+    "url": "https://cdn.motorgraph.com/rss/allArticle.xml",
+    "type": "rss",
+    "enabled": true,
+    "category": "news",
+    "note": "韓國 #1 汽車媒體"
+  },
+  {
+    "id": "dailycar-kr",
+    "name": "데일리카 (DailyCar)",
+    "url": "https://www.dailycar.co.kr/content/rss/news/",
+    "type": "rss",
+    "enabled": true,
+    "category": "news",
+    "note": "韓國汽車產業新聞"
+  },
+  {
+    "id": "autobild-de",
+    "name": "Auto Bild",
+    "url": "https://www.autobild.de/rss/22590657.xml",
+    "type": "rss",
+    "enabled": true,
+    "category": "news",
+    "note": "德國最大發行量汽車雜誌"
+  },
+  {
+    "id": "heise-autos",
+    "name": "Heise Autos",
+    "url": "https://www.heise.de/autos/rss/news.rdf",
+    "type": "rss",
+    "enabled": true,
+    "category": "news",
+    "note": "德國科技導向汽車新聞"
+  },
+  {
+    "id": "electrive-de",
+    "name": "electrive.net",
+    "url": "https://www.electrive.net/feed/",
+    "type": "rss",
+    "enabled": true,
+    "category": "green",
+    "note": "德國最大 EV 新聞"
+  },
+  {
+    "id": "ecomento-de",
+    "name": "ecomento.de",
+    "url": "http://feeds.feedblitz.com/ecomento_de",
+    "type": "rss",
+    "enabled": true,
+    "category": "green",
+    "note": "德國 EV 與電動化新聞"
+  },
+  {
+    "id": "elektroauto-news",
+    "name": "Elektroauto-News",
+    "url": "https://www.elektroauto-news.net/feed",
+    "type": "rss",
+    "enabled": true,
+    "category": "green",
+    "note": "德國 EV 新聞（每小時更新）"
+  },
+  {
+    "id": "carnews-tw",
+    "name": "CARNEWS 車訊網",
+    "url": "https://www.carnews.com/feed",
+    "type": "rss",
+    "enabled": true,
+    "category": "news",
+    "note": "台灣汽機車新聞"
   }
 ]
