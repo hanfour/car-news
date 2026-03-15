@@ -76,6 +76,7 @@ CREATE TABLE generated_articles (
     human_rating INTEGER CHECK (human_rating BETWEEN 1 AND 5),
     source_date TIMESTAMPTZ,
     source_published_at TIMESTAMPTZ,
+    content_embedding VECTOR(768),
     CONSTRAINT chk_published_date CHECK (published = false OR published_at IS NOT NULL),
     CONSTRAINT unique_published_slug UNIQUE (published_at, slug_en)
 );

@@ -405,5 +405,64 @@
     "type": "rss",
     "enabled": true,
     "note": "Added 2025-12-23: Asian automotive news (Malaysia)"
+  },
+  {
+    "id": "automotiveworld",
+    "name": "Automotive World",
+    "url": "https://www.automotiveworld.com/feed/",
+    "type": "rss",
+    "enabled": true,
+    "category": "industry",
+    "note": "Added 2026-03-15: Global automotive industry news and analysis"
+  },
+  {
+    "id": "motoringresearch",
+    "name": "Motoring Research",
+    "url": "https://www.motoringresearch.com/feed/",
+    "type": "rss",
+    "enabled": true,
+    "note": "Added 2026-03-15: UK car reviews and news"
+  },
+  {
+    "id": "drivecomau",
+    "name": "Drive.com.au",
+    "url": "https://www.drive.com.au/feed/",
+    "type": "rss",
+    "enabled": true,
+    "note": "Added 2026-03-15: Australian car news and reviews"
+  },
+  {
+    "id": "whichcar",
+    "name": "WhichCar Australia",
+    "url": "https://www.whichcar.com.au/feed",
+    "type": "rss",
+    "enabled": true,
+    "note": "Added 2026-03-15: Australian car news, reviews and comparisons"
+  },
+  {
+    "id": "carexpert",
+    "name": "CarExpert",
+    "url": "https://www.carexpert.com.au/feed",
+    "type": "rss",
+    "enabled": true,
+    "note": "Added 2026-03-15: Australian independent car reviews and news"
+  },
+  {
+    "id": "cardealermagazine",
+    "name": "Car Dealer Magazine",
+    "url": "https://cardealermagazine.co.uk/publish/feed",
+    "type": "rss",
+    "enabled": true,
+    "category": "industry",
+    "note": "Added 2026-03-15: UK car dealer industry news"
+  },
+  {
+    "id": "justauto",
+    "name": "Just Auto",
+    "url": "https://www.just-auto.com/feed/",
+    "type": "rss",
+    "enabled": true,
+    "category": "industry",
+    "note": "Added 2026-03-15: Global automotive industry intelligence"
   }
 ]
