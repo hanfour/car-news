@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { moderateComment } from '@/lib/ai/claude'
 import { getErrorMessage } from '@/lib/utils/error'
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createServiceClient()
+    const supabase = createClient()
 
     // 1. 先查評論
     const { data: comments, error } = await supabase

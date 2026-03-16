@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 
 // GET: 論壇分類列表
 export async function GET() {
   try {
-    const supabase = createServiceClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('forum_categories')

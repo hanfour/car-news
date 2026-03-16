@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { rateLimit } from '@/lib/rate-limit'
 
 // GET: 車友會列表
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createServiceClient()
+    const supabase = createClient()
     const searchParams = request.nextUrl.searchParams
     const page = parseInt(searchParams.get('page') || '1')
     const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 50)

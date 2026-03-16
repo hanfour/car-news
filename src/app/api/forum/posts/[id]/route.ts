@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { moderateComment } from '@/lib/ai/claude'
 
@@ -10,7 +10,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const supabase = createServiceClient()
+    const supabase = createClient()
 
     const { data: post, error } = await supabase
       .from('forum_posts')
@@ -23,11 +23,10 @@ export async function GET(
       return NextResponse.json({ error: '找不到此貼文' }, { status: 404 })
     }
 
-    // 增加瀏覽數（atomic increment，避免 race condition）
+    // 增加瀏覽數（SECURITY DEFINER function，不受 RLS 限制）
     const { error: rpcError } = await supabase.rpc('increment_view_count', { post_id: id })
     if (rpcError) {
-      // Fallback: 非 atomic 但不影響主要流程
-      await supabase.from('forum_posts').update({ view_count: (post.view_count || 0) + 1 }).eq('id', id)
+      console.error('[Forum Post GET] View count increment failed:', rpcError)
     }
 
     // 作者 profile

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
-import { createServiceClient } from '@/lib/supabase'
 
 // POST: 加入車友會
 export async function POST(
@@ -15,9 +14,8 @@ export async function POST(
     }
     const { supabase, userId } = auth
 
-    // 找到 club
-    const serviceClient = createServiceClient()
-    const { data: club } = await serviceClient
+    // 找到 club（RLS 允許看到公開 club 和自己已加入的 club）
+    const { data: club } = await supabase
       .from('car_clubs')
       .select('id, is_private')
       .eq('slug', slug)

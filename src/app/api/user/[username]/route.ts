@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 
 // GET: 公開個人檔案
 export async function GET(
@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const { username } = await params
-    const supabase = createServiceClient()
+    const supabase = createClient()
 
     // 支援 username 或 user ID 查詢
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(username)

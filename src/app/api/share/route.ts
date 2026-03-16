@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 
 const VALID_PLATFORMS = ['facebook', 'twitter', 'line', 'copy'] as const
 type Platform = typeof VALID_PLATFORMS[number]
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 记录分享事件
-    const supabase = createServiceClient()
+    const supabase = createClient()
 
     const { error } = await supabase
       .from('share_events')

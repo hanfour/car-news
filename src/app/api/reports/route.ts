@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { rateLimit } from '@/lib/rate-limit'
 
@@ -9,14 +8,12 @@ export async function POST(request: NextRequest) {
     if (!auth) {
       return NextResponse.json({ error: '請先登入' }, { status: 401 })
     }
-    const { userId } = auth
+    const { supabase, userId } = auth
 
     const rl = rateLimit(`report:${userId}`, { maxRequests: 5, windowMs: 60_000 })
     if (!rl.allowed) {
       return NextResponse.json({ error: '操作過於頻繁，請稍後再試' }, { status: 429 })
     }
-
-    const supabase = createServiceClient()
 
     const { target_type, target_id, reason, details } = await request.json()
 

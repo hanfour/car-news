@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { getErrorMessage } from '@/lib/utils/error'
 
@@ -21,12 +21,12 @@ export async function POST(
       )
     }
 
-    // Use service client for database operations
-    const supabase = createServiceClient()
-
     // Auth is optional for shares
     const auth = await createAuthenticatedClient(request)
     const userId = auth?.userId || null
+
+    // Use auth client if available, otherwise anon
+    const supabase = auth?.supabase || createClient()
 
     // Record share event
     const { error: insertError } = await supabase
@@ -45,7 +45,7 @@ export async function POST(
       )
     }
 
-    // Get updated share count
+    // Get updated share count（generated_articles 沒有 RLS，任何 client 都可讀）
     const { data: article } = await supabase
       .from('generated_articles')
       .select('share_count')
@@ -73,8 +73,7 @@ export async function GET(
   try {
     const { id: articleId } = await params
 
-    // Use service client for database reads
-    const supabase = createServiceClient()
+    const supabase = createClient()
 
     // Get share count
     const { data: article } = await supabase

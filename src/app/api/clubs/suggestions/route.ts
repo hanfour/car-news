@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
 
 // GET: 推薦車友會（基於使用者的愛車品牌）
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createServiceClient()
+    const supabase = createClient()
 
     const auth = await createAuthenticatedClient(request)
 
     let userBrands: string[] = []
 
     if (auth) {
-      // 取得使用者的愛車品牌
-      const { data: cars } = await supabase
+      // 取得使用者的愛車品牌（使用 RLS client 查自己的車）
+      const { data: cars } = await auth.supabase
         .from('user_cars')
         .select('brand')
         .eq('user_id', auth.userId)

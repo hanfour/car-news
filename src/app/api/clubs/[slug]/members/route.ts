@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 
 export async function GET(
   _request: NextRequest,
@@ -7,7 +7,7 @@ export async function GET(
 ) {
   try {
     const { slug } = await params
-    const supabase = createServiceClient()
+    const supabase = createClient()
 
     // Get club
     const { data: club } = await supabase

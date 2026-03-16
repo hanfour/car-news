@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
 
 // GET: 使用者的收藏列表（隱私控制）
@@ -9,7 +9,7 @@ export async function GET(
 ) {
   try {
     const { username } = await params
-    const supabase = createServiceClient()
+    const supabase = createClient()
 
     const searchParams = request.nextUrl.searchParams
     const page = parseInt(searchParams.get('page') || '1')

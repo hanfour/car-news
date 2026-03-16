@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { moderateComment } from '@/lib/ai/claude'
-import { createServiceClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import { getErrorMessage } from '@/lib/utils/error'
 
 // GET: Fetch replies for a comment
@@ -12,8 +12,7 @@ export async function GET(
   try {
     const { id: parentId } = await params
 
-    // Use service client for database reads
-    const supabase = createServiceClient()
+    const supabase = createClient()
 
     // Fetch replies
     const { data: replies, error } = await supabase

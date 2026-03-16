@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { moderateComment } from '@/lib/ai/claude'
 import { rateLimit } from '@/lib/rate-limit'
@@ -11,7 +11,9 @@ export async function GET(
 ) {
   try {
     const { slug } = await params
-    const supabase = createServiceClient()
+    // 有 auth 時用 RLS client（可看到私人 club 的貼文），否則用 anon（只看公開 club）
+    const auth = await createAuthenticatedClient(request)
+    const supabase = auth?.supabase || createClient()
 
     const searchParams = request.nextUrl.searchParams
     const page = parseInt(searchParams.get('page') || '1')
@@ -76,8 +78,7 @@ export async function POST(
       return NextResponse.json({ error: '操作過於頻繁，請稍後再試' }, { status: 429 })
     }
 
-    const serviceClient = createServiceClient()
-    const { data: club } = await serviceClient.from('car_clubs').select('id').eq('slug', slug).single()
+    const { data: club } = await supabase.from('car_clubs').select('id').eq('slug', slug).single()
     if (!club) {
       return NextResponse.json({ error: '找不到此車友會' }, { status: 404 })
     }
