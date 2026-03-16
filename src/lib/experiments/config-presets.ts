@@ -5,17 +5,17 @@
 
 import { ExperimentConfig, ExperimentParams, PromptTemplate } from './types'
 
-// 當前 production 使用的 prompt 模板
+// 當前 production 使用的 prompt 模板（優化結果：suffix > prefix > inline）
 const DEFAULT_TEMPLATE: PromptTemplate = {
-  visual_description_position: 'prefix',
+  visual_description_position: 'suffix',
   prefix: '',
   suffix: 'Sharp focus, editorial quality, no text or watermarks.',
   max_prompt_words: 300,
 }
 
-// 當前 production 使用的參數
+// 當前 production 使用的參數（優化結果：guidance 3.5 > 5.0 > 7.5 > 10.0）
 const BASELINE_PARAMS: ExperimentParams = {
-  guidance_scale: 5.0,
+  guidance_scale: 3.5,
   num_inference_steps: 28,
   gemini_temperature: 0.3,
   prompt_template: { ...DEFAULT_TEMPLATE },
@@ -100,6 +100,47 @@ export const PRESETS: Record<string, Omit<ExperimentConfig, 'id'>> = {
     },
     budget: { ...DEFAULT_BUDGET },
   },
+
+  // --- 額外測試用 presets ---
+
+  guidance_10: {
+    name: 'Very high guidance (10.0)',
+    params: {
+      ...BASELINE_PARAMS,
+      guidance_scale: 10.0,
+    },
+    budget: { ...DEFAULT_BUDGET },
+  },
+
+  visual_inline: {
+    name: 'Visual description inline',
+    params: {
+      ...BASELINE_PARAMS,
+      prompt_template: {
+        ...DEFAULT_TEMPLATE,
+        visual_description_position: 'inline',
+      },
+    },
+    budget: { ...DEFAULT_BUDGET },
+  },
+
+  temp_low: {
+    name: 'Conservative Gemini (temp 0.1)',
+    params: {
+      ...BASELINE_PARAMS,
+      gemini_temperature: 0.1,
+    },
+    budget: { ...DEFAULT_BUDGET },
+  },
+
+  temp_high: {
+    name: 'Creative Gemini (temp 0.7)',
+    params: {
+      ...BASELINE_PARAMS,
+      gemini_temperature: 0.7,
+    },
+    budget: { ...DEFAULT_BUDGET },
+  },
 }
 
 /**
@@ -118,6 +159,30 @@ export function createConfigFromPreset(
   return {
     id: makeId(),
     ...preset,
+    baseline_experiment_id: baselineExperimentId,
+  }
+}
+
+/**
+ * 建立自訂配置（用於組合最佳參數）
+ */
+export function createCustomConfig(
+  name: string,
+  overrides: Partial<ExperimentParams>,
+  baselineExperimentId?: string
+): ExperimentConfig {
+  return {
+    id: makeId(),
+    name,
+    params: {
+      ...BASELINE_PARAMS,
+      ...overrides,
+      prompt_template: {
+        ...DEFAULT_TEMPLATE,
+        ...(overrides.prompt_template || {}),
+      },
+    },
+    budget: { ...DEFAULT_BUDGET },
     baseline_experiment_id: baselineExperimentId,
   }
 }

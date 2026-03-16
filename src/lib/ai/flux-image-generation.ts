@@ -55,7 +55,7 @@ export async function generateWithFlux(
   options: {
     imageSize?: 'landscape_16_9' | 'landscape_4_3' | 'square' | 'portrait_4_3'
     numImages?: number
-    /** Override: guidance_scale (default 5.0) */
+    /** Override: guidance_scale (default 3.5, optimized from 5.0) */
     guidanceScale?: number
     /** Override: num_inference_steps (default 28) */
     numInferenceSteps?: number
@@ -69,7 +69,7 @@ export async function generateWithFlux(
     const {
       imageSize = 'landscape_16_9',
       numImages = 1,
-      guidanceScale = 5.0,
+      guidanceScale = 3.5,
       numInferenceSteps = 28,
       seed,
     } = options
@@ -175,22 +175,24 @@ export function buildFluxPrompt(
   const carModel = title ? extractCarModel(title, brand) : null
   const visualDesc = carModel ? getVehicleVisualDescription(carModel) : null
 
-  // 如果有視覺描述，把它插入 prompt 最前面（Flux 權重前重後輕）
-  let prompt = ''
-
+  // 視覺描述放在 prompt 尾端（suffix 位置，實驗優化結果）
+  let vehiclePart = ''
   if (visualDesc) {
-    // 車款外觀描述放最前面，最高權重
-    prompt += `${carModel}, ${visualDesc}. `
+    vehiclePart = `${carModel}, ${visualDesc}.`
   } else if (carModel) {
-    prompt += `${carModel}. `
+    vehiclePart = `${carModel}.`
   } else if (brand) {
     const brandEn = chineseBrandToEnglish(brand) || brand
-    prompt += `${brandEn} vehicle. `
+    vehiclePart = `${brandEn} vehicle.`
   }
 
   // Gemini 的 fullPrompt 已經包含 "Professional automotive photography."
-  // 避免重複添加
-  prompt += fullPrompt
+  let prompt = fullPrompt
+
+  // 視覺描述放尾端（suffix position — 優化實驗 exp-20260316-0rb 結果）
+  if (vehiclePart) {
+    prompt += ` ${vehiclePart}`
+  }
 
   // 末尾品質標籤
   if (!fullPrompt.toLowerCase().includes('no text or watermarks')) {

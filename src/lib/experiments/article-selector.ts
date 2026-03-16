@@ -1,6 +1,7 @@
 /**
  * 測試文章選取器
  * 從 DB 選取多樣化文章作為實驗樣本
+ * 使用確定性排序確保所有實驗使用相同文章
  */
 
 import { createServiceClient } from '@/lib/supabase'
@@ -8,23 +9,25 @@ import { TestArticle } from './types'
 
 /**
  * 從 DB 選取多樣化測試文章
- * 策略：確保不同品牌/車型都有代表
+ * 策略：用 id 排序確保結果一致，跨品牌 round-robin 確保多樣性
  */
 export async function selectTestArticles(count: number = 10): Promise<TestArticle[]> {
   const supabase = createServiceClient()
 
-  // 選取最近且有完整內容的文章，按品牌分散選取
-  // DB 欄位名：title_zh, content_zh, brands
+  // 用 id 排序確保每次選取結果一致（不受新文章影響順序）
   const { data: rawArticles, error } = await supabase
     .from('generated_articles')
     .select('id, title_zh, content_zh, brands')
     .eq('published', true)
     .not('content_zh', 'is', null)
     .not('brands', 'is', null)
-    .order('published_at', { ascending: false })
-    .limit(100)
+    .order('id', { ascending: true })
+    .limit(200)
 
-  // 映射欄位名
+  if (error) {
+    throw new Error(`Failed to fetch test articles: ${error.message}`)
+  }
+
   const articles = (rawArticles || []).map(a => ({
     id: a.id as string,
     title: a.title_zh as string,
@@ -32,17 +35,12 @@ export async function selectTestArticles(count: number = 10): Promise<TestArticl
     brands: a.brands as string[],
   }))
 
-  if (error) {
-    throw new Error(`Failed to fetch test articles: ${error.message}`)
-  }
-
-  if (!articles || articles.length === 0) {
+  if (articles.length === 0) {
     throw new Error('No published articles found for testing')
   }
 
-  // 按品牌分組，從每個品牌中選取一篇，確保多樣性
-  type MappedArticle = typeof articles[0]
-  const brandMap = new Map<string, MappedArticle[]>()
+  // 按品牌分組，品牌名排序確保一致
+  const brandMap = new Map<string, typeof articles[0][]>()
 
   for (const article of articles) {
     const brand = article.brands?.[0] || 'unknown'
@@ -53,7 +51,7 @@ export async function selectTestArticles(count: number = 10): Promise<TestArticl
   }
 
   const selected: TestArticle[] = []
-  const brands = Array.from(brandMap.keys())
+  const brands = Array.from(brandMap.keys()).sort() // 排序確保一致
 
   // Round-robin 從不同品牌選取
   let brandIdx = 0
@@ -73,8 +71,6 @@ export async function selectTestArticles(count: number = 10): Promise<TestArticl
     }
 
     brandIdx++
-
-    // 防止無限迴圈：所有品牌都跑完一輪
     if (brandIdx >= brands.length * Math.ceil(count / brands.length) + brands.length) {
       break
     }
