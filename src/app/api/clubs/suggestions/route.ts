@@ -45,13 +45,18 @@ export async function GET(request: NextRequest) {
     let result = clubs || []
     if (result.length < 5) {
       const existingIds = result.map(c => c.id)
-      const { data: popular } = await supabase
+      let popularQuery = supabase
         .from('car_clubs')
         .select('*')
         .eq('is_public', true)
-        .not('id', 'in', `(${existingIds.join(',')})`)
         .order('member_count', { ascending: false })
         .limit(5 - result.length)
+
+      if (existingIds.length > 0) {
+        popularQuery = popularQuery.not('id', 'in', `(${existingIds.join(',')})`)
+      }
+
+      const { data: popular } = await popularQuery
 
       if (popular) {
         result = [...result, ...popular]

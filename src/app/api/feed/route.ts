@@ -30,91 +30,91 @@ export async function GET(request: NextRequest) {
       .eq('user_id', userId)
       .eq('topic_type', 'brand')
 
-    const feedItems: Array<{
+    type FeedItem = {
       type: string
       id: string
       created_at: string
       data: Record<string, unknown>
-    }> = []
+    }
 
-    // 追蹤用戶的評論
-    if (followedUsers && followedUsers.length > 0) {
-      const userIds = followedUsers.map(f => f.following_id)
-      const { data: comments } = await supabase
-        .from('comments')
-        .select('id, content, created_at, user_id, article_id')
-        .in('user_id', userIds)
-        .eq('is_approved', true)
-        .order('created_at', { ascending: false })
-        .limit(limit)
+    // 從每個 source 取 offset + limit 筆，確保合併後分頁正確
+    const fetchLimit = offset + limit
 
-      if (comments) {
-        // 查詢 profiles
+    // 平行取得追蹤用戶的評論和追蹤品牌的文章
+    const [commentsResult, articlesResult] = await Promise.all([
+      // 追蹤用戶的評論
+      (async (): Promise<FeedItem[]> => {
+        if (!followedUsers || followedUsers.length === 0) return []
+        const userIds = followedUsers.map(f => f.following_id)
+        const { data: comments } = await supabase
+          .from('comments')
+          .select('id, content, created_at, user_id, article_id')
+          .in('user_id', userIds)
+          .eq('is_approved', true)
+          .order('created_at', { ascending: false })
+          .limit(fetchLimit)
+
+        if (!comments || comments.length === 0) return []
+
+        // 平行查詢 profiles 和文章標題
         const cUserIds = [...new Set(comments.map(c => c.user_id))]
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, username, display_name, avatar_url')
-          .in('id', cUserIds)
-        const profilesMap = new Map(profiles?.map(p => [p.id, p]) || [])
-
-        // 查詢文章標題
         const articleIds = [...new Set(comments.map(c => c.article_id))]
-        const { data: articles } = await supabase
-          .from('generated_articles')
-          .select('id, title_zh, slug_en, published_at')
-          .in('id', articleIds)
+
+        const [{ data: profiles }, { data: articles }] = await Promise.all([
+          supabase.from('profiles').select('id, username, display_name, avatar_url').in('id', cUserIds),
+          supabase.from('generated_articles').select('id, title_zh, slug_en, published_at').in('id', articleIds),
+        ])
+
+        const profilesMap = new Map(profiles?.map(p => [p.id, p]) || [])
         const articlesMap = new Map(articles?.map(a => [a.id, a]) || [])
 
-        for (const comment of comments) {
-          feedItems.push({
-            type: 'comment',
-            id: comment.id,
-            created_at: comment.created_at,
-            data: {
-              ...comment,
-              profile: profilesMap.get(comment.user_id) || null,
-              article: articlesMap.get(comment.article_id) || null,
-            },
-          })
-        }
-      }
-    }
+        return comments.map(comment => ({
+          type: 'comment',
+          id: comment.id,
+          created_at: comment.created_at,
+          data: {
+            ...comment,
+            profile: profilesMap.get(comment.user_id) || null,
+            article: articlesMap.get(comment.article_id) || null,
+          },
+        }))
+      })(),
 
-    // 追蹤品牌的新文章
-    if (followedBrands && followedBrands.length > 0) {
-      const brands = followedBrands.map(b => b.topic_value)
-      const { data: articles } = await supabase
-        .from('generated_articles')
-        .select('id, title_zh, slug_en, published_at, cover_image, primary_brand, categories')
-        .eq('published', true)
-        .in('primary_brand', brands)
-        .order('published_at', { ascending: false })
-        .limit(limit)
+      // 追蹤品牌的新文章
+      (async (): Promise<FeedItem[]> => {
+        if (!followedBrands || followedBrands.length === 0) return []
+        const brands = followedBrands.map(b => b.topic_value)
+        const { data: articles } = await supabase
+          .from('generated_articles')
+          .select('id, title_zh, slug_en, published_at, cover_image, primary_brand, categories')
+          .eq('published', true)
+          .in('primary_brand', brands)
+          .order('published_at', { ascending: false })
+          .limit(fetchLimit)
 
-      if (articles) {
-        for (const article of articles) {
-          feedItems.push({
-            type: 'article',
-            id: article.id,
-            created_at: article.published_at,
-            data: article,
-          })
-        }
-      }
-    }
+        if (!articles) return []
+        return articles.map(article => ({
+          type: 'article',
+          id: article.id,
+          created_at: article.published_at,
+          data: article,
+        }))
+      })(),
+    ])
 
-    // 按時間排序
-    feedItems.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    // 合併、排序、分頁
+    const allItems = [...commentsResult, ...articlesResult]
+    allItems.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
-    // 分頁
-    const paged = feedItems.slice(offset, offset + limit)
-    const total = feedItems.length
+    const paged = allItems.slice(offset, offset + limit)
+    const hasMore = allItems.length > offset + limit
 
     return NextResponse.json({
       items: paged,
-      total,
+      total: allItems.length,
       page,
-      totalPages: Math.ceil(total / limit),
+      hasMore,
+      totalPages: Math.ceil(allItems.length / limit),
     })
   } catch (error) {
     console.error('[Feed] Error:', error)

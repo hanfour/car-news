@@ -3,101 +3,93 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ForumPostCard } from '@/components/forum/ForumPostCard'
-import { Pagination } from '@/components/shared/Pagination'
-import { EmptyState } from '@/components/shared/EmptyState'
-import { useAuth } from '@/contexts/AuthContext'
+import { CommunityFeed } from '@/components/community/CommunityFeed'
+import { CommunityComposeTrigger } from '@/components/community/CommunityComposeTrigger'
 
-interface Post {
+interface Category {
   id: string
-  title: string
-  content: string
-  view_count: number
-  reply_count: number
-  like_count: number
-  is_pinned: boolean
-  created_at: string
-  tags?: string[]
-  related_brand?: string
-  author?: { id: string; username?: string; display_name?: string; avatar_url?: string }
-  category?: { name: string; slug: string; icon?: string }
+  name: string
+  slug: string
+  description?: string
+  icon?: string
+  post_count: number
 }
+
+type SortOption = 'latest' | 'popular' | 'active'
 
 export default function CategoryPage() {
   const params = useParams()
   const categorySlug = params.category as string
-  const { session } = useAuth()
-  const [posts, setPosts] = useState<Post[]>([])
-  const [loading, setLoading] = useState(true)
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(0)
-  const [sort, setSort] = useState('latest')
+  const [category, setCategory] = useState<Category | null>(null)
+  const [sort, setSort] = useState<SortOption>('latest')
 
   useEffect(() => {
-    const fetchPosts = async () => {
-      setLoading(true)
+    const fetchCategory = async () => {
       try {
-        const res = await fetch(`/api/forum/posts?category=${categorySlug}&page=${page}&sort=${sort}`)
+        const res = await fetch('/api/forum/categories')
         if (res.ok) {
           const data = await res.json()
-          setPosts(data.posts)
-          setTotalPages(data.totalPages)
+          const found = data.categories?.find((c: Category) => c.slug === categorySlug)
+          setCategory(found || null)
         }
-      } catch {
-        // Silently fail
-      } finally {
-        setLoading(false)
-      }
+      } catch { /* */ }
     }
-    fetchPosts()
-  }, [categorySlug, page, sort])
+    fetchCategory()
+  }, [categorySlug])
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-4xl mx-auto px-4 py-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 mb-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
         <Link href="/community" className="hover:text-[var(--brand-primary)] transition-colors">
-          討論區
+          社群
         </Link>
         <span>/</span>
-        <span style={{ color: 'var(--text-primary)' }}>{categorySlug}</span>
+        <span style={{ color: 'var(--text-primary)' }}>
+          {category?.icon && `${category.icon} `}{category?.name || categorySlug}
+        </span>
       </div>
 
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <select
-            value={sort}
-            onChange={(e) => { setSort(e.target.value); setPage(1) }}
-            className="px-3 py-1.5 text-sm border rounded-lg"
-            style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-          >
-            <option value="latest">最新</option>
-            <option value="popular">最熱門</option>
-            <option value="active">最活躍</option>
-          </select>
+      {/* Category header */}
+      {category && (
+        <div className="bg-white rounded-xl border p-5 mb-4" style={{ borderColor: 'var(--border-color)' }}>
+          <h1 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+            {category.icon && `${category.icon} `}{category.name}
+          </h1>
+          {category.description && (
+            <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+              {category.description}
+            </p>
+          )}
+          <span className="text-xs mt-2 inline-block" style={{ color: 'var(--text-tertiary)' }}>
+            {category.post_count} 篇討論
+          </span>
         </div>
-        {session && (
-          <Link href="/community/new" className="btn-primary text-sm">
-            發表新貼文
-          </Link>
-        )}
-      </div>
-
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="w-6 h-6 border-2 border-gray-300 border-t-[var(--brand-primary)] rounded-full animate-spin" />
-        </div>
-      ) : posts.length > 0 ? (
-        <div className="space-y-3">
-          {posts.map(post => (
-            <ForumPostCard key={post.id} post={post} />
-          ))}
-          <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
-        </div>
-      ) : (
-        <EmptyState title="此分類還沒有貼文" description="成為第一個在此分類發文的人！" />
       )}
+
+      {/* Compose trigger */}
+      <CommunityComposeTrigger />
+
+      {/* Sort tabs */}
+      <div className="flex items-center gap-1 mt-4 mb-4">
+        {(['latest', 'popular', 'active'] as const).map(option => (
+          <button
+            key={option}
+            onClick={() => setSort(option)}
+            className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+              sort === option
+                ? 'bg-[var(--brand-primary-light)] font-medium'
+                : 'hover:bg-gray-100'
+            }`}
+            style={{ color: sort === option ? 'var(--brand-primary-dark)' : 'var(--text-secondary)' }}
+          >
+            {{ latest: '最新', popular: '熱門', active: '活躍' }[option]}
+          </button>
+        ))}
+      </div>
+
+      {/* Feed */}
+      <CommunityFeed category={categorySlug} sort={sort} />
     </div>
   )
 }

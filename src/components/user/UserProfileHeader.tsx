@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { isValidImageUrl } from '@/lib/security'
+import { FollowButton } from '@/components/user/FollowButton'
 
 interface UserProfile {
   id: string
@@ -17,14 +18,26 @@ interface UserProfile {
   followers_count?: number
   following_count?: number
   comments_count?: number
+  forum_post_count?: number
+  car_count?: number
   created_at: string
 }
+
+export type ProfileTab = 'posts' | 'comments' | 'favorites' | 'garage' | 'clubs'
 
 interface UserProfileHeaderProps {
   profile: UserProfile
   isSelf: boolean
-  activeTab: 'comments' | 'favorites'
+  activeTab: ProfileTab
 }
+
+const TABS: { key: ProfileTab; label: string }[] = [
+  { key: 'posts', label: '貼文' },
+  { key: 'comments', label: '評論' },
+  { key: 'favorites', label: '收藏' },
+  { key: 'garage', label: '車庫' },
+  { key: 'clubs', label: '車友會' },
+]
 
 export function UserProfileHeader({ profile, isSelf, activeTab }: UserProfileHeaderProps) {
   const displayUsername = profile.username || profile.id
@@ -33,37 +46,28 @@ export function UserProfileHeader({ profile, isSelf, activeTab }: UserProfileHea
     month: 'long',
   })
 
+  const getTabHref = (tab: ProfileTab) => {
+    const base = `/user/${displayUsername}`
+    if (tab === 'posts') return base
+    return `${base}/${tab}`
+  }
+
   return (
     <div>
-      {/* 封面圖片 */}
-      <div
-        className="h-32 sm:h-48 bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-primary-dark)] relative"
-      >
+      {/* Cover */}
+      <div className="h-32 sm:h-48 bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-primary-dark)] relative">
         {profile.cover_image_url && isValidImageUrl(profile.cover_image_url) && (
-          <Image
-            src={profile.cover_image_url}
-            alt="封面"
-            fill
-            className="object-cover"
-            unoptimized
-          />
+          <Image src={profile.cover_image_url} alt="封面" fill className="object-cover" unoptimized />
         )}
       </div>
 
-      {/* 個人資訊 */}
+      {/* Profile info */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
         <div className="relative -mt-12 sm:-mt-16 flex flex-col sm:flex-row sm:items-end gap-4 pb-4">
-          {/* 頭像 */}
+          {/* Avatar */}
           <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-white bg-white overflow-hidden flex-shrink-0">
             {profile.avatar_url && isValidImageUrl(profile.avatar_url) ? (
-              <Image
-                src={profile.avatar_url}
-                alt={profile.display_name || 'User'}
-                width={128}
-                height={128}
-                className="w-full h-full object-cover"
-                unoptimized
-              />
+              <Image src={profile.avatar_url} alt={profile.display_name || 'User'} width={128} height={128} className="w-full h-full object-cover" unoptimized />
             ) : (
               <div className="w-full h-full bg-[var(--brand-primary)] flex items-center justify-center">
                 <span className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
@@ -73,7 +77,7 @@ export function UserProfileHeader({ profile, isSelf, activeTab }: UserProfileHea
             )}
           </div>
 
-          {/* 名字與資訊 */}
+          {/* Name and info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -81,12 +85,10 @@ export function UserProfileHeader({ profile, isSelf, activeTab }: UserProfileHea
                   {profile.display_name || '匿名用戶'}
                 </h1>
                 {profile.username && (
-                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    @{profile.username}
-                  </p>
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>@{profile.username}</p>
                 )}
               </div>
-              {isSelf && (
+              {isSelf ? (
                 <Link
                   href="/settings/profile"
                   className="px-4 py-2 text-sm rounded-lg border transition-colors hover:bg-gray-50 flex-shrink-0"
@@ -94,13 +96,13 @@ export function UserProfileHeader({ profile, isSelf, activeTab }: UserProfileHea
                 >
                   編輯個人檔案
                 </Link>
+              ) : (
+                <FollowButton targetUsername={displayUsername} targetUserId={profile.id} />
               )}
             </div>
 
             {profile.bio && (
-              <p className="mt-2 text-sm" style={{ color: 'var(--text-primary)' }}>
-                {profile.bio}
-              </p>
+              <p className="mt-2 text-sm" style={{ color: 'var(--text-primary)' }}>{profile.bio}</p>
             )}
 
             <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -114,12 +116,7 @@ export function UserProfileHeader({ profile, isSelf, activeTab }: UserProfileHea
                 </span>
               )}
               {profile.website && (
-                <a
-                  href={profile.website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 hover:text-[var(--brand-primary)] transition-colors"
-                >
+                <a href={profile.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-[var(--brand-primary)] transition-colors">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                   </svg>
@@ -134,48 +131,44 @@ export function UserProfileHeader({ profile, isSelf, activeTab }: UserProfileHea
               </span>
             </div>
 
-            {/* 統計 */}
+            {/* Stats */}
             <div className="mt-3 flex items-center gap-4 text-sm">
               <span>
-                <strong style={{ color: 'var(--text-primary)' }}>{profile.comments_count || 0}</strong>{' '}
-                <span style={{ color: 'var(--text-secondary)' }}>則評論</span>
+                <strong style={{ color: 'var(--text-primary)' }}>{profile.forum_post_count || 0}</strong>{' '}
+                <span style={{ color: 'var(--text-secondary)' }}>貼文</span>
               </span>
               <span>
+                <strong style={{ color: 'var(--text-primary)' }}>{profile.comments_count || 0}</strong>{' '}
+                <span style={{ color: 'var(--text-secondary)' }}>評論</span>
+              </span>
+              <Link href={`/user/${displayUsername}/followers`}>
                 <strong style={{ color: 'var(--text-primary)' }}>{profile.followers_count || 0}</strong>{' '}
                 <span style={{ color: 'var(--text-secondary)' }}>粉絲</span>
-              </span>
-              <span>
+              </Link>
+              <Link href={`/user/${displayUsername}/following`}>
                 <strong style={{ color: 'var(--text-primary)' }}>{profile.following_count || 0}</strong>{' '}
                 <span style={{ color: 'var(--text-secondary)' }}>追蹤中</span>
-              </span>
+              </Link>
             </div>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b" style={{ borderColor: 'var(--border-color)' }}>
-          <Link
-            href={`/user/${displayUsername}`}
-            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'comments'
-                ? 'border-[var(--brand-primary)]'
-                : 'border-transparent hover:border-gray-300'
-            }`}
-            style={{ color: activeTab === 'comments' ? 'var(--brand-primary)' : 'var(--text-secondary)' }}
-          >
-            評論
-          </Link>
-          <Link
-            href={`/user/${displayUsername}/favorites`}
-            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'favorites'
-                ? 'border-[var(--brand-primary)]'
-                : 'border-transparent hover:border-gray-300'
-            }`}
-            style={{ color: activeTab === 'favorites' ? 'var(--brand-primary)' : 'var(--text-secondary)' }}
-          >
-            收藏
-          </Link>
+        <div className="flex overflow-x-auto scrollbar-hide border-b" style={{ borderColor: 'var(--border-color)' }}>
+          {TABS.map(tab => (
+            <Link
+              key={tab.key}
+              href={getTabHref(tab.key)}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === tab.key
+                  ? 'border-[var(--brand-primary)]'
+                  : 'border-transparent hover:border-gray-300'
+              }`}
+              style={{ color: activeTab === tab.key ? 'var(--brand-primary)' : 'var(--text-secondary)' }}
+            >
+              {tab.label}
+            </Link>
+          ))}
         </div>
       </div>
     </div>

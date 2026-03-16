@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { ForumCategoryCard } from '@/components/forum/ForumCategoryCard'
-import { ForumPostCard } from '@/components/forum/ForumPostCard'
-import { useAuth } from '@/contexts/AuthContext'
+import { CommunityFeed } from '@/components/community/CommunityFeed'
+import { CommunityComposeTrigger } from '@/components/community/CommunityComposeTrigger'
+import { TrendingSidebar } from '@/components/community/TrendingSidebar'
+import { CategoryPills } from '@/components/community/CategoryPills'
 
 interface Category {
   id: string
@@ -15,103 +15,92 @@ interface Category {
   post_count: number
 }
 
-interface Post {
-  id: string
-  title: string
-  content: string
-  view_count: number
-  reply_count: number
-  like_count: number
-  is_pinned: boolean
-  created_at: string
-  tags?: string[]
-  related_brand?: string
-  author?: { id: string; username?: string; display_name?: string; avatar_url?: string }
-  category?: { name: string; slug: string; icon?: string }
-}
+type SortOption = 'latest' | 'popular' | 'active'
+
+const sortOptions: { value: SortOption; label: string }[] = [
+  { value: 'latest', label: '最新' },
+  { value: 'popular', label: '熱門' },
+  { value: 'active', label: '活躍' },
+]
 
 export default function CommunityPage() {
-  const { session } = useAuth()
   const [categories, setCategories] = useState<Category[]>([])
-  const [recentPosts, setRecentPosts] = useState<Post[]>([])
-  const [loading, setLoading] = useState(true)
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [sort, setSort] = useState<SortOption>('latest')
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchCategories = async () => {
       try {
-        const [catRes, postRes] = await Promise.all([
-          fetch('/api/forum/categories'),
-          fetch('/api/forum/posts?limit=10'),
-        ])
-
-        if (catRes.ok) {
-          const catData = await catRes.json()
-          setCategories(catData.categories)
-        }
-        if (postRes.ok) {
-          const postData = await postRes.json()
-          setRecentPosts(postData.posts)
+        const res = await fetch('/api/forum/categories')
+        if (res.ok) {
+          const data = await res.json()
+          setCategories(data.categories)
         }
       } catch {
         // Silently fail
-      } finally {
-        setLoading(false)
       }
     }
-    fetchData()
+    fetchCategories()
   }, [])
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-6xl mx-auto px-4 py-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6">
         <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
-          討論區
+          社群
         </h1>
-        {session && (
-          <Link href="/community/new" className="btn-primary">
-            發表新貼文
-          </Link>
-        )}
+        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+          與車友交流、分享你的想法
+        </p>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="w-6 h-6 border-2 border-gray-300 border-t-[var(--brand-primary)] rounded-full animate-spin" />
-        </div>
-      ) : (
-        <>
-          {/* 分類列表 */}
-          <section className="mb-8">
-            <h2 className="text-sm font-bold mb-3" style={{ color: 'var(--text-secondary)' }}>
-              分類
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {categories.map(cat => (
-                <ForumCategoryCard key={cat.id} category={cat} />
+      <div className="flex gap-6">
+        {/* Main feed */}
+        <div className="flex-1 min-w-0">
+          {/* Compose trigger */}
+          <CommunityComposeTrigger />
+
+          {/* Category pills + sort */}
+          <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <CategoryPills
+                categories={categories}
+                selected={selectedCategory}
+                onSelect={setSelectedCategory}
+              />
+            </div>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {sortOptions.map(option => (
+                <button
+                  key={option.value}
+                  onClick={() => setSort(option.value)}
+                  className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                    sort === option.value
+                      ? 'bg-[var(--brand-primary-light)] font-medium'
+                      : 'hover:bg-gray-100'
+                  }`}
+                  style={{ color: sort === option.value ? 'var(--brand-primary-dark)' : 'var(--text-secondary)' }}
+                >
+                  {option.label}
+                </button>
               ))}
             </div>
-          </section>
+          </div>
 
-          {/* 最新貼文 */}
-          <section>
-            <h2 className="text-sm font-bold mb-3" style={{ color: 'var(--text-secondary)' }}>
-              最新討論
-            </h2>
-            {recentPosts.length > 0 ? (
-              <div className="space-y-3">
-                {recentPosts.map(post => (
-                  <ForumPostCard key={post.id} post={post} />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-sm" style={{ color: 'var(--text-tertiary)' }}>
-                還沒有任何貼文，成為第一個發文的人吧！
-              </div>
-            )}
-          </section>
-        </>
-      )}
+          {/* Feed */}
+          <div className="mt-4">
+            <CommunityFeed category={selectedCategory} sort={sort} />
+          </div>
+        </div>
+
+        {/* Trending sidebar (desktop only) */}
+        <div className="hidden lg:block w-72 flex-shrink-0">
+          <div className="sticky top-20">
+            <TrendingSidebar categories={categories} />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { moderateComment } from '@/lib/ai/claude'
 import { getErrorMessage } from '@/lib/utils/error'
+import { rateLimit } from '@/lib/rate-limit'
 
 // GET: 获取文章评论列表
 export async function GET(request: NextRequest) {
@@ -94,6 +95,11 @@ export async function POST(request: NextRequest) {
       )
     }
     const { supabase, userId } = auth
+
+    const rl = rateLimit(`comment:${userId}`, { maxRequests: 10, windowMs: 60_000 })
+    if (!rl.allowed) {
+      return NextResponse.json({ error: '操作過於頻繁，請稍後再試' }, { status: 429 })
+    }
 
     // AI 審核
     const moderation = await moderateComment(content)

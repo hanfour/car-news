@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
+import { rateLimit } from '@/lib/rate-limit'
 
 // POST: 按讚/取消按讚貼文
 export async function POST(
@@ -14,6 +15,11 @@ export async function POST(
       return NextResponse.json({ error: '請先登入' }, { status: 401 })
     }
     const { supabase, userId } = auth
+
+    const rl = rateLimit(`like:${userId}`, { maxRequests: 30, windowMs: 60_000 })
+    if (!rl.allowed) {
+      return NextResponse.json({ error: '操作過於頻繁，請稍後再試' }, { status: 429 })
+    }
 
     const { data: existing } = await supabase
       .from('forum_likes')
@@ -33,11 +39,16 @@ export async function POST(
 
       return NextResponse.json({ isLiked: false })
     } else {
-      await supabase.from('forum_likes').insert({
+      const { error } = await supabase.from('forum_likes').insert({
         user_id: userId,
         target_type: 'post',
         target_id: postId,
       })
+
+      // 處理並發請求導致的 unique constraint violation
+      if (error?.code === '23505') {
+        return NextResponse.json({ isLiked: true })
+      }
 
       return NextResponse.json({ isLiked: true })
     }

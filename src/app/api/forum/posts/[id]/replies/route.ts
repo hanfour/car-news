@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { moderateComment } from '@/lib/ai/claude'
+import { rateLimit } from '@/lib/rate-limit'
 
 // POST: 新增回覆
 export async function POST(
@@ -15,6 +16,11 @@ export async function POST(
       return NextResponse.json({ error: '請先登入' }, { status: 401 })
     }
     const { supabase, userId } = auth
+
+    const rl = rateLimit(`forum-reply:${userId}`, { maxRequests: 10, windowMs: 60_000 })
+    if (!rl.allowed) {
+      return NextResponse.json({ error: '操作過於頻繁，請稍後再試' }, { status: 429 })
+    }
 
     const { content, parent_id } = await request.json()
 

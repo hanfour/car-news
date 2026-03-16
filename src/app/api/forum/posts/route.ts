@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { moderateComment } from '@/lib/ai/claude'
+import { rateLimit } from '@/lib/rate-limit'
 
 // GET: 貼文列表
 export async function GET(request: NextRequest) {
@@ -13,6 +14,7 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 50)
     const offset = (page - 1) * limit
     const sort = searchParams.get('sort') || 'latest'
+    const search = searchParams.get('search')
 
     let query = supabase
       .from('forum_posts')
@@ -30,6 +32,12 @@ export async function GET(request: NextRequest) {
       if (cat) {
         query = query.eq('category_id', cat.id)
       }
+    }
+
+    // 搜尋（sanitize 特殊字元防止 PostgREST filter injection）
+    if (search) {
+      const sanitized = search.replace(/[%_\\]/g, '\\$&').replace(/[.,()]/g, '')
+      query = query.or(`title.ilike.%${sanitized}%,content.ilike.%${sanitized}%`)
     }
 
     // 排序
@@ -97,6 +105,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '請先登入' }, { status: 401 })
     }
     const { supabase, userId } = auth
+
+    const rl = rateLimit(`forum-post:${userId}`, { maxRequests: 10, windowMs: 60_000 })
+    if (!rl.allowed) {
+      return NextResponse.json({ error: '操作過於頻繁，請稍後再試' }, { status: 429 })
+    }
 
     const { category_id, title, content, tags, related_brand, related_model } = await request.json()
 

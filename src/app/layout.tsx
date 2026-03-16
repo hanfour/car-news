@@ -6,6 +6,7 @@ import { ToastProvider } from '@/components/ToastContainer';
 import LoadingScreen from '@/components/LoadingScreen';
 import NavigationProgress from '@/components/NavigationProgress';
 import { Footer } from '@/components/Footer';
+import { LayoutWrapper } from '@/components/layout/LayoutWrapper';
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -73,7 +74,9 @@ export default function RootLayout({
         <ToastProvider>
           <AuthProvider>
             <NotificationProvider>
-              {children}
+              <LayoutWrapper>
+                {children}
+              </LayoutWrapper>
               <Footer />
             </NotificationProvider>
           </AuthProvider>

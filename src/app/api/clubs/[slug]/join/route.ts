@@ -19,12 +19,17 @@ export async function POST(
     const serviceClient = createServiceClient()
     const { data: club } = await serviceClient
       .from('car_clubs')
-      .select('id')
+      .select('id, is_private')
       .eq('slug', slug)
       .single()
 
     if (!club) {
       return NextResponse.json({ error: '找不到此車友會' }, { status: 404 })
+    }
+
+    // 私人車友會不允許自行加入
+    if (club.is_private) {
+      return NextResponse.json({ error: '此車友會為私人車友會，需要邀請才能加入' }, { status: 403 })
     }
 
     // 檢查是否已加入

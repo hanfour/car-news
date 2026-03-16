@@ -4,7 +4,7 @@ import { createAuthenticatedClient } from '@/lib/auth'
 
 // GET: 愛車詳情
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -13,12 +13,20 @@ export async function GET(
 
     const { data: car, error } = await supabase
       .from('user_cars')
-      .select('*')
+      .select('id, user_id, brand, model, year, trim_level, color, nickname, description, purchase_date, mileage, is_primary, is_public, images, specs, created_at, updated_at')
       .eq('id', id)
       .single()
 
     if (error || !car) {
       return NextResponse.json({ error: '找不到此車輛' }, { status: 404 })
+    }
+
+    // 私人車輛只有車主本人可查看
+    if (!car.is_public) {
+      const auth = await createAuthenticatedClient(request)
+      if (!auth || auth.userId !== car.user_id) {
+        return NextResponse.json({ error: '找不到此車輛' }, { status: 404 })
+      }
     }
 
     // 查詢車主 profile
