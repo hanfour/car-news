@@ -9,6 +9,34 @@ import OpenAI from 'openai'
 import { getErrorMessage } from '@/lib/utils/error'
 import { generateImagePromptFromArticle } from './image-prompt-generator'
 import { generateWithFlux, generateWithFluxImg2Img, buildFluxPrompt, buildImg2ImgPrompt } from './flux-image-generation'
+import type { ExperimentParams } from '@/lib/experiments/types'
+
+// ============================================================
+// Promoted config 快取（避免每次生成圖片都查 DB）
+// ============================================================
+let cachedPromotedParams: ExperimentParams | null = null
+let cacheTimestamp = 0
+const CACHE_TTL_MS = 10 * 60 * 1000 // 10 分鐘
+
+async function getPromotedParams(): Promise<ExperimentParams | null> {
+  const now = Date.now()
+  if (cachedPromotedParams && now - cacheTimestamp < CACHE_TTL_MS) {
+    return cachedPromotedParams
+  }
+  try {
+    const { getPromotedConfig } = await import('@/lib/experiments/results')
+    const config = await getPromotedConfig()
+    if (config?.params) {
+      cachedPromotedParams = config.params
+      cacheTimestamp = now
+      console.log(`✓ Loaded promoted experiment config: guidance=${config.params.guidance_scale}, steps=${config.params.num_inference_steps}, temp=${config.params.gemini_temperature}`)
+      return config.params
+    }
+  } catch {
+    // DB 不可用時靜默 fallback 到 hardcoded 預設值
+  }
+  return null
+}
 
 // 圖片生成提供商選項
 export type ImageProvider = 'flux' | 'dalle' | 'auto'
@@ -46,9 +74,15 @@ export async function generateCoverImage(
   provider: ImageProvider = 'auto'
 ): Promise<ImageGenerationResult | null> {
   try {
+    // 讀取 DB 中 promoted 的最佳參數（有快取，10 分鐘 TTL）
+    const promoted = await getPromotedParams()
+
     // 使用 Gemini 智能分析文章，生成精准的图片描述
     console.log('→ Step 1: Analyzing article with Gemini...')
-    const promptResult = await generateImagePromptFromArticle(title, content, brands)
+    const promptResult = await generateImagePromptFromArticle(
+      title, content, brands,
+      promoted ? { temperature: promoted.gemini_temperature } : undefined
+    )
     const prompt = promptResult.fullPrompt
 
     // 決定使用哪個提供商
@@ -61,7 +95,10 @@ export async function generateCoverImage(
       console.log(`   Cost: ~$0.008 per image`)
 
       const fluxPrompt = buildFluxPrompt(promptResult.fullPrompt, title, brands?.[0])
-      const fluxResult = await generateWithFlux(fluxPrompt)
+      const fluxResult = await generateWithFlux(fluxPrompt, {
+        guidanceScale: promoted?.guidance_scale,
+        numInferenceSteps: promoted?.num_inference_steps,
+      })
 
       if (fluxResult && fluxResult.url && !fluxResult.error) {
         console.log('✓ Flux image generated successfully')
