@@ -39,6 +39,9 @@ ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE conversation_participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 
+-- 注意：conversations 沒有 INSERT policy，INSERT 只能透過 SECURITY DEFINER 的
+-- find_or_create_conversation RPC 執行。直接 INSERT 會被 RLS 拒絕（預設全拒）。
+
 -- 對話：僅參與者可查看
 CREATE POLICY "Participants can view conversations"
   ON conversations FOR SELECT
@@ -134,7 +137,7 @@ BEGIN
       updated_at = NEW.created_at
   WHERE id = NEW.conversation_id;
 
-  -- 發送通知給其他參與者
+  -- 發送通知給其他參與者（同一對話 5 分鐘內不重複通知）
   INSERT INTO notifications (recipient_id, actor_id, type, body, resource_type, resource_id, metadata)
   SELECT
     cp.user_id,
@@ -147,7 +150,15 @@ BEGIN
   FROM conversation_participants cp
   WHERE cp.conversation_id = NEW.conversation_id
     AND cp.user_id != NEW.sender_id
-    AND cp.is_muted = FALSE;
+    AND cp.is_muted = FALSE
+    AND NOT EXISTS (
+      SELECT 1 FROM notifications n
+      WHERE n.recipient_id = cp.user_id
+        AND n.actor_id = NEW.sender_id
+        AND n.type = 'direct_message'
+        AND n.resource_id = NEW.conversation_id::TEXT
+        AND n.created_at > NOW() - INTERVAL '5 minutes'
+    );
 
   RETURN NEW;
 END;

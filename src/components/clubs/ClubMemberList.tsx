@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { Avatar } from '@/components/shared/Avatar'
 import { RoleBadge } from './RoleBadge'
@@ -28,7 +28,7 @@ export function ClubMemberList({ slug, isOwner, isAdmin: isAdminProp }: ClubMemb
   const [loading, setLoading] = useState(true)
   const [showInviteModal, setShowInviteModal] = useState(false)
 
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
     try {
       const res = await fetch(`/api/clubs/${slug}/members`)
       if (res.ok) {
@@ -38,9 +38,9 @@ export function ClubMemberList({ slug, isOwner, isAdmin: isAdminProp }: ClubMemb
     } catch { /* */ } finally {
       setLoading(false)
     }
-  }
+  }, [slug])
 
-  useEffect(() => { fetchMembers() }, [slug])
+  useEffect(() => { fetchMembers() }, [fetchMembers])
 
   // Auto-detect admin role from fetched members data (avoids extra API call from parent)
   const myRole = user ? members.find(m => m.user_id === user.id)?.role : undefined

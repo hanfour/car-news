@@ -155,14 +155,10 @@ export default function ConversationPage() {
 
       if (res.ok) {
         const { message } = await res.json()
+        const myProfile = participants.find(p => p.is_self)?.profile
         setMessages(prev => [...prev, {
           ...message,
-          sender: {
-            id: user!.id,
-            username: undefined,
-            display_name: undefined,
-            avatar_url: undefined,
-          },
+          sender: myProfile || { id: user!.id },
         }])
       } else {
         setNewMessage(content) // Restore on failure

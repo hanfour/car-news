@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
 
   // 搜尋
   if (search) {
-    const sanitized = search.replace(/[%_\\]/g, '\\$&').replace(/[.,()]/g, '')
+    const sanitized = search.replace(/[%_\\]/g, '\\$&')
     query = query.or(`title.ilike.%${sanitized}%,content.ilike.%${sanitized}%`)
   }
 
