@@ -55,6 +55,32 @@ export async function PATCH(
     const body = await request.json()
     const { role, status } = body
 
+    // 驗證 role/status 白名單
+    const validRoles = ['member', 'admin']
+    const validStatuses = ['active', 'kicked']
+
+    if (role && !validRoles.includes(role)) {
+      return NextResponse.json({ error: '無效的角色' }, { status: 400 })
+    }
+    if (status && !validStatuses.includes(status)) {
+      return NextResponse.json({ error: '無效的狀態' }, { status: 400 })
+    }
+
+    // Admin 不可修改其他 Admin（只有 owner 可以）
+    if (isAdmin && !isOwner) {
+      const { data: targetMembership } = await supabase
+        .from('car_club_members')
+        .select('role')
+        .eq('club_id', club.id)
+        .eq('user_id', targetUserId)
+        .eq('status', 'active')
+        .single()
+
+      if (targetMembership?.role === 'admin') {
+        return NextResponse.json({ error: '管理員無法修改其他管理員' }, { status: 403 })
+      }
+    }
+
     const updates: Record<string, unknown> = {}
     if (role && isOwner) {
       updates.role = role

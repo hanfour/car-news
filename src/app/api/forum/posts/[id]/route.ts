@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
+import { moderateComment } from '@/lib/ai/claude'
 
 // GET: 單篇貼文
 export async function GET(
@@ -22,8 +23,12 @@ export async function GET(
       return NextResponse.json({ error: '找不到此貼文' }, { status: 404 })
     }
 
-    // 增加瀏覽數
-    await supabase.from('forum_posts').update({ view_count: post.view_count + 1 }).eq('id', id)
+    // 增加瀏覽數（atomic increment，避免 race condition）
+    const { error: rpcError } = await supabase.rpc('increment_view_count', { post_id: id })
+    if (rpcError) {
+      // Fallback: 非 atomic 但不影響主要流程
+      await supabase.from('forum_posts').update({ view_count: (post.view_count || 0) + 1 }).eq('id', id)
+    }
 
     // 作者 profile
     const { data: author } = await supabase
@@ -95,6 +100,15 @@ export async function PATCH(
     if (tags) updates.tags = tags
     if (related_brand !== undefined) updates.related_brand = related_brand
     if (related_model !== undefined) updates.related_model = related_model
+
+    // 內容有修改時重新執行 AI 審核
+    if (title || content) {
+      const moderationText = [title, content].filter(Boolean).join('\n')
+      const moderation = await moderateComment(moderationText)
+      if (moderation.confidence > 95 && moderation.flags.length > 0) {
+        return NextResponse.json({ error: '內容包含不當內容，無法更新' }, { status: 400 })
+      }
+    }
 
     const { data, error } = await supabase
       .from('forum_posts')

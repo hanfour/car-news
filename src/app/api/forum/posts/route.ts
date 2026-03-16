@@ -33,9 +33,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 搜尋
+    // 搜尋（sanitize 特殊字元防止 PostgREST filter injection）
     if (search) {
-      query = query.or(`title.ilike.%${search}%,content.ilike.%${search}%`)
+      const sanitized = search.replace(/[%_\\]/g, '\\$&').replace(/[.,()]/g, '')
+      query = query.or(`title.ilike.%${sanitized}%,content.ilike.%${sanitized}%`)
     }
 
     // 排序

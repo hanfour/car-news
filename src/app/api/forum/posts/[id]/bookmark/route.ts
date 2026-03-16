@@ -21,10 +21,10 @@ export async function POST(
       .select('user_id')
       .eq('user_id', userId)
       .eq('post_id', postId)
-      .single()
+      .maybeSingle()
 
     if (existing) {
-      // Remove bookmark
+      // Remove bookmark（bookmark_count 由 DB trigger 自動更新）
       await supabase
         .from('forum_bookmarks')
         .delete()
@@ -34,10 +34,15 @@ export async function POST(
       return NextResponse.json({ isBookmarked: false })
     }
 
-    // Add bookmark
+    // Add bookmark（bookmark_count 由 DB trigger 自動更新）
     const { error } = await supabase
       .from('forum_bookmarks')
       .insert({ user_id: userId, post_id: postId })
+
+    // 處理並發請求導致的 unique constraint violation
+    if (error?.code === '23505') {
+      return NextResponse.json({ isBookmarked: true })
+    }
 
     if (error) {
       console.error('[Bookmark POST] Error:', error)

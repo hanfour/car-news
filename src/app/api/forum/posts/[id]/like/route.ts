@@ -33,11 +33,16 @@ export async function POST(
 
       return NextResponse.json({ isLiked: false })
     } else {
-      await supabase.from('forum_likes').insert({
+      const { error } = await supabase.from('forum_likes').insert({
         user_id: userId,
         target_type: 'post',
         target_id: postId,
       })
+
+      // 處理並發請求導致的 unique constraint violation
+      if (error?.code === '23505') {
+        return NextResponse.json({ isLiked: true })
+      }
 
       return NextResponse.json({ isLiked: true })
     }

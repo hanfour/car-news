@@ -22,6 +22,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '無效的檢舉類型' }, { status: 400 })
     }
 
+    // 檢查是否已有 pending 檢舉（防止重複檢舉）
+    const { data: existingReport } = await supabase
+      .from('reports')
+      .select('id')
+      .eq('reporter_id', userId)
+      .eq('target_type', target_type)
+      .eq('target_id', target_id)
+      .eq('status', 'pending')
+      .maybeSingle()
+
+    if (existingReport) {
+      return NextResponse.json({ error: '你已經檢舉過此內容，我們正在處理中' }, { status: 409 })
+    }
+
     const { error } = await supabase
       .from('reports')
       .insert({
@@ -33,6 +47,10 @@ export async function POST(request: NextRequest) {
       })
 
     if (error) {
+      // 處理 unique constraint violation（並發請求）
+      if (error.code === '23505') {
+        return NextResponse.json({ error: '你已經檢舉過此內容' }, { status: 409 })
+      }
       console.error('[Reports POST] Error:', error)
       return NextResponse.json({ error: '檢舉失敗' }, { status: 500 })
     }

@@ -20,7 +20,7 @@ export async function GET(
       return NextResponse.json({ error: '找不到此車友會' }, { status: 404 })
     }
 
-    // Get members
+    // Get members（限制最多 200 筆）
     const { data: members, error } = await supabase
       .from('car_club_members')
       .select('user_id, role, status, joined_at')
@@ -28,6 +28,7 @@ export async function GET(
       .eq('status', 'active')
       .order('role', { ascending: true })
       .order('joined_at', { ascending: true })
+      .limit(200)
 
     if (error) {
       console.error('[Club Members GET] Error:', error)

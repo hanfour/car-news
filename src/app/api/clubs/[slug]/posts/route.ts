@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
+import { moderateComment } from '@/lib/ai/claude'
 
 // GET: 車友會貼文
 export async function GET(
@@ -92,6 +93,16 @@ export async function POST(
 
     if (!content?.trim()) {
       return NextResponse.json({ error: '請輸入內容' }, { status: 400 })
+    }
+
+    if (content.length > 5000) {
+      return NextResponse.json({ error: '內容過長（最多5000字）' }, { status: 400 })
+    }
+
+    // AI 內容審核
+    const moderation = await moderateComment(content)
+    if (moderation.confidence > 95 && moderation.flags.length > 0) {
+      return NextResponse.json({ error: '內容包含不當內容，無法發布' }, { status: 400 })
     }
 
     const { data, error } = await supabase
