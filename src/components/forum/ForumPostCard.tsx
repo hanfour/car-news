@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import Image from 'next/image'
-import { isValidImageUrl } from '@/lib/security'
+import { Avatar } from '@/components/shared/Avatar'
+import { timeAgo } from '@/lib/utils/timeAgo'
 
 interface ForumPostCardProps {
   post: {
@@ -28,19 +28,6 @@ interface ForumPostCardProps {
   }
 }
 
-function timeAgo(dateStr: string): string {
-  const now = Date.now()
-  const diff = now - new Date(dateStr).getTime()
-  const minutes = Math.floor(diff / 60000)
-  if (minutes < 1) return '剛剛'
-  if (minutes < 60) return `${minutes} 分鐘前`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours} 小時前`
-  const days = Math.floor(hours / 24)
-  if (days < 30) return `${days} 天前`
-  return new Date(dateStr).toLocaleDateString('zh-TW')
-}
-
 export function ForumPostCard({ post }: ForumPostCardProps) {
   return (
     <Link
@@ -51,15 +38,7 @@ export function ForumPostCard({ post }: ForumPostCardProps) {
       <div className="flex gap-3">
         {/* 作者頭像 */}
         {post.author && (
-          <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
-            {post.author.avatar_url && isValidImageUrl(post.author.avatar_url) ? (
-              <Image src={post.author.avatar_url} alt="" width={40} height={40} className="w-full h-full object-cover" unoptimized />
-            ) : (
-              <div className="w-full h-full bg-[var(--brand-primary)] flex items-center justify-center">
-                <span className="text-sm font-bold">{post.author.display_name?.[0] || 'U'}</span>
-              </div>
-            )}
-          </div>
+          <Avatar src={post.author.avatar_url} name={post.author.display_name} size={40} />
         )}
 
         <div className="flex-1 min-w-0">

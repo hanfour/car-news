@@ -1,11 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
-import { isValidImageUrl } from '@/lib/security'
+import { Avatar } from '@/components/shared/Avatar'
 import { useAuth } from '@/contexts/AuthContext'
 import { MarkdownRenderer } from '@/components/shared/MarkdownRenderer'
+import { timeAgo } from '@/lib/utils/timeAgo'
 
 interface ForumReplyItemProps {
   reply: {
@@ -23,19 +23,6 @@ interface ForumReplyItemProps {
   }
 }
 
-function timeAgo(dateStr: string): string {
-  const now = Date.now()
-  const diff = now - new Date(dateStr).getTime()
-  const minutes = Math.floor(diff / 60000)
-  if (minutes < 1) return '剛剛'
-  if (minutes < 60) return `${minutes}分鐘前`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}小時前`
-  const days = Math.floor(hours / 24)
-  if (days < 30) return `${days}天前`
-  return new Date(dateStr).toLocaleDateString('zh-TW')
-}
-
 export function ForumReplyItem({ reply }: ForumReplyItemProps) {
   const { session } = useAuth()
   const [likeCount, setLikeCount] = useState(reply.like_count)
@@ -43,6 +30,11 @@ export function ForumReplyItem({ reply }: ForumReplyItemProps) {
 
   const handleLike = async () => {
     if (!session?.access_token) return
+
+    // Optimistic update
+    const wasLiked = isLiked
+    setIsLiked(!wasLiked)
+    setLikeCount(prev => wasLiked ? Math.max(0, prev - 1) : prev + 1)
 
     try {
       const res = await fetch(`/api/forum/replies/${reply.id}/like`, {
@@ -52,27 +44,30 @@ export function ForumReplyItem({ reply }: ForumReplyItemProps) {
       if (res.ok) {
         const data = await res.json()
         setIsLiked(data.isLiked)
-        setLikeCount(prev => data.isLiked ? prev + 1 : Math.max(0, prev - 1))
+        // Reconcile with server
+        setLikeCount(prev => {
+          if (data.isLiked && wasLiked) return prev + 1
+          if (!data.isLiked && !wasLiked) return Math.max(0, prev - 1)
+          return prev
+        })
+      } else {
+        // Revert on error
+        setIsLiked(wasLiked)
+        setLikeCount(prev => wasLiked ? prev + 1 : Math.max(0, prev - 1))
       }
     } catch {
-      // Silently fail
+      // Revert on error
+      setIsLiked(wasLiked)
+      setLikeCount(prev => wasLiked ? prev + 1 : Math.max(0, prev - 1))
     }
   }
 
   const profileUrl = `/user/${reply.author?.username || reply.user_id}`
 
   return (
-    <div className="flex gap-3 py-4 border-b last:border-0" style={{ borderColor: '#e5e5e5' }}>
+    <div className="flex gap-3 py-4 border-b last:border-0 animate-slideInFromLeft" style={{ borderColor: '#e5e5e5' }}>
       <Link href={profileUrl} className="flex-shrink-0">
-        <div className="w-8 h-8 rounded-full overflow-hidden">
-          {reply.author?.avatar_url && isValidImageUrl(reply.author.avatar_url) ? (
-            <Image src={reply.author.avatar_url} alt="" width={32} height={32} className="w-full h-full object-cover" unoptimized />
-          ) : (
-            <div className="w-full h-full bg-[var(--brand-primary)] flex items-center justify-center">
-              <span className="text-xs font-bold">{reply.author?.display_name?.[0] || 'U'}</span>
-            </div>
-          )}
-        </div>
+        <Avatar src={reply.author?.avatar_url} name={reply.author?.display_name} size={32} />
       </Link>
 
       <div className="flex-1 min-w-0">

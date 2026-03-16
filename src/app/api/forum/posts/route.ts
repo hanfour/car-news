@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 50)
     const offset = (page - 1) * limit
     const sort = searchParams.get('sort') || 'latest'
+    const search = searchParams.get('search')
 
     let query = supabase
       .from('forum_posts')
@@ -30,6 +31,11 @@ export async function GET(request: NextRequest) {
       if (cat) {
         query = query.eq('category_id', cat.id)
       }
+    }
+
+    // 搜尋
+    if (search) {
+      query = query.or(`title.ilike.%${search}%,content.ilike.%${search}%`)
     }
 
     // 排序

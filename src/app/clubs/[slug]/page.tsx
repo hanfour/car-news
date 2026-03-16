@@ -2,18 +2,20 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import Link from 'next/link'
-import Image from 'next/image'
-import { isValidImageUrl } from '@/lib/security'
 import { useAuth } from '@/contexts/AuthContext'
-import { JoinClubButton } from '@/components/clubs/JoinClubButton'
+import { ClubHeader } from '@/components/clubs/ClubHeader'
+import { ClubTabs, type ClubTab } from '@/components/clubs/ClubTabs'
+import { ClubPostComposer } from '@/components/clubs/ClubPostComposer'
+import { ClubMemberList } from '@/components/clubs/ClubMemberList'
+import { ClubAbout } from '@/components/clubs/ClubAbout'
 import { ClubPostCard } from '@/components/clubs/ClubPostCard'
-import { MarkdownEditor } from '@/components/shared/MarkdownEditor'
 import { EmptyState } from '@/components/shared/EmptyState'
+import { LoadingCenter } from '@/components/shared/LoadingSpinner'
 
 interface Club {
   id: string; name: string; slug: string; description?: string; brand?: string; model?: string
   cover_image?: string; avatar_url?: string; owner_id: string; member_count: number; post_count: number
+  rules?: string; is_private?: boolean; created_at?: string
   owner?: { id: string; username?: string; display_name?: string; avatar_url?: string }
 }
 
@@ -29,9 +31,9 @@ export default function ClubDetailPage() {
   const [club, setClub] = useState<Club | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
   const [isMember, setIsMember] = useState(false)
+  const [memberRole, setMemberRole] = useState<string>('member')
   const [loading, setLoading] = useState(true)
-  const [newPost, setNewPost] = useState('')
-  const [posting, setPosting] = useState(false)
+  const [activeTab, setActiveTab] = useState<ClubTab>('posts')
 
   const fetchData = async () => {
     try {
@@ -52,101 +54,78 @@ export default function ClubDetailPage() {
 
   useEffect(() => { fetchData() }, [slug])
 
-  // 簡單判斷是否為成員（通過能否查看貼文來判定）
+  // Check membership
   useEffect(() => {
-    if (club && user) {
-      setIsMember(club.owner_id === user.id)
+    if (!club || !user) return
+    if (club.owner_id === user.id) {
+      setIsMember(true)
+      setMemberRole('owner')
+      return
     }
-  }, [club, user])
 
-  const handlePost = async () => {
-    if (!session?.access_token || !newPost.trim()) return
-    setPosting(true)
-    try {
-      const res = await fetch(`/api/clubs/${slug}/posts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ content: newPost }),
-      })
-      if (res.ok) {
-        setNewPost('')
-        fetchData()
-      }
-    } catch { /* */ } finally { setPosting(false) }
-  }
+    // Check via members API
+    const checkMembership = async () => {
+      try {
+        const res = await fetch(`/api/clubs/${slug}/members`)
+        if (res.ok) {
+          const data = await res.json()
+          const membership = data.members?.find((m: { user_id: string }) => m.user_id === user.id)
+          if (membership) {
+            setIsMember(true)
+            setMemberRole(membership.role)
+          }
+        }
+      } catch { /* */ }
+    }
+    checkMembership()
+  }, [club, user, slug])
 
-  if (loading) {
-    return <div className="min-h-screen bg-[var(--background)] flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-gray-300 border-t-[var(--brand-primary)] rounded-full animate-spin" />
-    </div>
-  }
+  if (loading) return <LoadingCenter size="lg" />
 
   if (!club) {
     return <div className="max-w-4xl mx-auto px-4 py-16"><EmptyState title="找不到此車友會" /></div>
   }
 
   const isOwner = user?.id === club.owner_id
+  const isAdmin = memberRole === 'admin'
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
-      {/* Header */}
-      <div className="h-32 sm:h-48 bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-primary-dark)] relative">
-        {club.cover_image && isValidImageUrl(club.cover_image) && (
-          <Image src={club.cover_image} alt="" fill className="object-cover" unoptimized />
-        )}
-      </div>
+      <ClubHeader club={club} isMember={isMember} isOwner={isOwner} onStatusChange={fetchData} />
 
-      <div className="max-w-4xl mx-auto px-4 -mt-8 relative">
-        <div className="bg-white rounded-xl border p-6" style={{ borderColor: 'var(--border-color)' }}>
-          <div className="flex items-start gap-4">
-            <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 -mt-10 border-4 border-white">
-              {club.avatar_url && isValidImageUrl(club.avatar_url) ? (
-                <Image src={club.avatar_url} alt="" width={64} height={64} className="w-full h-full object-cover" unoptimized />
-              ) : (
-                <div className="w-full h-full bg-[var(--brand-primary-lighter)] flex items-center justify-center">
-                  <span className="text-xl font-bold" style={{ color: 'var(--brand-primary-dark)' }}>{club.name[0]}</span>
-                </div>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h1 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{club.name}</h1>
-                  {club.description && <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{club.description}</p>}
-                </div>
-                <JoinClubButton slug={slug} isMember={isMember} isOwner={isOwner} onStatusChange={fetchData} />
-              </div>
-              <div className="flex items-center gap-4 mt-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                {club.brand && <span className="px-2 py-0.5 rounded-full bg-[var(--brand-primary-lighter)]">{club.brand}</span>}
-                <Link href={`/clubs/${slug}/members`} className="hover:text-[var(--brand-primary)] transition-colors">
-                  {club.member_count} 成員
-                </Link>
-                <span>{club.post_count} 貼文</span>
-              </div>
-            </div>
-          </div>
-        </div>
+      <ClubTabs
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        memberCount={club.member_count}
+        postCount={club.post_count}
+      />
 
-        {/* New Post */}
-        {session && (isMember || isOwner) && (
-          <div className="mt-4 bg-white rounded-xl border p-4" style={{ borderColor: 'var(--border-color)' }}>
-            <MarkdownEditor value={newPost} onChange={setNewPost} placeholder="分享你的想法..." rows={3} maxLength={5000} />
-            <div className="flex justify-end mt-2">
-              <button onClick={handlePost} disabled={posting || !newPost.trim()} className="btn-primary text-sm disabled:opacity-60">
-                {posting ? '發布中...' : '發表'}
-              </button>
-            </div>
+      <div className="max-w-4xl mx-auto px-4 py-4">
+        {/* Posts Tab */}
+        {activeTab === 'posts' && (
+          <div className="space-y-4">
+            {session && (isMember || isOwner) && (
+              <ClubPostComposer slug={slug} onPostCreated={fetchData} />
+            )}
+            {posts.length > 0 ? (
+              <div className="space-y-3">
+                {posts.map(post => <ClubPostCard key={post.id} post={post} />)}
+              </div>
+            ) : (
+              <EmptyState title="還沒有貼文" description="成為第一個在車友會發文的人！" />
+            )}
           </div>
         )}
 
-        {/* Posts */}
-        <div className="mt-4 space-y-3 pb-8">
-          {posts.length > 0 ? (
-            posts.map(post => <ClubPostCard key={post.id} post={post} />)
-          ) : (
-            <EmptyState title="還沒有貼文" description="成為第一個在車友會發文的人！" />
-          )}
-        </div>
+        {/* Members Tab */}
+        {activeTab === 'members' && (
+          <ClubMemberList slug={slug} isOwner={isOwner} isAdmin={isAdmin} />
+        )}
+
+        {/* About Tab */}
+        {activeTab === 'about' && (
+          <ClubAbout club={club} />
+        )}
       </div>
     </div>
   )
