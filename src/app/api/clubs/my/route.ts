@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
@@ -8,8 +7,7 @@ export async function GET(request: NextRequest) {
     if (!auth) {
       return NextResponse.json({ error: '請先登入' }, { status: 401 })
     }
-    const { userId } = auth
-    const supabase = createServiceClient()
+    const { supabase, userId } = auth
 
     // 查詢用戶加入的車友會
     const { data: memberships, error: memberError } = await supabase

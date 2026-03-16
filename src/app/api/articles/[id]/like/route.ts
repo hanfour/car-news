@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import { createServiceClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { getErrorMessage } from '@/lib/utils/error'
 
@@ -113,12 +111,7 @@ export async function GET(
   try {
     const { id: articleId } = await params
 
-    // Use service client for database reads
-    const supabase = createServiceClient()
-
-    // Get auth token from header (optional for GET)
-    const authHeader = request.headers.get('Authorization')
-    const token = authHeader?.replace('Bearer ', '')
+    const supabase = createClient()
 
     // Get like count
     const { data: article } = await supabase
@@ -130,35 +123,16 @@ export async function GET(
     let isLiked = false
 
     // Check if user has liked (if authenticated)
-    if (token) {
-      // Need auth client to verify token
-      const cookieStore = await cookies()
-      const authClient = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            get(name: string) {
-              return cookieStore.get(name)?.value
-            },
-            set() {},
-            remove() {}
-          }
-        }
-      )
+    const auth = await createAuthenticatedClient(request)
+    if (auth) {
+      const { data: like } = await auth.supabase
+        .from('article_likes')
+        .select('article_id')
+        .eq('article_id', articleId)
+        .eq('user_id', auth.userId)
+        .maybeSingle()
 
-      const { data: { user } } = await authClient.auth.getUser(token)
-
-      if (user) {
-        const { data: like } = await supabase
-          .from('article_likes')
-          .select('article_id')
-          .eq('article_id', articleId)
-          .eq('user_id', user.id)
-          .maybeSingle()
-
-        isLiked = !!like
-      }
+      isLiked = !!like
     }
 
     return NextResponse.json({

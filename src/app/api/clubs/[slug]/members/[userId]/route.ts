@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
 
 export async function PATCH(
@@ -12,8 +11,7 @@ export async function PATCH(
     if (!auth) {
       return NextResponse.json({ error: '請先登入' }, { status: 401 })
     }
-    const { userId: currentUserId } = auth
-    const supabase = createServiceClient()
+    const { supabase, userId: currentUserId } = auth
 
     // Get club
     const { data: club } = await supabase

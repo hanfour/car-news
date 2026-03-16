@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
-import { createServiceClient } from '@/lib/supabase'
 
 // POST: 追蹤/取消追蹤（toggle）
 export async function POST(
@@ -17,9 +16,8 @@ export async function POST(
     const { supabase, userId } = auth
 
     // 找到目標用戶
-    const serviceClient = createServiceClient()
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(username)
-    let profileQuery = serviceClient.from('profiles').select('id')
+    let profileQuery = supabase.from('profiles').select('id')
     if (isUuid) {
       profileQuery = profileQuery.eq('id', username)
     } else {

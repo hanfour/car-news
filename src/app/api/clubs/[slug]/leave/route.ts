@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
-import { createServiceClient } from '@/lib/supabase'
 
 // DELETE: 離開車友會
 export async function DELETE(
@@ -15,8 +14,8 @@ export async function DELETE(
     }
     const { supabase, userId } = auth
 
-    const serviceClient = createServiceClient()
-    const { data: club } = await serviceClient
+    // RLS 允許成員/owner 看到私人 club
+    const { data: club } = await supabase
       .from('car_clubs')
       .select('id, owner_id')
       .eq('slug', slug)

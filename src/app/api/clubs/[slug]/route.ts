@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
 
 // GET: 車友會詳情
@@ -9,7 +9,7 @@ export async function GET(
 ) {
   try {
     const { slug } = await params
-    const supabase = createServiceClient()
+    const supabase = createClient()
 
     const { data: club, error } = await supabase
       .from('car_clubs')

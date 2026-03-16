@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { moderateComment } from '@/lib/ai/claude'
 
@@ -10,7 +10,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const supabase = createServiceClient()
+    const supabase = createClient()
 
     const { data: post, error } = await supabase
       .from('forum_posts')

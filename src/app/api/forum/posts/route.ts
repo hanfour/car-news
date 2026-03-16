@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { moderateComment } from '@/lib/ai/claude'
 import { rateLimit } from '@/lib/rate-limit'
@@ -7,7 +7,7 @@ import { rateLimit } from '@/lib/rate-limit'
 // GET: 貼文列表
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createServiceClient()
+    const supabase = createClient()
     const searchParams = request.nextUrl.searchParams
     const category = searchParams.get('category')
     const page = parseInt(searchParams.get('page') || '1')

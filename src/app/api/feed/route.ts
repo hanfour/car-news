@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
-import { createServiceClient } from '@/lib/supabase'
 
 // GET: 動態牆 (fan-out-on-read)
 export async function GET(request: NextRequest) {
@@ -9,9 +8,7 @@ export async function GET(request: NextRequest) {
     if (!auth) {
       return NextResponse.json({ error: '請先登入' }, { status: 401 })
     }
-    const { userId } = auth
-
-    const supabase = createServiceClient()
+    const { supabase, userId } = auth
     const searchParams = request.nextUrl.searchParams
     const page = parseInt(searchParams.get('page') || '1')
     const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 50)
