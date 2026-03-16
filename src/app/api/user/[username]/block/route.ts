@@ -2,6 +2,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
 
+async function resolveTargetId(supabase: ReturnType<typeof createServiceClient>, username: string, userId: string) {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('username', username)
+    .single()
+
+  const targetId = profile?.id || username
+
+  if (targetId === userId) {
+    return { error: '無法封鎖自己', targetId: null }
+  }
+
+  return { error: null, targetId }
+}
+
+// POST: 封鎖用戶
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ username: string }> }
@@ -15,45 +32,20 @@ export async function POST(
     const { userId } = auth
     const supabase = createServiceClient()
 
-    // Find target user
-    let targetId = username
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('username', username)
-      .single()
-
-    if (profile) targetId = profile.id
-
-    if (targetId === userId) {
-      return NextResponse.json({ error: '無法封鎖自己' }, { status: 400 })
+    const { error: resolveError, targetId } = await resolveTargetId(supabase, username, userId)
+    if (resolveError || !targetId) {
+      return NextResponse.json({ error: resolveError || '找不到用戶' }, { status: 400 })
     }
 
-    // Check if already blocked
-    const { data: existing } = await supabase
-      .from('user_blocks')
-      .select('blocker_id')
-      .eq('blocker_id', userId)
-      .eq('blocked_id', targetId)
-      .single()
-
-    if (existing) {
-      // Unblock
-      await supabase
-        .from('user_blocks')
-        .delete()
-        .eq('blocker_id', userId)
-        .eq('blocked_id', targetId)
-
-      return NextResponse.json({ isBlocked: false })
-    }
-
-    // Block
     const { error } = await supabase
       .from('user_blocks')
       .insert({ blocker_id: userId, blocked_id: targetId })
 
     if (error) {
+      // 已封鎖 — unique constraint violation，視為成功
+      if (error.code === '23505') {
+        return NextResponse.json({ isBlocked: true })
+      }
       console.error('[Block POST] Error:', error)
       return NextResponse.json({ error: '操作失敗' }, { status: 500 })
     }
@@ -61,6 +53,38 @@ export async function POST(
     return NextResponse.json({ isBlocked: true })
   } catch (error) {
     console.error('[Block POST] Unexpected error:', error)
+    return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
+  }
+}
+
+// DELETE: 解除封鎖
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ username: string }> }
+) {
+  try {
+    const { username } = await params
+    const auth = await createAuthenticatedClient(request)
+    if (!auth) {
+      return NextResponse.json({ error: '請先登入' }, { status: 401 })
+    }
+    const { userId } = auth
+    const supabase = createServiceClient()
+
+    const { error: resolveError, targetId } = await resolveTargetId(supabase, username, userId)
+    if (resolveError || !targetId) {
+      return NextResponse.json({ error: resolveError || '找不到用戶' }, { status: 400 })
+    }
+
+    await supabase
+      .from('user_blocks')
+      .delete()
+      .eq('blocker_id', userId)
+      .eq('blocked_id', targetId)
+
+    return NextResponse.json({ isBlocked: false })
+  } catch (error) {
+    console.error('[Block DELETE] Unexpected error:', error)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }

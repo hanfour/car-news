@@ -4,7 +4,7 @@ import { createAuthenticatedClient } from '@/lib/auth'
 
 // GET: 車友會詳情
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
@@ -19,6 +19,51 @@ export async function GET(
 
     if (error || !club) {
       return NextResponse.json({ error: '找不到此車友會' }, { status: 404 })
+    }
+
+    // 私人車友會僅成員或 owner 可查看完整資訊
+    if (club.is_private) {
+      const auth = await createAuthenticatedClient(request)
+      const currentUserId = auth?.userId
+
+      if (currentUserId) {
+        const isOwner = currentUserId === club.owner_id
+        if (!isOwner) {
+          const { data: membership } = await supabase
+            .from('car_club_members')
+            .select('user_id')
+            .eq('club_id', club.id)
+            .eq('user_id', currentUserId)
+            .eq('status', 'active')
+            .maybeSingle()
+
+          if (!membership) {
+            // 非成員只能看到基本資訊
+            return NextResponse.json({
+              club: {
+                id: club.id,
+                name: club.name,
+                slug: club.slug,
+                avatar_url: club.avatar_url,
+                member_count: club.member_count,
+                is_private: true,
+              },
+            })
+          }
+        }
+      } else {
+        // 未登入只能看到基本資訊
+        return NextResponse.json({
+          club: {
+            id: club.id,
+            name: club.name,
+            slug: club.slug,
+            avatar_url: club.avatar_url,
+            member_count: club.member_count,
+            is_private: true,
+          },
+        })
+      }
     }
 
     // 查詢 owner profile
