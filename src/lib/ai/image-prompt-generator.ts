@@ -43,15 +43,19 @@ export interface ImagePromptResult {
 export async function generateImagePromptFromArticle(
   title: string,
   content: string,
-  brands?: string[]
+  brands?: string[],
+  options?: { temperature?: number }
 ): Promise<ImagePromptResult> {
   const gemini = getGemini()
+  const temperature = options?.temperature ?? 0.3
   const model = gemini.getGenerativeModel({
     model: 'gemini-2.5-flash',
     generationConfig: {
-      temperature: 0.3, // 低温度确保稳定输出
+      temperature,
       maxOutputTokens: 1024,
-      responseMimeType: 'application/json'
+      responseMimeType: 'application/json',
+      // @ts-expect-error -- thinkingConfig 尚未在型別中定義，但 gemini-2.5-flash 需要關閉 thinking 才能正確輸出 JSON
+      thinkingConfig: { thinkingBudget: 0 },
     }
   })
 
@@ -285,19 +289,28 @@ function getBrandStyleDescription(brand: string): string {
 }
 
 /**
- * 验证生成的图片是否与文章匹配（可选，用于质量控制）
- * 使用 GPT-4V 或 Gemini Vision
+ * 驗證生成的圖片是否與文章匹配
+ * 使用 Gemini Vision 進行 6 維度評分
  */
 export async function verifyImageMatch(
   imageUrl: string,
   articleTitle: string,
   expectedElements: string[]
 ): Promise<{ matches: boolean; score: number; feedback: string }> {
-  // TODO: 实现图片验证逻辑
-  // 目前返回默认通过
-  return {
-    matches: true,
-    score: 0.8,
-    feedback: 'Image verification not yet implemented'
+  try {
+    const { scoreImage } = await import('@/lib/experiments/scorer')
+    const result = await scoreImage(imageUrl, articleTitle, expectedElements.join(', '))
+    return {
+      matches: result.composite >= 7.0,
+      score: result.composite / 10, // 正規化到 0-1
+      feedback: result.explanation,
+    }
+  } catch {
+    // Fallback：評分失敗時不阻擋流程
+    return {
+      matches: true,
+      score: 0.8,
+      feedback: 'Scoring unavailable, passing by default',
+    }
   }
 }

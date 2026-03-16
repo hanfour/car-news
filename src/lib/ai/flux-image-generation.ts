@@ -55,6 +55,12 @@ export async function generateWithFlux(
   options: {
     imageSize?: 'landscape_16_9' | 'landscape_4_3' | 'square' | 'portrait_4_3'
     numImages?: number
+    /** Override: guidance_scale (default 5.0) */
+    guidanceScale?: number
+    /** Override: num_inference_steps (default 28) */
+    numInferenceSteps?: number
+    /** Override: 固定 seed 確保可重現 */
+    seed?: number
   } = {}
 ): Promise<ImageGenerationResult | null> {
   try {
@@ -62,12 +68,15 @@ export async function generateWithFlux(
 
     const {
       imageSize = 'landscape_16_9',
-      numImages = 1
+      numImages = 1,
+      guidanceScale = 5.0,
+      numInferenceSteps = 28,
+      seed,
     } = options
 
     console.log('→ Generating image with Flux (fal.ai)...')
     console.log(`   Prompt: ${prompt.slice(0, 200)}...`)
-    console.log(`   Size: ${imageSize}`)
+    console.log(`   Size: ${imageSize}, guidance: ${guidanceScale}, steps: ${numInferenceSteps}${seed != null ? `, seed: ${seed}` : ''}`)
 
     const result = await fal.subscribe('fal-ai/flux/dev', {
       input: {
@@ -75,8 +84,9 @@ export async function generateWithFlux(
         image_size: imageSize,
         num_images: numImages,
         enable_safety_checker: true,
-        num_inference_steps: 28,
-        guidance_scale: 5.0       // 提高至 5.0，強化 prompt 遵從度
+        num_inference_steps: numInferenceSteps,
+        guidance_scale: guidanceScale,
+        ...(seed != null ? { seed } : {}),
       },
       logs: false
     }) as { data: FluxGenerationResult }
