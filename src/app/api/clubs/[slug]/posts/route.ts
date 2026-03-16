@@ -11,7 +11,9 @@ export async function GET(
 ) {
   try {
     const { slug } = await params
-    const supabase = createClient()
+    // 有 auth 時用 RLS client（可看到私人 club 的貼文），否則用 anon（只看公開 club）
+    const auth = await createAuthenticatedClient(request)
+    const supabase = auth?.supabase || createClient()
 
     const searchParams = request.nextUrl.searchParams
     const page = parseInt(searchParams.get('page') || '1')

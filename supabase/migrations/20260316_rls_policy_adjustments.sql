@@ -18,8 +18,37 @@ CREATE POLICY "Public clubs are viewable by everyone" ON car_clubs
     is_public = true
     OR auth.uid() = owner_id
     OR EXISTS (
-      SELECT 1 FROM club_members
-      WHERE club_members.club_id = car_clubs.id
-        AND club_members.user_id = auth.uid()
+      SELECT 1 FROM car_club_members
+      WHERE car_club_members.club_id = car_clubs.id
+        AND car_club_members.user_id = auth.uid()
+    )
+  );
+
+-- car_club_posts: 公開 club 的貼文任何人可看，私人 club 限成員
+DROP POLICY IF EXISTS "Club posts are viewable by members" ON car_club_posts;
+CREATE POLICY "Club posts are viewable by members or public" ON car_club_posts
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM car_clubs
+      WHERE car_clubs.id = car_club_posts.club_id
+        AND car_clubs.is_public = true
+    )
+    OR EXISTS (
+      SELECT 1 FROM car_club_members
+      WHERE car_club_members.club_id = car_club_posts.club_id
+        AND car_club_members.user_id = auth.uid()
+        AND car_club_members.status = 'active'
+    )
+  );
+
+-- user_favorites: 公開收藏頁可被任何人查看
+DROP POLICY IF EXISTS "Users can view own favorites" ON user_favorites;
+CREATE POLICY "Users can view favorites" ON user_favorites
+  FOR SELECT USING (
+    auth.uid() = user_id
+    OR EXISTS (
+      SELECT 1 FROM profiles
+      WHERE profiles.id = user_favorites.user_id
+        AND profiles.is_favorites_public = true
     )
   );

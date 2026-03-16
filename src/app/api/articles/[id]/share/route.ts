@@ -45,9 +45,8 @@ export async function POST(
       )
     }
 
-    // Get updated share count
-    const readClient = createClient()
-    const { data: article } = await readClient
+    // Get updated share count（generated_articles 沒有 RLS，任何 client 都可讀）
+    const { data: article } = await supabase
       .from('generated_articles')
       .select('share_count')
       .eq('id', articleId)

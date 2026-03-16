@@ -9,7 +9,10 @@ export async function GET(
 ) {
   try {
     const { slug } = await params
-    const supabase = createClient()
+
+    // 有 auth 時用 RLS client（可看到自己有權限的私人 club），否則用 anon
+    const auth = await createAuthenticatedClient(request)
+    const supabase = auth?.supabase || createClient()
 
     const { data: club, error } = await supabase
       .from('car_clubs')
@@ -21,9 +24,8 @@ export async function GET(
       return NextResponse.json({ error: '找不到此車友會' }, { status: 404 })
     }
 
-    // 私人車友會僅成員或 owner 可查看完整資訊
+    // 私人車友會：RLS 已過濾可見性，但非成員仍需限制回傳欄位
     if (club.is_private) {
-      const auth = await createAuthenticatedClient(request)
       const currentUserId = auth?.userId
 
       if (currentUserId) {
@@ -38,7 +40,6 @@ export async function GET(
             .maybeSingle()
 
           if (!membership) {
-            // 非成員只能看到基本資訊
             return NextResponse.json({
               club: {
                 id: club.id,
@@ -52,7 +53,6 @@ export async function GET(
           }
         }
       } else {
-        // 未登入只能看到基本資訊
         return NextResponse.json({
           club: {
             id: club.id,
