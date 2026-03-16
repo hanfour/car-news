@@ -32,6 +32,8 @@ function getNotificationText(type: string): string {
     case 'followed_comment': return '發表了新評論'
     case 'forum_reply': return '回覆了你的貼文'
     case 'car_club_post': return '在車友會發表了新貼文'
+    case 'club_invitation': return '邀請你加入車友會'
+    case 'direct_message': return '傳送了一則訊息'
     case 'system': return ''
     default: return '發送了通知'
   }
@@ -49,6 +51,13 @@ function getNotificationLink(notification: NotificationItemProps['notification']
   }
   if (type === 'forum_reply') {
     return `/community/post/${notification.resource_id}`
+  }
+  if (type === 'club_invitation') {
+    return '/notifications'
+  }
+  if (type === 'direct_message') {
+    const convId = metadata?.conversation_id
+    return convId ? `/messages/${convId}` : '/messages'
   }
 
   return '/notifications'

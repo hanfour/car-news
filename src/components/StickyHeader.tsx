@@ -618,6 +618,17 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                 >
                   車友會
                 </Link>
+                {user && (
+                  <Link
+                    href="/messages"
+                    prefetch={false}
+                    className="block px-4 py-3 text-sm font-medium rounded hover:bg-gray-100 transition-colors"
+                    style={{ color: 'var(--text-secondary)' }}
+                    onClick={() => setIsSidebarOpen(false)}
+                  >
+                    私訊
+                  </Link>
+                )}
               </div>
             </div>
           </nav>
