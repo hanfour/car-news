@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
+import { rateLimit } from '@/lib/rate-limit'
 
 // GET: 車友會列表
 export async function GET(request: NextRequest) {
@@ -48,6 +49,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '請先登入' }, { status: 401 })
     }
     const { supabase, userId } = auth
+
+    const rl = rateLimit(`club-create:${userId}`, { maxRequests: 5, windowMs: 60_000 })
+    if (!rl.allowed) {
+      return NextResponse.json({ error: '操作過於頻繁，請稍後再試' }, { status: 429 })
+    }
 
     const { name, slug, description, brand, model } = await request.json()
 
