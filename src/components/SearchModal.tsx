@@ -337,7 +337,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                             <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-tertiary)' }}>
                               <span>{post.author?.display_name || '匿名'}</span>
                               <span>{format(new Date(post.created_at), 'M月d日', { locale: zhTW })}</span>
-                              <span>{post.reply_count} 回覆</span>
+                              <span>{post.reply_count ?? 0} 回覆</span>
                             </div>
                           </div>
                         </div>

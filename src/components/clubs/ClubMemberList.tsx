@@ -22,8 +22,8 @@ interface ClubMemberListProps {
   isAdmin: boolean
 }
 
-export function ClubMemberList({ slug, isOwner, isAdmin }: ClubMemberListProps) {
-  const { session } = useAuth()
+export function ClubMemberList({ slug, isOwner, isAdmin: isAdminProp }: ClubMemberListProps) {
+  const { session, user } = useAuth()
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [showInviteModal, setShowInviteModal] = useState(false)
@@ -41,6 +41,10 @@ export function ClubMemberList({ slug, isOwner, isAdmin }: ClubMemberListProps) 
   }
 
   useEffect(() => { fetchMembers() }, [slug])
+
+  // Auto-detect admin role from fetched members data (avoids extra API call from parent)
+  const myRole = user ? members.find(m => m.user_id === user.id)?.role : undefined
+  const isAdmin = isAdminProp || myRole === 'admin'
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     if (!session?.access_token) return

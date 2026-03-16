@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 // GET: 對話詳情（參與者資訊）
 export async function GET(
   request: NextRequest,
@@ -13,6 +15,9 @@ export async function GET(
     }
     const { supabase, userId } = auth
     const { id } = await params
+    if (!UUID_RE.test(id)) {
+      return NextResponse.json({ error: '無效的 ID' }, { status: 400 })
+    }
 
     // RLS 確保只有參與者可查看
     const { data: conversation, error } = await supabase

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { rateLimit } from '@/lib/rate-limit'
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 // GET: 訊息列表（分頁）
 export async function GET(
   request: NextRequest,
@@ -14,6 +16,9 @@ export async function GET(
     }
     const { supabase } = auth
     const { id } = await params
+    if (!UUID_RE.test(id)) {
+      return NextResponse.json({ error: '無效的 ID' }, { status: 400 })
+    }
     const searchParams = request.nextUrl.searchParams
     const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100)
     const before = searchParams.get('before') // cursor for pagination
@@ -75,6 +80,9 @@ export async function POST(
     }
     const { supabase, userId } = auth
     const { id } = await params
+    if (!UUID_RE.test(id)) {
+      return NextResponse.json({ error: '無效的 ID' }, { status: 400 })
+    }
 
     const rl = rateLimit(`dm-send:${userId}`, { maxRequests: 30, windowMs: 60_000 })
     if (!rl.allowed) {

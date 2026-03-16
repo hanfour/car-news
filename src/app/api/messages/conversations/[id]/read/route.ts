@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 // POST: 標記對話已讀
 export async function POST(
   request: NextRequest,
@@ -13,6 +15,9 @@ export async function POST(
     }
     const { supabase, userId } = auth
     const { id } = await params
+    if (!UUID_RE.test(id)) {
+      return NextResponse.json({ error: '無效的 ID' }, { status: 400 })
+    }
 
     const { error } = await supabase
       .from('conversation_participants')

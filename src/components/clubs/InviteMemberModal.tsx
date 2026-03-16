@@ -47,6 +47,7 @@ export function InviteMemberModal({ slug, isOpen, onClose }: InviteMemberModalPr
       setSuccess(`已成功邀請 @${username.trim()}`)
       setUsername('')
       setMessage('')
+      setTimeout(() => handleClose(), 1500)
     } catch {
       setError('系統錯誤，請稍後再試')
     } finally {

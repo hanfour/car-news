@@ -11,6 +11,11 @@ export async function GET(request: NextRequest) {
     }
     const { supabase, userId } = auth
 
+    const searchParams = request.nextUrl.searchParams
+    const limit = Math.min(parseInt(searchParams.get('limit') || '30'), 50)
+    const page = parseInt(searchParams.get('page') || '1')
+    const offset = (page - 1) * limit
+
     // 取得使用者參與的所有對話
     const { data: participations } = await supabase
       .from('conversation_participants')
@@ -18,20 +23,21 @@ export async function GET(request: NextRequest) {
       .eq('user_id', userId)
 
     if (!participations || participations.length === 0) {
-      return NextResponse.json({ conversations: [] })
+      return NextResponse.json({ conversations: [], total: 0 })
     }
 
     const conversationIds = participations.map(p => p.conversation_id)
 
-    // 取得對話資訊
-    const { data: conversations } = await supabase
+    // 取得對話資訊（分頁）
+    const { data: conversations, count } = await supabase
       .from('conversations')
-      .select('*')
+      .select('*', { count: 'exact' })
       .in('id', conversationIds)
       .order('last_message_at', { ascending: false, nullsFirst: false })
+      .range(offset, offset + limit - 1)
 
     if (!conversations || conversations.length === 0) {
-      return NextResponse.json({ conversations: [] })
+      return NextResponse.json({ conversations: [], total: count || 0 })
     }
 
     // 取得所有參與者

@@ -18,6 +18,7 @@ export default function ClubMembersPage() {
   useEffect(() => {
     const fetchClubInfo = async () => {
       try {
+        // Single API call to get club info (includes owner_id)
         const res = await fetch(`/api/clubs/${slug}`)
         if (!res.ok) return
         const { club } = await res.json()
@@ -25,13 +26,6 @@ export default function ClubMembersPage() {
         setClubName(club.name || '')
         if (user) {
           setIsOwner(club.owner_id === user.id)
-          // Check if current user is admin via members
-          const membersRes = await fetch(`/api/clubs/${slug}/members`)
-          if (membersRes.ok) {
-            const { members } = await membersRes.json()
-            const me = members?.find((m: { user_id: string }) => m.user_id === user.id)
-            setIsAdmin(me?.role === 'admin')
-          }
         }
       } catch { /* */ } finally {
         setLoading(false)

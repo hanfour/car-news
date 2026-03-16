@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 interface ForumPost {
   id: string
@@ -25,15 +25,23 @@ export default function AdminForumPage() {
   const [totalPages, setTotalPages] = useState(0)
   const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [filter, setFilter] = useState<FilterType>('all')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null)
+
+  // Debounce search input
+  useEffect(() => {
+    debounceRef.current = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [search])
 
   const fetchPosts = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams({ page: String(page), limit: '20', filter })
-      if (search) params.set('search', search)
+      if (debouncedSearch) params.set('search', debouncedSearch)
 
       const res = await fetch(`/api/admin/forum/posts?${params}`, { credentials: 'include' })
       if (res.ok) {
@@ -45,7 +53,7 @@ export default function AdminForumPage() {
     } catch { /* */ } finally {
       setLoading(false)
     }
-  }, [page, search, filter])
+  }, [page, debouncedSearch, filter])
 
   useEffect(() => { fetchPosts() }, [fetchPosts])
 
@@ -88,16 +96,23 @@ export default function AdminForumPage() {
     if (selected.size === 0) return
     setActionLoading('batch')
     try {
-      await Promise.all(
+      const results = await Promise.allSettled(
         Array.from(selected).map(id =>
           fetch(`/api/admin/forum/posts/${id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify(updates),
+          }).then(res => {
+            if (!res.ok) throw new Error(`Failed for ${id}`)
+            return res
           })
         )
       )
+      const failed = results.filter(r => r.status === 'rejected').length
+      if (failed > 0) {
+        alert(`${results.length - failed} 項成功，${failed} 項失敗`)
+      }
       setSelected(new Set())
       fetchPosts()
     } catch { /* */ } finally {
@@ -139,7 +154,7 @@ export default function AdminForumPage() {
           type="text"
           placeholder="搜尋貼文..."
           value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+          onChange={(e) => { setSearch(e.target.value); if (page !== 1) setPage(1) }}
           className="flex-1 px-3 py-2 bg-slate-800 text-white rounded-lg border border-slate-700 text-sm placeholder-slate-500 outline-none focus:border-[var(--brand-primary)]"
         />
         <div className="flex gap-1">

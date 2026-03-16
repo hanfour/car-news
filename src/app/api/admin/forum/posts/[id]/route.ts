@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/admin/auth'
 import { createServiceClient } from '@/lib/supabase'
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 // PATCH: 管理貼文（pin/lock/approve）
 export async function PATCH(
   request: NextRequest,
@@ -13,6 +15,10 @@ export async function PATCH(
   }
 
   const { id } = await params
+  if (!UUID_RE.test(id)) {
+    return NextResponse.json({ error: '無效的 ID' }, { status: 400 })
+  }
+
   const body = await request.json()
   const supabase = createServiceClient()
 
@@ -52,6 +58,10 @@ export async function DELETE(
   }
 
   const { id } = await params
+  if (!UUID_RE.test(id)) {
+    return NextResponse.json({ error: '無效的 ID' }, { status: 400 })
+  }
+
   const supabase = createServiceClient()
 
   const { error } = await supabase

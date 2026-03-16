@@ -103,7 +103,7 @@ export default function ConversationPage() {
     }
   }, [messages.length])
 
-  // Polling for new messages every 10 seconds
+  // Polling for new messages every 10 seconds (append only, preserve history)
   useEffect(() => {
     if (!session?.access_token) return
     const interval = setInterval(async () => {
@@ -113,7 +113,17 @@ export default function ConversationPage() {
         })
         if (res.ok) {
           const data = await res.json()
-          setMessages(data.messages || [])
+          const newMessages: Message[] = data.messages || []
+          setMessages(prev => {
+            // If we have loaded history (more than latest 50), merge new messages
+            if (prev.length > 50) {
+              const existingIds = new Set(prev.map(m => m.id))
+              const toAppend = newMessages.filter(m => !existingIds.has(m.id))
+              return toAppend.length > 0 ? [...prev, ...toAppend] : prev
+            }
+            // Otherwise safe to replace with latest
+            return newMessages
+          })
         }
         // Mark as read
         fetch(`/api/messages/conversations/${conversationId}/read`, {

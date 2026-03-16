@@ -50,14 +50,12 @@ CREATE POLICY "Participants can view conversations"
     )
   );
 
--- 參與者表：僅參與者可查看
+-- 參與者表：僅同一對話的參與者可查看（避免 self-join，使用子查詢）
 CREATE POLICY "Participants can view conversation_participants"
   ON conversation_participants FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM conversation_participants AS cp
-      WHERE cp.conversation_id = conversation_participants.conversation_id
-        AND cp.user_id = auth.uid()
+    conversation_id IN (
+      SELECT cp.conversation_id FROM conversation_participants cp WHERE cp.user_id = auth.uid()
     )
   );
 
@@ -96,6 +94,11 @@ RETURNS UUID AS $$
 DECLARE
   v_conversation_id UUID;
 BEGIN
+  -- 權限檢查：呼叫者必須是 p_user1
+  IF p_user1 != auth.uid() THEN
+    RAISE EXCEPTION 'Unauthorized: caller must be p_user1';
+  END IF;
+
   -- 找到現有對話
   SELECT cp1.conversation_id INTO v_conversation_id
   FROM conversation_participants cp1
