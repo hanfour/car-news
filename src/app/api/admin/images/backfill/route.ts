@@ -1,31 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
-import { verifySessionToken } from '@/lib/admin/session'
+import { verifyAdminAuth } from '@/lib/admin/auth'
 import { downloadAndStoreImages } from '@/lib/storage/image-downloader'
 import { isLegalImageSource } from '@/config/image-sources'
 
 export const maxDuration = 300 // 5 分鐘
-
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY
-
-async function verifyAuth(request: NextRequest): Promise<boolean> {
-  const authHeader = request.headers.get('authorization')
-  if (authHeader === `Bearer ${ADMIN_API_KEY}`) return true
-
-  const sessionCookie = request.cookies.get('admin_session')
-  if (sessionCookie?.value) {
-    const userId = await verifySessionToken(sessionCookie.value)
-    if (!userId) return false
-    const supabase = createServiceClient()
-    const { data } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', userId)
-      .single()
-    return data?.is_admin === true
-  }
-  return false
-}
 
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -33,15 +12,28 @@ function sleep(ms: number) {
 
 /**
  * 從 HTML 提取圖片 URL（og:image、twitter:image、article img）
+ * @param baseUrl 文章頁面 URL，用於解析相對路徑
  */
-function extractImagesFromHtml(html: string): string[] {
+function extractImagesFromHtml(html: string, baseUrl: string): string[] {
   const images: string[] = []
   const seen = new Set<string>()
 
-  function addImage(url: string) {
-    if (!url || seen.has(url)) return
+  function addImage(rawUrl: string) {
+    if (!rawUrl) return
     // 排除 base64、data URL、svg、tracking pixels
-    if (url.startsWith('data:') || url.endsWith('.svg') || url.includes('pixel') || url.includes('tracking')) return
+    if (rawUrl.startsWith('data:') || rawUrl.endsWith('.svg') || rawUrl.includes('pixel') || rawUrl.includes('tracking')) return
+
+    // 解析相對路徑為絕對 URL
+    let url = rawUrl
+    if (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
+      try {
+        url = new URL(rawUrl, baseUrl).href
+      } catch {
+        return // 無法解析的 URL，跳過
+      }
+    }
+
+    if (seen.has(url)) return
     seen.add(url)
     images.push(url)
   }
@@ -58,8 +50,8 @@ function extractImagesFromHtml(html: string): string[] {
   const twMatches2 = html.matchAll(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/gi)
   for (const m of twMatches2) addImage(m[1])
 
-  // 文章內 <img> tags（限制前 10 個）
-  const imgMatches = html.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)
+  // 文章內 <img> tags（限制前 10 個，含 lazy-load data-src）
+  const imgMatches = html.matchAll(/<img[^>]+(?:src|data-src|data-lazy-src)=["']([^"']+)["']/gi)
   let imgCount = 0
   for (const m of imgMatches) {
     if (imgCount >= 10) break
@@ -124,7 +116,7 @@ interface BackfillDetail {
 
 // POST /api/admin/images/backfill
 export async function POST(request: NextRequest) {
-  if (!(await verifyAuth(request))) {
+  if (!(await verifyAdminAuth(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -151,6 +143,7 @@ export async function POST(request: NextRequest) {
     .select('id, title_zh, source_urls, images, brands')
     .eq('published', true)
     .order('created_at', { ascending: false })
+    .limit(200)
 
   if (articleIds && articleIds.length > 0) {
     query = query.in('id', articleIds)
@@ -221,7 +214,7 @@ export async function POST(request: NextRequest) {
       for (let j = 0; j < sourceUrls.length; j++) {
         const html = await fetchArticleHtml(sourceUrls[j])
         if (html) {
-          const images = extractImagesFromHtml(html)
+          const images = extractImagesFromHtml(html, sourceUrls[j])
           allFoundImages.push(...images)
         }
 

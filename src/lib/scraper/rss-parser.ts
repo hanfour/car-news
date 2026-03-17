@@ -21,6 +21,8 @@ export async function parseRSSFeed(source: NewsSource): Promise<ScrapedArticle[]
   try {
     const feed = await parser.parseURL(source.url)
     const articles: ScrapedArticle[] = []
+    let ogFetchCount = 0
+    const MAX_OG_FETCHES = 10 // 每個 feed 最多 fetch 10 個文章頁面
 
     for (const item of feed.items) {
       if (!item.link || !item.title) continue
@@ -58,8 +60,9 @@ export async function parseRSSFeed(source: NewsSource): Promise<ScrapedArticle[]
         }
       }
 
-      // 方法3: fetch 文章頁面 HTML，提取 og:image / twitter:image
-      if (!imageUrl && item.link) {
+      // 方法3: fetch 文章頁面 HTML，提取 og:image / twitter:image（每 feed 上限 10 次）
+      if (!imageUrl && item.link && ogFetchCount < MAX_OG_FETCHES) {
+        ogFetchCount++
         try {
           imageUrl = await fetchOgImage(item.link)
         } catch {
