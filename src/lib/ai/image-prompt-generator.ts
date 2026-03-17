@@ -314,13 +314,29 @@ export async function analyzeMultipleImagesWithGemini(
     const imagesToAnalyze = imageUrls.slice(0, 3)
     const imageParts: Array<{ inlineData: { mimeType: string; data: string } }> = []
 
+    const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5MB per image
+
     for (const url of imagesToAnalyze) {
       try {
         const response = await fetch(url, { signal: AbortSignal.timeout(8000) })
         if (!response.ok) continue
 
+        // 檢查圖片大小，避免記憶體爆炸
+        const contentLength = parseInt(response.headers.get('content-length') || '0')
+        if (contentLength > MAX_IMAGE_SIZE) {
+          console.warn(`⚠ Skipping large image (${(contentLength / 1024 / 1024).toFixed(1)}MB): ${url.slice(0, 60)}...`)
+          continue
+        }
+
         const contentType = response.headers.get('content-type') || 'image/jpeg'
         const buffer = await response.arrayBuffer()
+
+        // 雙重檢查：content-length 可能不準確
+        if (buffer.byteLength > MAX_IMAGE_SIZE) {
+          console.warn(`⚠ Skipping large image (${(buffer.byteLength / 1024 / 1024).toFixed(1)}MB actual): ${url.slice(0, 60)}...`)
+          continue
+        }
+
         const base64 = Buffer.from(buffer).toString('base64')
 
         imageParts.push({

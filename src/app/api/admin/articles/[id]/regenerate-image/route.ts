@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { verifySessionToken } from '@/lib/admin/session'
-import { generateCoverImage, generateAndSaveCoverImage, ImageProvider } from '@/lib/ai/image-generation'
+import { generateCoverImage, generateAndSaveCoverImage } from '@/lib/ai/image-generation'
 import { generateWithFlux, generateWithFluxSchnell, buildFluxPrompt } from '@/lib/ai/flux-image-generation'
 import { generateImagePromptFromArticle } from '@/lib/ai/image-prompt-generator'
 import { uploadImageFromUrl } from '@/lib/storage/image-uploader'

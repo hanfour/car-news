@@ -11,6 +11,7 @@ export interface RawArticle {
   embedding: number[]
   image_url?: string
   image_credit?: string
+  source_images?: Array<{ url: string; highResUrl?: string; credit?: string; caption?: string }>
 }
 
 export interface GeneratedArticle {

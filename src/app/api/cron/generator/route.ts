@@ -347,12 +347,12 @@ async function handleCronJob(request: NextRequest) {
             })
 
             // 從 source_images JSONB 欄位收集額外的官方圖片
-            const rawSourceImages = (article as { source_images?: Array<{ url: string; highResUrl?: string; credit?: string; caption?: string }> }).source_images
+            const rawSourceImages = article.source_images
             if (rawSourceImages && Array.isArray(rawSourceImages) && rawSourceImages.length > 0) {
               for (const img of rawSourceImages) {
                 const imgUrl = img.highResUrl || img.url
-                // 避免重複加入已有的 image_url
-                if (imgUrl && imgUrl !== article.image_url) {
+                // 避免重複加入已有的 image_url 或已收集的圖片
+                if (imgUrl && imgUrl !== article.image_url && !sourceImages.some(s => s.url === imgUrl)) {
                   sourceImages.push({
                     url: imgUrl,
                     credit: img.credit || article.image_credit || 'Unknown',
