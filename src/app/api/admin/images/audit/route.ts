@@ -39,13 +39,30 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServiceClient()
 
-  // Get all published articles with cover images, excluding already-audited ones
-  const { data: articles, error: fetchError } = await supabase
+  // Parse optional body for articleIds filter and force mode
+  let filterIds: string[] | null = null
+  let force = false
+  try {
+    const body = await request.json()
+    if (Array.isArray(body.articleIds)) filterIds = body.articleIds
+    if (body.force === true) force = true
+  } catch {
+    // No body or parse error — audit all
+  }
+
+  // Get published articles with cover images
+  let query = supabase
     .from('generated_articles')
     .select('id, title_zh, cover_image, image_credit')
     .eq('published', true)
     .not('cover_image', 'is', null)
     .order('created_at', { ascending: true })
+
+  if (filterIds && filterIds.length > 0) {
+    query = query.in('id', filterIds)
+  }
+
+  const { data: articles, error: fetchError } = await query
 
   if (fetchError) {
     return NextResponse.json({ error: fetchError.message }, { status: 500 })
@@ -55,13 +72,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'No published articles with cover images found' })
   }
 
-  // Check which articles already have audit records
-  const { data: existingAudits } = await supabase
-    .from('image_audit')
-    .select('article_id')
+  // Exclude already-audited unless force=true
+  let toAudit = articles
+  if (!force) {
+    const { data: existingAudits } = await supabase
+      .from('image_audit')
+      .select('article_id')
 
-  const auditedIds = new Set((existingAudits || []).map(a => a.article_id))
-  const toAudit = articles.filter(a => !auditedIds.has(a.id))
+    const auditedIds = new Set((existingAudits || []).map(a => a.article_id))
+    toAudit = articles.filter(a => !auditedIds.has(a.id))
+  }
 
   if (toAudit.length === 0) {
     return NextResponse.json({ message: 'All published articles already audited', total: articles.length })
