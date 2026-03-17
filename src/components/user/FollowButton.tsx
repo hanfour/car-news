@@ -15,22 +15,20 @@ export function FollowButton({ targetUsername, targetUserId, className = '' }: F
   const [loading, setLoading] = useState(false)
   const [checked, setChecked] = useState(false)
 
-  // 不能追蹤自己
-  if (user?.id === targetUserId) return null
+  const isSelf = user?.id === targetUserId
 
   // 檢查是否已追蹤
   useEffect(() => {
-    if (!session?.access_token || !user) return
+    if (!session?.access_token || !user || isSelf) return
 
     const checkFollow = async () => {
       try {
-        const res = await fetch(`/api/user/${targetUsername}/followers?limit=1`, {
+        const res = await fetch(`/api/user/${targetUsername}/follow`, {
           headers: { Authorization: `Bearer ${session.access_token}` },
         })
         if (res.ok) {
           const data = await res.json()
-          const isFollowed = data.users?.some((u: { id: string }) => u.id === user.id)
-          setIsFollowing(!!isFollowed)
+          setIsFollowing(data.isFollowing)
         }
       } catch {
         // Silently fail
@@ -39,7 +37,9 @@ export function FollowButton({ targetUsername, targetUserId, className = '' }: F
       }
     }
     checkFollow()
-  }, [session?.access_token, targetUsername, user])
+  }, [session?.access_token, targetUsername, user, isSelf])
+
+  if (isSelf || !user || !checked) return null
 
   const handleToggle = async () => {
     if (!session?.access_token) return
@@ -60,8 +60,6 @@ export function FollowButton({ targetUsername, targetUserId, className = '' }: F
       setLoading(false)
     }
   }
-
-  if (!user || !checked) return null
 
   return (
     <button

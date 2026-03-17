@@ -1,9 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function AccountSettingsPage() {
   const { user, signOut } = useAuth()
+  const [showDeleteInfo, setShowDeleteInfo] = useState(false)
 
   return (
     <div className="space-y-6">
@@ -44,10 +46,27 @@ export default function AccountSettingsPage() {
             <button
               className="px-4 py-2 text-sm rounded-lg border transition-colors hover:bg-red-50"
               style={{ borderColor: 'var(--brand-red)', color: 'var(--brand-red)' }}
-              onClick={() => alert('如需刪除帳號，請聯繫客服')}
+              onClick={() => setShowDeleteInfo(true)}
             >
               刪除帳號
             </button>
+            {showDeleteInfo && (
+              <div className="mt-3 p-3 rounded-lg bg-red-50 border" style={{ borderColor: 'var(--brand-red)' }}>
+                <p className="text-sm mb-1" style={{ color: 'var(--text-primary)' }}>
+                  如需刪除帳號，請來信至以下信箱：
+                </p>
+                <a
+                  href="mailto:support@wantcar.autos"
+                  className="text-sm font-medium underline"
+                  style={{ color: 'var(--brand-primary)' }}
+                >
+                  support@wantcar.autos
+                </a>
+                <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>
+                  請在信件中提供您的註冊 Email，我們將在 3 個工作天內處理。
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { LoadingCenter } from '@/components/shared/LoadingSpinner'
 import { Avatar } from '@/components/shared/Avatar'
@@ -16,15 +16,32 @@ export default function PrivacySettingsPage() {
   const [saving, setSaving] = useState(false)
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([])
   const [loadingBlocks, setLoadingBlocks] = useState(true)
+  const [unblocking, setUnblocking] = useState<string | null>(null)
 
   useEffect(() => {
     setIsFavoritesPublic(profile?.is_favorites_public ?? true)
   }, [profile])
 
+  const fetchBlocks = useCallback(async () => {
+    if (!session?.access_token) return
+    try {
+      const res = await fetch('/api/user/blocks', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setBlockedUsers(data.blocks || [])
+      }
+    } catch {
+      // Silently fail
+    } finally {
+      setLoadingBlocks(false)
+    }
+  }, [session?.access_token])
+
   useEffect(() => {
-    // For now, blocked users is a placeholder since we need to implement the API
-    setLoadingBlocks(false)
-  }, [])
+    fetchBlocks()
+  }, [fetchBlocks])
 
   const handleFavoritesToggle = async () => {
     if (!session?.access_token) return
@@ -40,6 +57,25 @@ export default function PrivacySettingsPage() {
         refreshProfile()
       }
     } catch { /* */ } finally { setSaving(false) }
+  }
+
+  const handleUnblock = async (bu: BlockedUser) => {
+    if (!session?.access_token) return
+    const username = bu.profile?.username || bu.blocked_id
+    setUnblocking(bu.blocked_id)
+    try {
+      const res = await fetch(`/api/user/${username}/block`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      if (res.ok) {
+        setBlockedUsers(prev => prev.filter(b => b.blocked_id !== bu.blocked_id))
+      }
+    } catch {
+      // Silently fail
+    } finally {
+      setUnblocking(null)
+    }
   }
 
   return (
@@ -82,11 +118,16 @@ export default function PrivacySettingsPage() {
                 <div className="flex items-center gap-3">
                   <Avatar src={bu.profile?.avatar_url} name={bu.profile?.display_name} size={32} />
                   <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
-                    {bu.profile?.display_name || '匿名'}
+                    {bu.profile?.display_name || bu.profile?.username || '匿名'}
                   </span>
                 </div>
-                <button className="text-xs px-3 py-1 rounded border hover:bg-gray-50 transition-colors" style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}>
-                  解除封鎖
+                <button
+                  onClick={() => handleUnblock(bu)}
+                  disabled={unblocking === bu.blocked_id}
+                  className="text-xs px-3 py-1 rounded border hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
+                >
+                  {unblocking === bu.blocked_id ? '...' : '解除封鎖'}
                 </button>
               </div>
             ))}
