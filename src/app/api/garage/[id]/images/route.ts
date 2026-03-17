@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { uploadToR2, deleteFromR2 } from '@/lib/storage/r2-client'
 import { getErrorMessage } from '@/lib/utils/error'
+import { rateLimit } from '@/lib/rate-limit'
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_SIZE = 5 * 1024 * 1024 // 5MB
@@ -19,6 +20,11 @@ export async function POST(
       return NextResponse.json({ error: '請先登入' }, { status: 401 })
     }
     const { supabase, userId } = auth
+
+    const rl = rateLimit(`garage-image:${userId}`, { maxRequests: 20, windowMs: 60_000 })
+    if (!rl.allowed) {
+      return NextResponse.json({ error: '操作過於頻繁，請稍後再試' }, { status: 429 })
+    }
 
     // 驗證車輛所有權
     const { data: car, error: carError } = await supabase
@@ -84,7 +90,20 @@ export async function POST(
         return NextResponse.json({ error: '更新失敗' }, { status: 500 })
       }
     } else {
-      const newImages = [...currentImages, publicUrl]
+      // Re-read images to avoid race condition with concurrent uploads
+      const { data: freshCar } = await supabase
+        .from('user_cars')
+        .select('images')
+        .eq('id', carId)
+        .eq('user_id', userId)
+        .single()
+
+      const freshImages: string[] = freshCar?.images || []
+      if (freshImages.length >= MAX_GALLERY) {
+        return NextResponse.json({ error: `相簿最多 ${MAX_GALLERY} 張圖片` }, { status: 400 })
+      }
+
+      const newImages = [...freshImages, publicUrl]
       const { error: updateError } = await supabase
         .from('user_cars')
         .update({ images: newImages, updated_at: new Date().toISOString() })
@@ -134,9 +153,9 @@ export async function DELETE(
     }
 
     // 從 R2 刪除 — 從 URL 提取 key（R2_PUBLIC_URL 後面的部分）
-    const r2PublicUrl = process.env.R2_PUBLIC_URL || ''
-    if (url.startsWith(r2PublicUrl) && r2PublicUrl) {
-      const key = url.slice(r2PublicUrl.length + 1) // +1 for the "/"
+    const r2PublicUrl = (process.env.R2_PUBLIC_URL || '').replace(/\/+$/, '')
+    if (r2PublicUrl && url.startsWith(r2PublicUrl)) {
+      const key = url.slice(r2PublicUrl.length + 1)
       await deleteFromR2(key)
     }
 

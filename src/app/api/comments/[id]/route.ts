@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { moderateComment } from '@/lib/ai/claude'
 import { getErrorMessage } from '@/lib/utils/error'
+import { rateLimit } from '@/lib/rate-limit'
 
 // PATCH: 編輯評論（僅作者可操作）
 export async function PATCH(
@@ -15,6 +16,11 @@ export async function PATCH(
       return NextResponse.json({ error: '請先登入' }, { status: 401 })
     }
     const { supabase, userId } = auth
+
+    const rl = rateLimit(`comment-edit:${userId}`, { maxRequests: 10, windowMs: 60_000 })
+    if (!rl.allowed) {
+      return NextResponse.json({ error: '操作過於頻繁，請稍後再試' }, { status: 429 })
+    }
 
     const body = await request.json()
     const { content } = body
@@ -72,6 +78,11 @@ export async function DELETE(
       return NextResponse.json({ error: '請先登入' }, { status: 401 })
     }
     const { supabase, userId } = auth
+
+    const rl = rateLimit(`comment-delete:${userId}`, { maxRequests: 10, windowMs: 60_000 })
+    if (!rl.allowed) {
+      return NextResponse.json({ error: '操作過於頻繁，請稍後再試' }, { status: 429 })
+    }
 
     const { data, error } = await supabase
       .from('comments')

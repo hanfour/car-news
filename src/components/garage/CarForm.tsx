@@ -234,10 +234,10 @@ export function CarForm({ initialData }: CarFormProps) {
               相簿（最多 {10} 張，已上傳 {galleryImages.length} 張）
             </label>
             <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-              {galleryImages.map((img, i) => (
-                <div key={i} className="relative group aspect-square rounded-lg overflow-hidden border" style={{ borderColor: 'var(--border-color)' }}>
+              {galleryImages.map((img) => (
+                <div key={img} className="relative group aspect-square rounded-lg overflow-hidden border" style={{ borderColor: 'var(--border-color)' }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img} alt={`相簿 ${i + 1}`} className="w-full h-full object-cover" />
+                  <img src={img} alt="相簿圖片" className="w-full h-full object-cover" />
                   <button
                     type="button"
                     onClick={() => handleImageDelete(img, 'gallery')}

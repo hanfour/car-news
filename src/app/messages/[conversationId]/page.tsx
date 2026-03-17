@@ -136,7 +136,7 @@ export default function ConversationPage() {
   }, [session?.access_token, conversationId])
 
   const handleDeleteMessage = async (messageId: string) => {
-    if (!session?.access_token) return
+    if (!session?.access_token || !confirm('確定要刪除這則訊息嗎？')) return
     try {
       const res = await fetch(`/api/messages/conversations/${conversationId}/messages`, {
         method: 'DELETE',

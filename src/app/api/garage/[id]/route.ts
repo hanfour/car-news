@@ -56,7 +56,7 @@ export async function PATCH(
     const { supabase, userId } = auth
 
     const body = await request.json()
-    const allowedFields = ['brand', 'model', 'year', 'trim_level', 'color', 'nickname', 'description', 'purchase_date', 'mileage', 'is_primary', 'is_public', 'cover_image', 'images']
+    const allowedFields = ['brand', 'model', 'year', 'trim_level', 'color', 'nickname', 'description', 'purchase_date', 'mileage', 'is_primary', 'is_public']
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
 
     for (const field of allowedFields) {
