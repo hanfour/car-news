@@ -33,8 +33,8 @@ export default function FollowersPage() {
           setUsers(data.users)
           setTotalPages(data.totalPages)
         }
-      } catch {
-        // Silently fail
+      } catch (err) {
+        console.error('[FollowersPage] fetchFollowers:', err)
       } finally {
         setLoading(false)
       }

@@ -33,8 +33,8 @@ export function ForumNewPostForm() {
           const data = await res.json()
           setCategories(data.categories)
         }
-      } catch {
-        // Silently fail
+      } catch (err) {
+        console.error('[ForumNewPostForm] fetchCategories:', err)
       }
     }
     fetchCategories()

@@ -26,7 +26,7 @@ export default function MyGaragePage() {
           const data = await res.json()
           setCars(data.cars)
         }
-      } catch { /* */ } finally { setLoading(false) }
+      } catch (err) { console.error('[MyGaragePage] fetchCars:', err) } finally { setLoading(false) }
     }
     fetchCars()
   }, [session?.access_token])

@@ -40,7 +40,7 @@ export default function MessagesPage() {
           const data = await res.json()
           setConversations(data.conversations || [])
         }
-      } catch { /* */ } finally {
+      } catch (err) { console.error('[MessagesPage] fetchConversations:', err) } finally {
         setLoading(false)
       }
     }

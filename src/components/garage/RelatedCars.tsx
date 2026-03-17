@@ -32,7 +32,7 @@ export function RelatedCars({ carId, brand, model }: RelatedCarsProps) {
           const data = await res.json()
           setCars(data.cars || [])
         }
-      } catch { /* */ }
+      } catch (err) { console.error('[RelatedCars] fetchRelated:', err) }
     }
     fetchRelated()
   }, [carId])

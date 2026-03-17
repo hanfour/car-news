@@ -32,7 +32,7 @@ export function ClubPostComposer({ slug, onPostCreated }: ClubPostComposerProps)
         setExpanded(false)
         onPostCreated()
       }
-    } catch { /* */ } finally {
+    } catch (err) { console.error('[ClubPostComposer] handlePost:', err) } finally {
       setPosting(false)
     }
   }

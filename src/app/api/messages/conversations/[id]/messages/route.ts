@@ -114,7 +114,50 @@ export async function POST(
     }
 
     return NextResponse.json({ message })
-  } catch {
+  } catch (err) {
+    console.error('[Messages POST]:', err)
+    return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
+  }
+}
+
+// DELETE: 刪除訊息（軟刪除，僅發送者可操作）
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const auth = await createAuthenticatedClient(request)
+    if (!auth) {
+      return NextResponse.json({ error: '請先登入' }, { status: 401 })
+    }
+    const { supabase, userId } = auth
+    const { id } = await params
+    if (!UUID_RE.test(id)) {
+      return NextResponse.json({ error: '無效的 ID' }, { status: 400 })
+    }
+
+    const { message_id } = await request.json()
+    if (!message_id || !UUID_RE.test(message_id)) {
+      return NextResponse.json({ error: '無效的訊息 ID' }, { status: 400 })
+    }
+
+    const { data, error } = await supabase
+      .from('messages')
+      .update({ is_deleted: true })
+      .eq('id', message_id)
+      .eq('conversation_id', id)
+      .eq('sender_id', userId)
+      .eq('is_deleted', false)
+      .select('id')
+      .single()
+
+    if (error || !data) {
+      return NextResponse.json({ error: '刪除失敗' }, { status: 404 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (err) {
+    console.error('[Messages DELETE]:', err)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }

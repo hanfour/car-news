@@ -35,7 +35,7 @@ export function ClubMemberList({ slug, isOwner, isAdmin: isAdminProp }: ClubMemb
         const data = await res.json()
         setMembers(data.members || [])
       }
-    } catch { /* */ } finally {
+    } catch (err) { console.error('[ClubMemberList] fetchMembers:', err) } finally {
       setLoading(false)
     }
   }, [slug])
@@ -55,7 +55,7 @@ export function ClubMemberList({ slug, isOwner, isAdmin: isAdminProp }: ClubMemb
         body: JSON.stringify({ role: newRole }),
       })
       if (res.ok) fetchMembers()
-    } catch { /* */ }
+    } catch (err) { console.error('[ClubMemberList] handleRoleChange:', err) }
   }
 
   const handleKick = async (userId: string) => {
@@ -67,7 +67,7 @@ export function ClubMemberList({ slug, isOwner, isAdmin: isAdminProp }: ClubMemb
         body: JSON.stringify({ status: 'kicked' }),
       })
       if (res.ok) fetchMembers()
-    } catch { /* */ }
+    } catch (err) { console.error('[ClubMemberList] handleKick:', err) }
   }
 
   if (loading) return <LoadingCenter />
