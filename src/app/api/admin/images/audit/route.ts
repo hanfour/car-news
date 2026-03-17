@@ -4,6 +4,8 @@ import { verifySessionToken } from '@/lib/admin/session'
 import { scoreImage } from '@/lib/experiments/scorer'
 import { ImageScoreDimensions } from '@/lib/experiments/types'
 
+export const maxDuration = 300 // 5 分鐘
+
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY
 
 async function verifyAuth(request: NextRequest): Promise<boolean> {
