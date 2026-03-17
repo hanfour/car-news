@@ -71,7 +71,8 @@ export async function generateCoverImage(
   title: string,
   content: string,
   brands?: string[],
-  provider: ImageProvider = 'auto'
+  provider: ImageProvider = 'auto',
+  qualityBoost?: boolean
 ): Promise<ImageGenerationResult | null> {
   try {
     // 讀取 DB 中 promoted 的最佳參數（有快取，10 分鐘 TTL）
@@ -94,7 +95,7 @@ export async function generateCoverImage(
       console.log('→ Step 2: Generating cover image with Flux (fal.ai)...')
       console.log(`   Cost: ~$0.008 per image`)
 
-      const fluxPrompt = buildFluxPrompt(promptResult.fullPrompt, title, brands?.[0])
+      const fluxPrompt = buildFluxPrompt(promptResult.fullPrompt, title, brands?.[0], undefined, qualityBoost)
       const fluxResult = await generateWithFlux(fluxPrompt, {
         guidanceScale: promoted?.guidance_scale,
         numInferenceSteps: promoted?.num_inference_steps,

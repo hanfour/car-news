@@ -26,6 +26,11 @@ export default function ArticleEditPage() {
   const [imageCredit, setImageCredit] = useState('Source: Web')
   const [generationMethod, setGenerationMethod] = useState<'auto' | 'flux-dev' | 'flux-schnell' | 'dalle' | 'flux-img2img'>('auto')
 
+  const [auditData, setAuditData] = useState<{
+    composite_score: number
+    scores: Record<string, number>
+  } | null>(null)
+
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean; title: string; message: string; onConfirm: () => void
   }>({ open: false, title: '', message: '', onConfirm: () => {} })
@@ -49,6 +54,15 @@ export default function ArticleEditPage() {
   }, [id, router, showToast])
 
   useEffect(() => { fetchArticle() }, [fetchArticle])
+
+  // Fetch audit data
+  useEffect(() => {
+    if (!id) return
+    fetch(`/api/admin/images/audit/${id}`, { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => { if (data.audit) setAuditData(data.audit) })
+      .catch(() => {})
+  }, [id])
 
   // Cmd+S / Ctrl+S
   useEffect(() => {
@@ -364,6 +378,54 @@ export default function ArticleEditPage() {
               </button>
             </div>
           </div>
+
+          {/* Image Quality Audit */}
+          {auditData && (
+            <div className="admin-card p-4">
+              <h3 className="text-xs font-medium text-slate-400 mb-3">Image Quality</h3>
+              <div className="flex items-center gap-2 mb-3">
+                <span className={`text-2xl font-bold ${
+                  auditData.composite_score >= 7.0 ? 'text-green-400' : auditData.composite_score >= 5.0 ? 'text-yellow-400' : 'text-red-400'
+                }`}>
+                  {auditData.composite_score}
+                </span>
+                <span className="text-xs text-slate-500">/ 10</span>
+                {auditData.composite_score < 7.0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-900/50 text-red-300">Recommend Regeneration</span>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                {(
+                  [
+                    { key: 'vehicleAccuracy', label: 'Vehicle', weight: '30%' },
+                    { key: 'detailFidelity', label: 'Detail', weight: '20%' },
+                    { key: 'composition', label: 'Composition', weight: '15%' },
+                    { key: 'mood', label: 'Mood', weight: '10%' },
+                    { key: 'technicalQuality', label: 'Technical', weight: '15%' },
+                    { key: 'editorialFit', label: 'Editorial', weight: '10%' },
+                  ] as const
+                ).map(({ key, label, weight }) => {
+                  const score = auditData.scores[key] ?? 0
+                  return (
+                    <div key={key}>
+                      <div className="flex justify-between text-[10px] mb-0.5">
+                        <span className="text-slate-400">{label} <span className="text-slate-600">({weight})</span></span>
+                        <span className={score < 7.0 ? 'text-red-400' : 'text-slate-300'}>{score}</span>
+                      </div>
+                      <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            score >= 7.0 ? 'bg-green-500' : score >= 5.0 ? 'bg-yellow-500' : 'bg-red-500'
+                          }`}
+                          style={{ width: `${Math.min(score * 10, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Metadata */}
           <div className="admin-card p-4">

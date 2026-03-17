@@ -219,7 +219,8 @@ export function buildFluxPrompt(
   fullPrompt: string,
   title?: string,
   brand?: string,
-  scene?: SceneType
+  scene?: SceneType,
+  qualityBoost?: boolean
 ): string {
   const carModel = title ? extractCarModel(title, brand) : null
   const visualDesc = carModel ? getVehicleVisualDescription(carModel) : null
@@ -246,6 +247,17 @@ export function buildFluxPrompt(
   // 視覺描述放尾端（suffix position — 優化實驗 exp-20260316-0rb 結果）
   if (vehiclePart) {
     prompt += ` ${vehiclePart}`
+  }
+
+  // qualityBoost: inject enhanced quality directives for regeneration
+  if (qualityBoost) {
+    prompt += ' Centered hero shot, rule of thirds composition, clean uncluttered background.'
+    prompt += ' 8K ultra-detailed, studio-grade three-point lighting, photorealistic rendering, zero AI artifacts.'
+    // Reinforce vehicle visual description for quality boost
+    if (visualDesc) {
+      const keyFeatures = visualDesc.split(',').slice(0, 3).join(',')
+      prompt += ` ${keyFeatures}.`
+    }
   }
 
   // 末尾品質標籤
