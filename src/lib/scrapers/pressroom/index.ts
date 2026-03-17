@@ -129,6 +129,16 @@ async function saveArticlesToDatabase(articles: PressroomArticle[]): Promise<num
       // 選擇最佳圖片
       const bestImage = article.featuredImage || article.images[0]
 
+      // 多圖保存：若有超過 1 張圖片，存入完整圖片陣列
+      const sourceImages = article.images.length > 1
+        ? article.images.map(img => ({
+            url: img.url,
+            highResUrl: img.highResUrl || null,
+            caption: img.caption || null,
+            credit: img.credit || `${article.brand} Official`,
+          }))
+        : []
+
       const { error } = await supabase
         .from('raw_articles')
         .upsert({
@@ -142,6 +152,7 @@ async function saveArticlesToDatabase(articles: PressroomArticle[]): Promise<num
           embedding: null,
           image_url: bestImage?.highResUrl || bestImage?.url || null,
           image_credit: bestImage?.credit || `${article.brand} Official`,
+          source_images: sourceImages,
         }, {
           onConflict: 'url'
         })

@@ -163,6 +163,54 @@ export async function generateWithFluxSchnell(
   }
 }
 
+// ============================================================
+// 場景輪換系統
+// ============================================================
+
+export type SceneType = 'auto_show' | 'studio' | 'city_street' | 'mountain_road'
+
+export const SCENE_PROMPTS: Record<SceneType, string> = {
+  auto_show: 'displayed at a modern international auto show, bright exhibition hall lighting, polished floor reflections, show stage with dramatic spotlights',
+  studio: 'professional studio lighting, clean gradient background, dramatic rim lighting highlighting body lines, controlled studio environment',
+  city_street: 'parked on a sleek urban city street at golden hour, modern architecture backdrop, warm sunset reflections on bodywork, cinematic city atmosphere',
+  mountain_road: 'on a scenic mountain road with sweeping curves, dramatic landscape backdrop, adventure setting with natural lighting, alpine environment',
+}
+
+/**
+ * 根據車輛類型選擇最佳場景
+ * SUV → 山路優先、跑車 → 城市優先、豪華 → 攝影棚優先，其餘依 seed 輪換
+ */
+export function selectScene(vehicleType: string, seed?: number): SceneType {
+  const vt = vehicleType.toLowerCase()
+
+  // SUV / 越野 → 山路
+  if (vt.includes('suv') || vt.includes('off-road') || vt.includes('pickup') || vt.includes('truck')) {
+    return 'mountain_road'
+  }
+
+  // 跑車 / 性能車 → 城市街道
+  if (vt.includes('sports') || vt.includes('coupe') || vt.includes('roadster') || vt.includes('convertible') || vt.includes('supercar')) {
+    return 'city_street'
+  }
+
+  // 豪華 / 旗艦 → 攝影棚
+  if (vt.includes('luxury') || vt.includes('sedan') || vt.includes('limousine') || vt.includes('flagship')) {
+    return 'studio'
+  }
+
+  // 其餘車型：基於 seed 輪換（使用 title hash 確保同 run 不同文章分配不同場景）
+  const scenes: SceneType[] = ['auto_show', 'studio', 'city_street', 'mountain_road']
+  if (seed != null) {
+    return scenes[Math.abs(seed) % scenes.length]
+  }
+  // fallback: 用 vehicleType 字串做簡單 hash
+  let hash = 0
+  for (let i = 0; i < vehicleType.length; i++) {
+    hash = ((hash << 5) - hash + vehicleType.charCodeAt(i)) | 0
+  }
+  return scenes[Math.abs(hash) % scenes.length]
+}
+
 /**
  * 為汽車新聞優化的 Flux prompt
  * 將 Gemini 生成的 prompt 強化車款外觀描述
@@ -170,7 +218,8 @@ export async function generateWithFluxSchnell(
 export function buildFluxPrompt(
   fullPrompt: string,
   title?: string,
-  brand?: string
+  brand?: string,
+  scene?: SceneType
 ): string {
   const carModel = title ? extractCarModel(title, brand) : null
   const visualDesc = carModel ? getVehicleVisualDescription(carModel) : null
@@ -188,6 +237,11 @@ export function buildFluxPrompt(
 
   // Gemini 的 fullPrompt 已經包含 "Professional automotive photography."
   let prompt = fullPrompt
+
+  // 注入場景描述（替換 Gemini 生成的通用 studio 描述）
+  if (scene && SCENE_PROMPTS[scene]) {
+    prompt += ` ${SCENE_PROMPTS[scene]}.`
+  }
 
   // 視覺描述放尾端（suffix position — 優化實驗 exp-20260316-0rb 結果）
   if (vehiclePart) {
@@ -208,7 +262,8 @@ export function buildFluxPrompt(
 export function buildImg2ImgPrompt(
   title: string,
   brand?: string,
-  vehicleDescription?: string
+  vehicleDescription?: string,
+  scene?: SceneType
 ): string {
   const carModel = extractCarModel(title, brand)
   const visualDesc = carModel ? getVehicleVisualDescription(carModel) : null
@@ -231,7 +286,14 @@ export function buildImg2ImgPrompt(
 
   prompt += 'maintaining original vehicle design proportions and styling, '
   prompt += 'same body shape and distinctive features, '
-  prompt += 'professional studio lighting, clean background, '
+
+  // 使用場景描述替代硬編碼的 studio 文字
+  if (scene && SCENE_PROMPTS[scene]) {
+    prompt += `${SCENE_PROMPTS[scene]}, `
+  } else {
+    prompt += 'professional studio lighting, clean background, '
+  }
+
   prompt += 'sharp focus on vehicle details, editorial quality, '
   prompt += 'no text, no watermarks, no logos.'
 

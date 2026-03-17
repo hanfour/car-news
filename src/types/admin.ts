@@ -17,6 +17,7 @@ export interface Article {
   tags: string[] | null
   image_credit: string | null
   source_urls: string[] | null
+  images: Array<{ url: string; caption?: string; credit?: string; size?: number }> | null
   view_count: number
 }
 

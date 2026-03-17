@@ -7,8 +7,8 @@
 
 import OpenAI from 'openai'
 import { getErrorMessage } from '@/lib/utils/error'
-import { generateImagePromptFromArticle } from './image-prompt-generator'
-import { generateWithFlux, generateWithFluxImg2Img, buildFluxPrompt, buildImg2ImgPrompt } from './flux-image-generation'
+import { generateImagePromptFromArticle, analyzeMultipleImagesWithGemini } from './image-prompt-generator'
+import { generateWithFlux, generateWithFluxImg2Img, buildFluxPrompt, buildImg2ImgPrompt, selectScene } from './flux-image-generation'
 import type { ExperimentParams } from '@/lib/experiments/types'
 
 // ============================================================
@@ -202,8 +202,23 @@ export async function generateAndSaveCoverImage(
         // 使用 Gemini 分析文章生成車輛描述
         const promptResult = await generateImagePromptFromArticle(title, content, brands)
 
-        // 為 img2img 建立專用 prompt，包含具體車款名稱
-        const img2imgPrompt = buildImg2ImgPrompt(title, brands?.[0], promptResult.vehicleType)
+        // 多圖分析：提取跨圖片的車輛外觀特徵
+        let multiImageDescription: string | undefined
+        if (referenceImages.length >= 2) {
+          const imageUrls = referenceImages.map(r => r.url).filter(Boolean)
+          const analysis = await analyzeMultipleImagesWithGemini(imageUrls, title)
+          if (analysis) {
+            multiImageDescription = analysis
+          }
+        }
+
+        // 選擇適合的場景
+        const scene = selectScene(promptResult.vehicleType)
+        console.log(`   Scene: ${scene}`)
+
+        // 為 img2img 建立專用 prompt，包含多圖特徵 + 場景
+        const vehicleDesc = multiImageDescription || promptResult.vehicleType
+        const img2imgPrompt = buildImg2ImgPrompt(title, brands?.[0], vehicleDesc, scene)
         console.log(`   Img2Img Prompt: ${img2imgPrompt.slice(0, 100)}...`)
 
         const img2imgResult = await generateWithFluxImg2Img(
