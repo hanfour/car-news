@@ -36,8 +36,8 @@ export default function CommunityPage() {
           const data = await res.json()
           setCategories(data.categories)
         }
-      } catch {
-        // Silently fail
+      } catch (err) {
+        console.error('[CommunityPage] fetchCategories:', err)
       }
     }
     fetchCategories()

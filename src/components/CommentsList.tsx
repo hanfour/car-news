@@ -22,20 +22,27 @@ interface CommentsListProps {
 }
 
 export function CommentsList({ initialComments }: CommentsListProps) {
+  const [comments, setComments] = useState<Comment[]>(initialComments)
   const [sortBy, setSortBy] = useState<SortType>('time')
+
+  const handleEdit = (id: string, newContent: string) => {
+    setComments(prev => prev.map(c => c.id === id ? { ...c, content: newContent } : c))
+  }
+
+  const handleDelete = (id: string) => {
+    setComments(prev => prev.filter(c => c.id !== id))
+  }
 
   // Sort comments based on selected sort type
   const sortedComments = useMemo(() => {
-    const comments = [...initialComments]
+    const sorted = [...comments]
 
     if (sortBy === 'time') {
-      // Sort by created_at descending (newest first)
-      return comments.sort((a, b) => {
+      return sorted.sort((a, b) => {
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       })
     } else {
-      // Sort by likes_count descending (most liked first), then by time
-      return comments.sort((a, b) => {
+      return sorted.sort((a, b) => {
         const likesA = a.likes_count || 0
         const likesB = b.likes_count || 0
 
@@ -43,11 +50,10 @@ export function CommentsList({ initialComments }: CommentsListProps) {
           return likesB - likesA
         }
 
-        // If same likes, sort by time (newest first)
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       })
     }
-  }, [initialComments, sortBy])
+  }, [comments, sortBy])
 
   return (
     <>
@@ -81,7 +87,12 @@ export function CommentsList({ initialComments }: CommentsListProps) {
           <p className="text-center text-gray-500 py-8">尚無評論，成為第一個留言的人吧！</p>
         ) : (
           sortedComments.map((comment) => (
-            <CommentItem key={comment.id} comment={comment} />
+            <CommentItem
+              key={comment.id}
+              comment={comment}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
           ))
         )}
       </div>

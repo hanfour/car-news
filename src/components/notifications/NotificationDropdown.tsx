@@ -45,8 +45,8 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
           const data = await res.json()
           setNotifications(data.notifications)
         }
-      } catch {
-        // Silently fail
+      } catch (err) {
+        console.error('[NotificationDropdown] fetchNotifications:', err)
       } finally {
         setLoading(false)
       }
@@ -64,8 +64,8 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
       })
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
       await refreshCount()
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.error('[NotificationDropdown] markAllRead:', err)
     }
   }
 

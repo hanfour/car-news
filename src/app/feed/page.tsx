@@ -34,8 +34,8 @@ export default function FeedPage() {
           setItems(data.items)
           setTotalPages(data.totalPages)
         }
-      } catch {
-        // Silently fail
+      } catch (err) {
+        console.error('[FeedPage] fetchFeed:', err)
       } finally {
         setLoading(false)
       }

@@ -59,7 +59,7 @@ export default function PostDetailPage() {
         setReplies(data.replies)
         setLikeCount(data.post.like_count)
       }
-    } catch { /* */ } finally {
+    } catch (err) { console.error('[PostDetailPage] fetchPost:', err) } finally {
       setLoading(false)
     }
   }
@@ -78,7 +78,7 @@ export default function PostDetailPage() {
         setIsLiked(data.isLiked)
         setLikeCount(prev => data.isLiked ? prev + 1 : Math.max(0, prev - 1))
       }
-    } catch { /* */ }
+    } catch (err) { console.error('[PostDetailPage] toggleLike:', err) }
   }
 
   if (loading) return <LoadingCenter size="lg" />

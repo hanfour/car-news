@@ -82,7 +82,7 @@ function ReplyItem({
         setIsLiked(data.isLiked)
         setLikeCount(prev => data.isLiked ? prev + 1 : Math.max(0, prev - 1))
       }
-    } catch { /* */ }
+    } catch (err) { console.error('[ThreadedReplies] toggleLike:', err) }
   }
 
   const profileUrl = `/user/${reply.author?.username || reply.user_id}`

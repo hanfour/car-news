@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useToast } from '@/components/ToastContainer'
 
 interface ForumPost {
   id: string
@@ -19,6 +20,7 @@ interface ForumPost {
 type FilterType = 'all' | 'pending' | 'pinned' | 'locked'
 
 export default function AdminForumPage() {
+  const { showToast } = useToast()
   const [posts, setPosts] = useState<ForumPost[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -50,7 +52,7 @@ export default function AdminForumPage() {
         setTotalPages(data.totalPages || 0)
         setTotal(data.total || 0)
       }
-    } catch { /* */ } finally {
+    } catch (err) { console.error('[AdminForumPage] fetchPosts:', err) } finally {
       setLoading(false)
     }
   }, [page, debouncedSearch, filter])
@@ -70,7 +72,7 @@ export default function AdminForumPage() {
         const { post } = await res.json()
         setPosts(prev => prev.map(p => p.id === postId ? { ...p, ...post } : p))
       }
-    } catch { /* */ } finally {
+    } catch (err) { console.error('[AdminForumPage] handleAction:', err) } finally {
       setActionLoading(null)
     }
   }
@@ -87,7 +89,7 @@ export default function AdminForumPage() {
         setPosts(prev => prev.filter(p => p.id !== postId))
         setTotal(prev => prev - 1)
       }
-    } catch { /* */ } finally {
+    } catch (err) { console.error('[AdminForumPage] handleDelete:', err) } finally {
       setActionLoading(null)
     }
   }
@@ -111,11 +113,11 @@ export default function AdminForumPage() {
       )
       const failed = results.filter(r => r.status === 'rejected').length
       if (failed > 0) {
-        alert(`${results.length - failed} 項成功，${failed} 項失敗`)
+        showToast(`${results.length - failed} 項成功，${failed} 項失敗`, 'error')
       }
       setSelected(new Set())
       fetchPosts()
-    } catch { /* */ } finally {
+    } catch (err) { console.error('[AdminForumPage] handleBatchAction:', err) } finally {
       setActionLoading(null)
     }
   }

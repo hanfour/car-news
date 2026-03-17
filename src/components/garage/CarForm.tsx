@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { useToast } from '@/components/ToastContainer'
+import { ImageUploader } from '@/components/shared/ImageUploader'
 
 interface CarFormProps {
   initialData?: {
@@ -17,12 +19,15 @@ interface CarFormProps {
     purchase_date?: string
     mileage?: number
     is_public?: boolean
+    cover_image?: string | null
+    images?: string[]
   }
 }
 
 export function CarForm({ initialData }: CarFormProps) {
   const router = useRouter()
   const { session } = useAuth()
+  const { showToast } = useToast()
   const isEditing = !!initialData?.id
 
   const [form, setForm] = useState({
@@ -37,8 +42,63 @@ export function CarForm({ initialData }: CarFormProps) {
     mileage: initialData?.mileage?.toString() || '',
     is_public: initialData?.is_public !== false,
   })
+  const [coverImage, setCoverImage] = useState<string | null>(initialData?.cover_image || null)
+  const [galleryImages, setGalleryImages] = useState<string[]>(initialData?.images || [])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const handleImageUpload = async (file: File, type: 'cover' | 'gallery'): Promise<string> => {
+    if (!session?.access_token || !initialData?.id) throw new Error('未登入或車輛未儲存')
+
+    const formData = new FormData()
+    formData.append('image', file)
+    formData.append('type', type)
+
+    const res = await fetch(`/api/garage/${initialData.id}/images`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${session.access_token}` },
+      body: formData,
+    })
+
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || '上傳失敗')
+
+    if (type === 'cover') {
+      setCoverImage(data.url)
+    } else {
+      setGalleryImages(prev => [...prev, data.url])
+    }
+
+    showToast('圖片上傳成功', 'success')
+    return data.url
+  }
+
+  const handleImageDelete = async (url: string, type: 'cover' | 'gallery') => {
+    if (!session?.access_token || !initialData?.id) return
+
+    try {
+      const res = await fetch(`/api/garage/${initialData.id}/images`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ url, type }),
+      })
+
+      if (res.ok) {
+        if (type === 'cover') {
+          setCoverImage(null)
+        } else {
+          setGalleryImages(prev => prev.filter(img => img !== url))
+        }
+        showToast('圖片已刪除', 'success')
+      }
+    } catch (err) {
+      console.error('[CarForm] Delete image failed:', err)
+      showToast('刪除失敗', 'error')
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -145,6 +205,64 @@ export function CarForm({ initialData }: CarFormProps) {
           公開展示在愛車牆
         </label>
       </div>
+
+      {/* 圖片上傳區（僅編輯模式） */}
+      {isEditing ? (
+        <div className="space-y-4 pt-2">
+          <div>
+            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>封面照片</label>
+            <div className="flex items-start gap-3">
+              <ImageUploader
+                onUpload={(file) => handleImageUpload(file, 'cover')}
+                currentImage={coverImage || undefined}
+                className="flex-1"
+              />
+              {coverImage && (
+                <button
+                  type="button"
+                  onClick={() => handleImageDelete(coverImage, 'cover')}
+                  className="px-3 py-2 text-xs text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
+                >
+                  移除
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+              相簿（最多 {10} 張，已上傳 {galleryImages.length} 張）
+            </label>
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+              {galleryImages.map((img, i) => (
+                <div key={i} className="relative group aspect-square rounded-lg overflow-hidden border" style={{ borderColor: 'var(--border-color)' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={img} alt={`相簿 ${i + 1}`} className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => handleImageDelete(img, 'gallery')}
+                    className="absolute top-1 right-1 p-1 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+              {galleryImages.length < 10 && (
+                <ImageUploader
+                  onUpload={(file) => handleImageUpload(file, 'gallery')}
+                  className="aspect-square"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+          儲存後可新增照片
+        </p>
+      )}
 
       {error && <p className="text-sm" style={{ color: 'var(--brand-red)' }}>{error}</p>}
 
