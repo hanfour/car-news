@@ -165,6 +165,19 @@ export const AUTHORIZED_IMAGE_SERVICES = [
   // 通用汽车图片服务
   'motortrend.com',    // 官方授权图片较多
   'caranddriver.com',  // 官方授权图片较多
+
+  // 主流汽車媒體 CDN
+  'hearstapps.com',    // Car and Driver, Road and Track CDN
+  'roadandtrack.com',  // Road & Track direct
+  'insideevs.com',     // InsideEVs
+  'electrek.co',       // Electrek
+  'carscoops.com',     // Carscoops
+  'autoblog.com',      // Autoblog
+  'topgear.com',       // Top Gear
+  'edmunds.com',       // Edmunds
+  'carbuzz.com',       // CarBuzz
+  'thedrive.com',      // The Drive
+  'autoevolution.com', // Autoevolution
 ]
 
 // 需要特别检查的域名（需要判断是否为官方内容）

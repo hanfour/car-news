@@ -58,6 +58,15 @@ export async function parseRSSFeed(source: NewsSource): Promise<ScrapedArticle[]
         }
       }
 
+      // 方法3: fetch 文章頁面 HTML，提取 og:image / twitter:image
+      if (!imageUrl && item.link) {
+        try {
+          imageUrl = await fetchOgImage(item.link)
+        } catch {
+          // 靜默跳過，不影響主流程
+        }
+      }
+
       // 解碼 HTML 實體 (例如 &#038; -> &)
       if (imageUrl) {
         imageUrl = imageUrl
@@ -92,6 +101,61 @@ export async function parseRSSFeed(source: NewsSource): Promise<ScrapedArticle[]
   } catch (error) {
     console.error(`Failed to parse RSS feed ${source.name}:`, error)
     return []
+  }
+}
+
+/**
+ * Fetch 文章頁面 HTML（前 50KB）提取 og:image / twitter:image
+ * 5 秒 timeout，失敗回傳 undefined
+ */
+async function fetchOgImage(articleUrl: string): Promise<string | undefined> {
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5000)
+
+    const response = await fetch(articleUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; CarNewsAI/1.0)',
+        'Accept': 'text/html',
+      },
+      signal: controller.signal,
+      redirect: 'follow',
+    })
+    clearTimeout(timeout)
+
+    if (!response.ok || !response.body) return undefined
+
+    // 只讀前 50KB 避免浪費頻寬
+    const reader = response.body.getReader()
+    const chunks: Uint8Array[] = []
+    let totalBytes = 0
+    const MAX_BYTES = 50 * 1024
+
+    while (totalBytes < MAX_BYTES) {
+      const { done, value } = await reader.read()
+      if (done || !value) break
+      chunks.push(value)
+      totalBytes += value.length
+    }
+    reader.cancel()
+
+    const html = new TextDecoder().decode(
+      chunks.length === 1 ? chunks[0] : Buffer.concat(chunks)
+    )
+
+    // 提取 og:image
+    const ogMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/)
+      || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/)
+    if (ogMatch?.[1]) return ogMatch[1]
+
+    // 提取 twitter:image
+    const twMatch = html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/)
+      || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/)
+    if (twMatch?.[1]) return twMatch[1]
+
+    return undefined
+  } catch {
+    return undefined
   }
 }
 
