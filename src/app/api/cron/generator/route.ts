@@ -30,7 +30,7 @@ const TIMEOUT_CONFIG = {
   MIN_ARTICLES_PER_BRAND: 1,     // 品牌配額：每個品牌至少生成1篇（確保多樣性）
   TARGET_ARTICLES: 15,           // 目標文章數：每次執行目標生成15篇（中度擴展）
   TIME_CHECK_INTERVAL: 1000,     // 每1秒检查一次时间
-  ESTIMATED_TIME_PER_ARTICLE: 25_000,  // Gemini 更快：估计每篇文章需要25秒（vs Claude 35秒）
+  ESTIMATED_TIME_PER_ARTICLE: 35_000,  // img2img + Gemini Vision 分析需要更多時間
   MIN_TIME_BUFFER: 45_000        // 最小時間緩衝 45 秒
 }
 
@@ -345,6 +345,24 @@ async function handleCronJob(request: NextRequest) {
               sourceType: (article as { source_type?: string }).source_type,
               isOfficial,
             })
+
+            // 從 source_images JSONB 欄位收集額外的官方圖片
+            const rawSourceImages = (article as { source_images?: Array<{ url: string; highResUrl?: string; credit?: string; caption?: string }> }).source_images
+            if (rawSourceImages && Array.isArray(rawSourceImages) && rawSourceImages.length > 0) {
+              for (const img of rawSourceImages) {
+                const imgUrl = img.highResUrl || img.url
+                // 避免重複加入已有的 image_url
+                if (imgUrl && imgUrl !== article.image_url) {
+                  sourceImages.push({
+                    url: imgUrl,
+                    credit: img.credit || article.image_credit || 'Unknown',
+                    caption: img.caption || article.title.slice(0, 100),
+                    sourceType: (article as { source_type?: string }).source_type,
+                    isOfficial: true,
+                  })
+                }
+              }
+            }
           }
         }
 
@@ -422,7 +440,8 @@ async function handleCronJob(request: NextRequest) {
             const aiImage = await generateAndSaveCoverImage(
               generated.title_zh,
               generated.content_zh,
-              generated.brands
+              generated.brands,
+              storedImages.length > 0 ? storedImages : undefined
             )
 
             if (aiImage && aiImage.url) {

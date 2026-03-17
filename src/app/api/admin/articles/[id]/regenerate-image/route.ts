@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { verifySessionToken } from '@/lib/admin/session'
-import { generateCoverImage, ImageProvider } from '@/lib/ai/image-generation'
+import { generateCoverImage, generateAndSaveCoverImage, ImageProvider } from '@/lib/ai/image-generation'
 import { generateWithFlux, generateWithFluxSchnell, buildFluxPrompt } from '@/lib/ai/flux-image-generation'
 import { generateImagePromptFromArticle } from '@/lib/ai/image-prompt-generator'
 import { uploadImageFromUrl } from '@/lib/storage/image-uploader'
 
 // 可選的生成方法
-type GenerationMethod = 'auto' | 'flux-dev' | 'flux-schnell' | 'dalle'
+type GenerationMethod = 'auto' | 'flux-dev' | 'flux-schnell' | 'dalle' | 'flux-img2img'
 
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY
 
@@ -53,17 +53,17 @@ export async function POST(
   let method: GenerationMethod = 'auto'
   try {
     const body = await request.json()
-    if (body.method && ['auto', 'flux-dev', 'flux-schnell', 'dalle'].includes(body.method)) {
+    if (body.method && ['auto', 'flux-dev', 'flux-schnell', 'dalle', 'flux-img2img'].includes(body.method)) {
       method = body.method
     }
   } catch {
     // 沒有 body 或解析失敗，使用預設值
   }
 
-  // 1. 獲取文章資訊
+  // 1. 獲取文章資訊（含 images 以支援 img2img）
   const { data: article, error: fetchError } = await supabase
     .from('generated_articles')
-    .select('title_zh, content_zh, brands, primary_brand')
+    .select('title_zh, content_zh, brands, primary_brand, images')
     .eq('id', id)
     .single()
 
@@ -81,6 +81,50 @@ export async function POST(
     let cost = 0
 
     // 2. 根據選擇的方法生成圖片
+    if (method === 'flux-img2img') {
+      // Flux img2img：使用文章已有的圖片作為參考
+      const articleImages = (article.images as Array<{ url: string; caption?: string; size?: number }>) || []
+      if (articleImages.length === 0) {
+        return NextResponse.json({
+          error: 'No reference images available for img2img. Article needs at least 1 stored image.'
+        }, { status: 400 })
+      }
+
+      const img2imgResult = await generateAndSaveCoverImage(
+        article.title_zh,
+        article.content_zh,
+        brands,
+        articleImages
+      )
+
+      if (img2imgResult?.url) {
+        // 直接更新 DB（generateAndSaveCoverImage 已處理上傳）
+        const { error: updateError } = await supabase
+          .from('generated_articles')
+          .update({
+            cover_image: img2imgResult.url,
+            image_credit: img2imgResult.credit
+          })
+          .eq('id', id)
+
+        if (updateError) {
+          return NextResponse.json({ error: updateError.message }, { status: 500 })
+        }
+
+        console.log(`✓ Cover image regenerated for article ${id} using Flux img2img ($0.025)`)
+        return NextResponse.json({
+          success: true,
+          cover_image: img2imgResult.url,
+          provider: 'Flux img2img',
+          cost: 0.025
+        })
+      } else {
+        return NextResponse.json({
+          error: 'Flux img2img generation failed'
+        }, { status: 500 })
+      }
+    }
+
     if (method === 'flux-dev' || method === 'flux-schnell') {
       // 直接使用 Flux
       const promptResult = await generateImagePromptFromArticle(

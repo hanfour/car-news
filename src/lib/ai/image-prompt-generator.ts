@@ -289,6 +289,78 @@ function getBrandStyleDescription(brand: string): string {
 }
 
 /**
+ * 使用 Gemini Vision 分析多張車輛圖片，提取外觀特徵描述
+ * 僅在 imageUrls.length >= 2 時呼叫（單張圖不需要多圖分析）
+ */
+export async function analyzeMultipleImagesWithGemini(
+  imageUrls: string[],
+  articleTitle: string
+): Promise<string | null> {
+  if (imageUrls.length < 2) return null
+
+  try {
+    const gemini = getGemini()
+    const model = gemini.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 256,
+        // @ts-expect-error -- thinkingConfig 尚未在型別中定義
+        thinkingConfig: { thinkingBudget: 0 },
+      }
+    })
+
+    // 下載最多 3 張圖片轉 base64
+    const imagesToAnalyze = imageUrls.slice(0, 3)
+    const imageParts: Array<{ inlineData: { mimeType: string; data: string } }> = []
+
+    for (const url of imagesToAnalyze) {
+      try {
+        const response = await fetch(url, { signal: AbortSignal.timeout(8000) })
+        if (!response.ok) continue
+
+        const contentType = response.headers.get('content-type') || 'image/jpeg'
+        const buffer = await response.arrayBuffer()
+        const base64 = Buffer.from(buffer).toString('base64')
+
+        imageParts.push({
+          inlineData: {
+            mimeType: contentType.split(';')[0],
+            data: base64,
+          }
+        })
+      } catch {
+        console.warn(`⚠ Failed to download image for analysis: ${url.slice(0, 60)}...`)
+      }
+    }
+
+    if (imageParts.length === 0) {
+      console.warn('⚠ No images could be downloaded for multi-image analysis')
+      return null
+    }
+
+    console.log(`→ Analyzing ${imageParts.length} images with Gemini Vision...`)
+
+    const result = await model.generateContent([
+      ...imageParts,
+      {
+        text: `Article: "${articleTitle}"
+
+Describe this vehicle's unique exterior design features visible across these images: body color, accent lines, headlight/taillight design, wheel style, aerodynamic elements. 30-50 words in English. Focus only on visual appearance, not specs or performance.`
+      }
+    ])
+
+    const description = result.response.text().trim()
+    console.log(`✓ Multi-image analysis: ${description.slice(0, 80)}...`)
+    return description
+
+  } catch (error) {
+    console.warn('⚠ Multi-image Gemini Vision analysis failed:', getErrorMessage(error))
+    return null
+  }
+}
+
+/**
  * 驗證生成的圖片是否與文章匹配
  * 使用 Gemini Vision 進行 6 維度評分
  */

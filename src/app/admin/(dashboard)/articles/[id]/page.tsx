@@ -24,7 +24,7 @@ export default function ArticleEditPage() {
   const [content, setContent] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [imageCredit, setImageCredit] = useState('Source: Web')
-  const [generationMethod, setGenerationMethod] = useState<'auto' | 'flux-dev' | 'flux-schnell' | 'dalle'>('auto')
+  const [generationMethod, setGenerationMethod] = useState<'auto' | 'flux-dev' | 'flux-schnell' | 'dalle' | 'flux-img2img'>('auto')
 
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean; title: string; message: string; onConfirm: () => void
@@ -82,8 +82,8 @@ export default function ArticleEditPage() {
   }
 
   const handleRegenerateImage = () => {
-    const costMap = { 'auto': '~$0.008', 'flux-dev': '$0.008', 'flux-schnell': '$0.003', 'dalle': '$0.040' }
-    const methodName = { 'auto': 'Auto', 'flux-dev': 'Flux Dev', 'flux-schnell': 'Flux Schnell', 'dalle': 'DALL-E 3' }
+    const costMap: Record<string, string> = { 'auto': '~$0.008', 'flux-dev': '$0.008', 'flux-schnell': '$0.003', 'dalle': '$0.040', 'flux-img2img': '$0.025' }
+    const methodName: Record<string, string> = { 'auto': 'Auto', 'flux-dev': 'Flux Dev', 'flux-schnell': 'Flux Schnell', 'dalle': 'DALL-E 3', 'flux-img2img': 'Img2Img 合成' }
 
     setConfirmDialog({
       open: true,
@@ -192,11 +192,14 @@ export default function ArticleEditPage() {
     )
   }
 
+  const hasImages = article.images && (article.images as Array<unknown>).length > 0
+
   const genMethods = [
     { value: 'auto' as const, label: 'Auto', desc: 'Flux first', cost: '~$0.008' },
     { value: 'flux-dev' as const, label: 'Flux Dev', desc: 'Balanced', cost: '$0.008' },
     { value: 'flux-schnell' as const, label: 'Flux Schnell', desc: 'Fast', cost: '$0.003' },
     { value: 'dalle' as const, label: 'DALL-E 3', desc: 'High quality', cost: '$0.040' },
+    ...(hasImages ? [{ value: 'flux-img2img' as const, label: 'Img2Img 合成', desc: 'Reference based', cost: '$0.025' }] : []),
   ]
 
   return (
