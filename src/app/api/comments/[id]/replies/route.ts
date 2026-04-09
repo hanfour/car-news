@@ -20,6 +20,7 @@ export async function GET(
       .select('id, content, created_at, user_id, likes_count')
       .eq('parent_id', parentId)
       .eq('is_approved', true)
+      .eq('is_deleted', false)
       .order('created_at', { ascending: true })
 
     if (error) {

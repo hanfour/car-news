@@ -32,8 +32,8 @@ export function TopicFollowButton({ topicType, topicValue, initialFollowing = fa
         const data = await res.json()
         setIsFollowing(data.isFollowing)
       }
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.error('[TopicFollowButton] checkFollowStatus:', err)
     } finally {
       setLoading(false)
     }

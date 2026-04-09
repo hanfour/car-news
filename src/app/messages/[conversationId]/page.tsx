@@ -58,7 +58,7 @@ export default function ConversationPage() {
         }
         setHasMore(data.has_more || false)
       }
-    } catch { /* */ }
+    } catch (err) { console.error('[ConversationPage] fetchMessages:', err) }
   }, [session?.access_token, conversationId])
 
   // Initial load
@@ -87,7 +87,7 @@ export default function ConversationPage() {
           method: 'POST',
           headers: { Authorization: `Bearer ${session.access_token}` },
         })
-      } catch { /* */ } finally {
+      } catch (err) { console.error('[ConversationPage] loadConversation:', err) } finally {
         setLoading(false)
         initialLoadDone.current = true
       }
@@ -130,10 +130,31 @@ export default function ConversationPage() {
           method: 'POST',
           headers: { Authorization: `Bearer ${session.access_token}` },
         })
-      } catch { /* */ }
+      } catch (err) { console.error('[ConversationPage] polling:', err) }
     }, 10000)
     return () => clearInterval(interval)
   }, [session?.access_token, conversationId])
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!session?.access_token || !confirm('確定要刪除這則訊息嗎？')) return
+    try {
+      const res = await fetch(`/api/messages/conversations/${conversationId}/messages`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ message_id: messageId }),
+      })
+      if (res.ok) {
+        setMessages(prev => prev.map(m =>
+          m.id === messageId ? { ...m, is_deleted: true, content: '此訊息已刪除' } : m
+        ))
+      }
+    } catch (err) {
+      console.error('[ConversationPage] Delete message failed:', err)
+    }
+  }
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -236,6 +257,7 @@ export default function ConversationPage() {
                       key={msg.id}
                       message={msg}
                       isSelf={msg.sender_id === user.id}
+                      onDelete={handleDeleteMessage}
                     />
                   ))}
                 </div>

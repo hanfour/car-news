@@ -29,7 +29,7 @@ export default function ClubsPage() {
           setClubs(data.clubs)
           setTotalPages(data.totalPages)
         }
-      } catch { /* */ } finally { setLoading(false) }
+      } catch (err) { console.error('[ClubsPage] fetchClubs:', err) } finally { setLoading(false) }
     }
     fetchClubs()
   }, [page])

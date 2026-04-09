@@ -49,7 +49,7 @@ export default function ClubDetailPage() {
         const data = await postsRes.json()
         setPosts(data.posts)
       }
-    } catch { /* */ } finally { setLoading(false) }
+    } catch (err) { console.error('[ClubDetailPage] fetchData:', err) } finally { setLoading(false) }
   }
 
   useEffect(() => { fetchData() }, [slug])
@@ -75,7 +75,7 @@ export default function ClubDetailPage() {
             setMemberRole(membership.role)
           }
         }
-      } catch { /* */ }
+      } catch (err) { console.error('[ClubDetailPage] checkMembership:', err) }
     }
     checkMembership()
   }, [club, user, slug])

@@ -47,8 +47,8 @@ export function CommunityFeed({ category, sort = 'latest' }: CommunityFeedProps)
         setPosts(prev => reset ? data.posts : [...prev, ...data.posts])
         setHasMore(pageNum < data.totalPages)
       }
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.error('[CommunityFeed] fetchPosts:', err)
     } finally {
       setLoading(false)
       setInitialLoading(false)

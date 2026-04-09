@@ -42,8 +42,8 @@ export function JoinClubButton({ slug, isMember, isOwner, onStatusChange }: Join
           onStatusChange?.()
         }
       }
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.error('[JoinClubButton] handleJoinLeave:', err)
     } finally {
       setLoading(false)
     }

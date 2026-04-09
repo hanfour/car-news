@@ -29,7 +29,7 @@ export default function GarageWallPage() {
           setCars(data.cars)
           setTotalPages(data.totalPages)
         }
-      } catch { /* */ } finally { setLoading(false) }
+      } catch (err) { console.error('[GarageWallPage] fetchCars:', err) } finally { setLoading(false) }
     }
     fetchCars()
   }, [page])

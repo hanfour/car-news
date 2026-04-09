@@ -33,7 +33,7 @@ export default function CarDetailPage() {
           const data = await res.json()
           setCar(data.car)
         }
-      } catch { /* */ } finally { setLoading(false) }
+      } catch (err) { console.error('[CarDetailPage] fetchCar:', err) } finally { setLoading(false) }
     }
     fetchCar()
   }, [carId])

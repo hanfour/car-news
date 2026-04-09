@@ -33,8 +33,8 @@ export default function FollowingPage() {
           setUsers(data.users)
           setTotalPages(data.totalPages)
         }
-      } catch {
-        // Silently fail
+      } catch (err) {
+        console.error('[FollowingPage] fetchFollowing:', err)
       } finally {
         setLoading(false)
       }

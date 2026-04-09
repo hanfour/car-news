@@ -46,8 +46,8 @@ export default function NotificationsPage() {
           setNotifications(data.notifications)
           setTotalPages(data.totalPages)
         }
-      } catch {
-        // Silently fail
+      } catch (err) {
+        console.error('[NotificationsPage] fetchNotifications:', err)
       } finally {
         setLoading(false)
       }
@@ -65,8 +65,8 @@ export default function NotificationsPage() {
       })
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
       await refreshCount()
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.error('[NotificationsPage] markAllRead:', err)
     }
   }
 

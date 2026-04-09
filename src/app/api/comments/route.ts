@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
       .select('id, content, created_at, user_id, likes_count')
       .eq('article_id', articleId)
       .eq('is_approved', true)
+      .eq('is_deleted', false)
       .is('parent_id', null)
       .order('created_at', { ascending: false })
 

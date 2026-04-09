@@ -20,6 +20,8 @@ interface CommentItemProps {
       avatar_url: string | null
     } | null
   }
+  onEdit?: (id: string, newContent: string) => void
+  onDelete?: (id: string) => void
 }
 
 interface Reply {
@@ -34,10 +36,14 @@ interface Reply {
   } | null
 }
 
-export function CommentItem({ comment }: CommentItemProps) {
+export function CommentItem({ comment, onEdit, onDelete }: CommentItemProps) {
   const { user } = useAuth()
   const { showToast } = useToast()
   const [isLiked, setIsLiked] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editContent, setEditContent] = useState(comment.content)
+  const [isSavingEdit, setIsSavingEdit] = useState(false)
+  const isOwner = user?.id === comment.user_id
   const [likeCount, setLikeCount] = useState(comment.likes_count || 0)
   const [isLiking, setIsLiking] = useState(false)
   const [showReplyForm, setShowReplyForm] = useState(false)
@@ -265,6 +271,68 @@ export function CommentItem({ comment }: CommentItemProps) {
     }
   }
 
+  // Handle edit save
+  const handleSaveEdit = async () => {
+    if (!editContent.trim() || isSavingEdit) return
+    setIsSavingEdit(true)
+    try {
+      const { createClient } = await import('@/lib/supabase')
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) return
+
+      const response = await fetch(`/api/comments/${comment.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ content: editContent.trim() }),
+      })
+
+      if (response.ok) {
+        onEdit?.(comment.id, editContent.trim())
+        setIsEditing(false)
+        showToast('評論已更新', 'success')
+      } else {
+        const data = await response.json()
+        showToast(data.error || '編輯失敗', 'error')
+      }
+    } catch (error) {
+      console.error('[CommentItem] Edit failed:', error)
+      showToast('編輯失敗', 'error')
+    } finally {
+      setIsSavingEdit(false)
+    }
+  }
+
+  // Handle delete
+  const handleDelete = async () => {
+    if (!confirm('確定要刪除這則評論嗎？')) return
+    try {
+      const { createClient } = await import('@/lib/supabase')
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) return
+
+      const response = await fetch(`/api/comments/${comment.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${session.access_token}` },
+      })
+
+      if (response.ok) {
+        onDelete?.(comment.id)
+        showToast('評論已刪除', 'success')
+      } else {
+        const data = await response.json()
+        showToast(data.error || '刪除失敗', 'error')
+      }
+    } catch (error) {
+      console.error('[CommentItem] Delete failed:', error)
+      showToast('刪除失敗', 'error')
+    }
+  }
+
   // Handle report
   const handleReport = () => {
     if (!user) {
@@ -338,9 +406,43 @@ export function CommentItem({ comment }: CommentItemProps) {
             <span className="font-medium text-gray-900">{authorName}</span>
           </div>
 
-          <p className="text-gray-700 mb-2 whitespace-pre-wrap break-words">
-            {comment.content}
-          </p>
+          {isEditing ? (
+            <div className="mb-2">
+              <textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                rows={3}
+                maxLength={2000}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-[var(--brand-primary)] resize-none"
+                disabled={isSavingEdit}
+              />
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-xs text-gray-500">{editContent.length}/2000</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setIsEditing(false); setEditContent(comment.content) }}
+                    className="px-3 py-1 text-xs text-gray-600 hover:text-gray-800"
+                    disabled={isSavingEdit}
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveEdit}
+                    disabled={isSavingEdit || !editContent.trim()}
+                    className="px-3 py-1 text-xs text-white bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-hover)] rounded disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    {isSavingEdit ? '儲存中...' : '儲存'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-gray-700 mb-2 whitespace-pre-wrap break-words">
+              {comment.content}
+            </p>
+          )}
 
           {/* 操作列 */}
           <div className="flex items-center gap-4 text-xs text-gray-500">
@@ -354,15 +456,39 @@ export function CommentItem({ comment }: CommentItemProps) {
               </svg>
               回覆
             </button>
-            <button
-              onClick={handleReport}
-              className="hover:text-red-600 flex items-center gap-1 transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              舉報
-            </button>
+            {isOwner && (
+              <>
+                <button
+                  onClick={() => { setIsEditing(true); setEditContent(comment.content) }}
+                  className="hover:text-blue-600 flex items-center gap-1 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  編輯
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="hover:text-red-600 flex items-center gap-1 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  刪除
+                </button>
+              </>
+            )}
+            {!isOwner && (
+              <button
+                onClick={handleReport}
+                className="hover:text-red-600 flex items-center gap-1 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                舉報
+              </button>
+            )}
             {replies.length > 0 && (
               <span className="text-gray-400">
                 {replies.length} 則回覆

@@ -52,7 +52,7 @@ export function PostActionBar({
         setBookmarked(data.isBookmarked)
         onBookmarkChange?.(data.isBookmarked)
       }
-    } catch { /* */ }
+    } catch (err) { console.error('[PostActionBar] handleBookmark:', err) }
   }
 
   const handleShare = async () => {
@@ -61,7 +61,7 @@ export function PostActionBar({
       await navigator.clipboard.writeText(url)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-    } catch { /* */ }
+    } catch (err) { console.error('[PostActionBar] handleShare:', err) }
   }
 
   const handleReport = async (reason: string) => {

@@ -27,7 +27,7 @@ export default function ClubMembersPage() {
         if (user) {
           setIsOwner(club.owner_id === user.id)
         }
-      } catch { /* */ } finally {
+      } catch (err) { console.error('[ClubMembersPage] fetchClubAndMembers:', err) } finally {
         setLoading(false)
       }
     }
