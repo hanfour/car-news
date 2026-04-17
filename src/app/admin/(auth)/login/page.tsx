@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
+import { getSafeRedirectUrl } from '@/lib/security'
 
 function AdminLoginContent() {
   const [email, setEmail] = useState('')
@@ -125,7 +126,7 @@ function AdminLoginContent() {
     setLoading(true)
 
     try {
-      const redirectUrl = `${window.location.origin}/admin/auth/callback`
+      const redirectUrl = `${getSafeRedirectUrl(window.location.origin)}/admin/auth/callback`
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: redirectUrl }

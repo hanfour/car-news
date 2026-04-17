@@ -158,7 +158,7 @@ export function ArticlesTable({
                   </td>
                   <td className="px-4 py-3">
                     {article.cover_image ? (
-                      <img src={article.cover_image} alt="" className="w-20 h-14 object-cover rounded-lg border border-slate-700" />
+                      <img src={article.cover_image} alt={article.title_zh || '文章封面'} className="w-20 h-14 object-cover rounded-lg border border-slate-700" />
                     ) : (
                       <div className="w-20 h-14 bg-slate-800 rounded-lg border border-slate-700 flex items-center justify-center text-slate-600 text-xs">
                         No img

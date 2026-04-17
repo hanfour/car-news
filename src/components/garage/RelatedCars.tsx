@@ -54,7 +54,7 @@ export function RelatedCars({ carId, brand, model }: RelatedCarsProps) {
           >
             <div className="aspect-[4/3] bg-gray-100 relative">
               {car.cover_image && isValidImageUrl(car.cover_image) ? (
-                <Image src={car.cover_image} alt="" fill className="object-cover" unoptimized />
+                <Image src={car.cover_image} alt={`${car.brand} ${car.model}`} fill className="object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-3xl">🚗</div>
               )}

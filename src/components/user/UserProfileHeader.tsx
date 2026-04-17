@@ -57,7 +57,7 @@ export function UserProfileHeader({ profile, isSelf, activeTab }: UserProfileHea
       {/* Cover */}
       <div className="h-32 sm:h-48 bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-primary-dark)] relative">
         {profile.cover_image_url && isValidImageUrl(profile.cover_image_url) && (
-          <Image src={profile.cover_image_url} alt="封面" fill className="object-cover" unoptimized />
+          <Image src={profile.cover_image_url} alt="封面" fill className="object-cover" />
         )}
       </div>
 
@@ -67,7 +67,7 @@ export function UserProfileHeader({ profile, isSelf, activeTab }: UserProfileHea
           {/* Avatar */}
           <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-white bg-white overflow-hidden flex-shrink-0">
             {profile.avatar_url && isValidImageUrl(profile.avatar_url) ? (
-              <Image src={profile.avatar_url} alt={profile.display_name || 'User'} width={128} height={128} className="w-full h-full object-cover" unoptimized />
+              <Image src={profile.avatar_url} alt={profile.display_name || 'User'} width={128} height={128} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full bg-[var(--brand-primary)] flex items-center justify-center">
                 <span className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>

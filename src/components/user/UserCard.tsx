@@ -34,7 +34,6 @@ export function UserCard({ user, showFollowButton = true }: UserCardProps) {
               width={48}
               height={48}
               className="w-full h-full object-cover"
-              unoptimized
             />
           ) : (
             <div className="w-full h-full bg-[var(--brand-primary)] flex items-center justify-center">

@@ -31,7 +31,7 @@ export function CarCard({ car, showOwner = true }: CarCardProps) {
       {/* 封面 */}
       <div className="aspect-video bg-gray-100 relative">
         {car.cover_image && isValidImageUrl(car.cover_image) ? (
-          <Image src={car.cover_image} alt={`${car.brand} ${car.model}`} fill className="object-cover" unoptimized />
+          <Image src={car.cover_image} alt={`${car.brand} ${car.model}`} fill className="object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <svg className="w-12 h-12" style={{ color: 'var(--text-tertiary)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -63,7 +63,7 @@ export function CarCard({ car, showOwner = true }: CarCardProps) {
           <div className="flex items-center gap-2 mt-2 pt-2 border-t" style={{ borderColor: '#e5e5e5' }}>
             <div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0">
               {car.owner.avatar_url && isValidImageUrl(car.owner.avatar_url) ? (
-                <Image src={car.owner.avatar_url} alt="" width={20} height={20} className="w-full h-full object-cover" unoptimized />
+                <Image src={car.owner.avatar_url} alt={car.owner.display_name || '車主頭像'} width={20} height={20} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full bg-[var(--brand-primary)] flex items-center justify-center">
                   <span className="text-[8px] font-bold">{car.owner.display_name?.[0] || 'U'}</span>

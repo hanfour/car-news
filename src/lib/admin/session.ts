@@ -45,22 +45,36 @@ export async function createAdminSession(
   return { token, expiresAt }
 }
 
+// 閒置超時：2 小時無活動自動失效
+const IDLE_TIMEOUT_MS = 2 * 60 * 60 * 1000
+
 /**
  * 驗證 Session Token 並返回 User ID
+ * 同時檢查閒置超時（2 小時）和絕對過期（7 天）
  */
 export async function verifySessionToken(token: string): Promise<string | null> {
   const supabase = createServiceClient()
 
-  // 查詢有效的 session
+  // 查詢有效的 session（包含 last_activity_at 用於閒置檢查）
   const { data, error } = await supabase
     .from('admin_sessions')
-    .select('user_id, expires_at')
+    .select('user_id, expires_at, last_activity_at')
     .eq('token', token)
     .gt('expires_at', new Date().toISOString())
     .single()
 
   if (error || !data) {
     return null
+  }
+
+  // 檢查閒置超時
+  if (data.last_activity_at) {
+    const lastActivity = new Date(data.last_activity_at).getTime()
+    if (Date.now() - lastActivity > IDLE_TIMEOUT_MS) {
+      // 閒置過久，刪除 session
+      await supabase.from('admin_sessions').delete().eq('token', token)
+      return null
+    }
   }
 
   // 更新最後活動時間

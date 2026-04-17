@@ -94,9 +94,9 @@ export function TodayArticlesCarousel({ articles }: TodayArticlesCarouselProps) 
                         src={article.cover_image}
                         alt={article.title_zh}
                         fill
+                        sizes="(max-width: 640px) 80vw, (max-width: 1024px) 40vw, 300px"
                         className="object-cover"
                         loading="lazy"
-                        unoptimized
                       />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">

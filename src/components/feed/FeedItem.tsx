@@ -49,7 +49,7 @@ export function FeedItem({ item }: FeedItemProps) {
             <Link href={`/user/${data.profile.username || data.profile.id}`} className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
                 {data.profile.avatar_url && isValidImageUrl(data.profile.avatar_url) ? (
-                  <Image src={data.profile.avatar_url} alt="" width={32} height={32} className="w-full h-full object-cover" unoptimized />
+                  <Image src={data.profile.avatar_url} alt={data.profile.display_name || '使用者頭像'} width={32} height={32} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full bg-[var(--brand-primary)] flex items-center justify-center">
                     <span className="text-xs font-bold">{data.profile.display_name?.[0] || 'U'}</span>
@@ -119,7 +119,7 @@ export function FeedItem({ item }: FeedItemProps) {
           </div>
           {data.cover_image && isValidImageUrl(data.cover_image) && (
             <div className="w-20 h-16 rounded overflow-hidden flex-shrink-0">
-              <Image src={data.cover_image} alt="" width={80} height={64} className="w-full h-full object-cover" unoptimized />
+              <Image src={data.cover_image} alt={data.title_zh || '文章封面'} width={80} height={64} className="w-full h-full object-cover" />
             </div>
           )}
         </div>

@@ -98,7 +98,6 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
             width={36}
             height={36}
             className="w-full h-full object-cover"
-            unoptimized
           />
         ) : (
           <div className="w-full h-full bg-[var(--brand-primary)] flex items-center justify-center">

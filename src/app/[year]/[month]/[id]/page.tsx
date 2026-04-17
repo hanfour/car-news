@@ -415,7 +415,6 @@ export default async function ArticlePage({ params }: PageProps) {
                     fill
                     className="object-cover"
                     priority
-                    unoptimized
                   />
                 </div>
                 {article.image_credit && (
@@ -447,7 +446,6 @@ export default async function ArticlePage({ params }: PageProps) {
                           alt={img.caption || `圖片 ${index + 1}`}
                           fill
                           className="object-cover group-hover:scale-105 transition-transform duration-300"
-                          unoptimized
                         />
                       </div>
                       <div className="mt-2 space-y-1">
@@ -550,7 +548,6 @@ export default async function ArticlePage({ params }: PageProps) {
                               alt={related.title_zh}
                               fill
                               className="object-cover"
-                              unoptimized
                             />
                           ) : (
                             <div className="absolute inset-0 flex items-center justify-center">
@@ -595,22 +592,6 @@ export default async function ArticlePage({ params }: PageProps) {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="bg-[var(--foreground)]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="text-center md:text-left">
-              <p className="text-white font-semibold mb-1">玩咖 WANT CAR</p>
-              <p className="text-gray-400 text-sm">想要車？從數據到動力，AI 帶你玩懂車界未來</p>
-            </div>
-            <div className="text-center md:text-right">
-              <p className="text-gray-400 text-sm">
-                © 2025 WANT CAR · Powered by <span className="text-[var(--brand-primary)]">AI</span>
-              </p>
-            </div>
-          </div>
-        </div>
-      </footer>
       </div>
     </>
   )

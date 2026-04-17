@@ -1,6 +1,9 @@
 /**
  * In-memory sliding window rate limiter
- * 每個 serverless instance 獨立計數，重啟歸零
+ *
+ * 限制：Vercel serverless 每個 instance 獨立計數，冷啟動後歸零。
+ * 對於已登入使用者（以 userId 為 key）仍能有效防止單一使用者濫用。
+ * 關鍵操作（admin login）使用 DB-backed rate limiter（admin/rate-limit.ts）。
  */
 
 interface RateLimitResult {

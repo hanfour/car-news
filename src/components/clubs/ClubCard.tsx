@@ -25,7 +25,7 @@ export function ClubCard({ club }: ClubCardProps) {
       <div className="flex items-center gap-3">
         <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
           {club.avatar_url && isValidImageUrl(club.avatar_url) ? (
-            <Image src={club.avatar_url} alt={club.name} width={48} height={48} className="w-full h-full object-cover" unoptimized />
+            <Image src={club.avatar_url} alt={club.name} width={48} height={48} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full bg-[var(--brand-primary-lighter)] flex items-center justify-center">
               <span className="text-lg font-bold" style={{ color: 'var(--brand-primary-dark)' }}>

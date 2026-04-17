@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { verifySessionToken } from '@/lib/admin/session'
+import { timingSafeEqual } from 'crypto'
+
+/**
+ * Timing-safe string comparison to prevent timing attacks on secret comparison
+ */
+function secureCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  try {
+    return timingSafeEqual(Buffer.from(a), Buffer.from(b))
+  } catch {
+    return false
+  }
+}
 
 /**
  * Debug API 訪問控制
@@ -42,8 +55,11 @@ export async function verifyAdminAuth(request: NextRequest): Promise<boolean> {
   const authHeader = request.headers.get('authorization')
   const ADMIN_API_KEY = process.env.ADMIN_API_KEY
 
-  if (ADMIN_API_KEY && authHeader === `Bearer ${ADMIN_API_KEY}`) {
-    return true
+  if (ADMIN_API_KEY && authHeader?.startsWith('Bearer ')) {
+    const providedKey = authHeader.slice(7)
+    if (secureCompare(providedKey, ADMIN_API_KEY)) {
+      return true
+    }
   }
 
   // Method 2: Cookie session (for Web UI)
