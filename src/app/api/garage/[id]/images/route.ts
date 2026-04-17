@@ -152,6 +152,14 @@ export async function DELETE(
       return NextResponse.json({ error: '找不到此車輛或無權操作' }, { status: 404 })
     }
 
+    // 驗證 URL 確實屬於此車輛的圖片
+    if (type === 'cover' && car.cover_image !== url) {
+      return NextResponse.json({ error: '此圖片不屬於該車輛' }, { status: 403 })
+    }
+    if (type === 'gallery' && !(car.images || []).includes(url)) {
+      return NextResponse.json({ error: '此圖片不屬於該車輛' }, { status: 403 })
+    }
+
     // 從 R2 刪除 — 從 URL 提取 key（R2_PUBLIC_URL 後面的部分）
     const r2PublicUrl = (process.env.R2_PUBLIC_URL || '').replace(/\/+$/, '')
     if (r2PublicUrl && url.startsWith(r2PublicUrl)) {

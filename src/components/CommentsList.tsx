@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { CommentItem } from './CommentItem'
 
 type SortType = 'time' | 'likes'
@@ -24,6 +24,8 @@ interface CommentsListProps {
 export function CommentsList({ initialComments }: CommentsListProps) {
   const [comments, setComments] = useState<Comment[]>(initialComments)
   const [sortBy, setSortBy] = useState<SortType>('time')
+
+  useEffect(() => { setComments(initialComments) }, [initialComments])
 
   const handleEdit = (id: string, newContent: string) => {
     setComments(prev => prev.map(c => c.id === id ? { ...c, content: newContent } : c))
