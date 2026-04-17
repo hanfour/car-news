@@ -40,8 +40,8 @@ export default function NotificationSettingsPage() {
           const data = await res.json()
           setSettings(data.settings)
         }
-      } catch {
-        // Silently fail
+      } catch (err) {
+        console.error('[NotificationSettingsPage] fetchSettings:', err)
       }
     }
     fetchSettings()

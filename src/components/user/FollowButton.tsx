@@ -30,8 +30,8 @@ export function FollowButton({ targetUsername, targetUserId, className = '' }: F
           const data = await res.json()
           setIsFollowing(data.isFollowing)
         }
-      } catch {
-        // Silently fail
+      } catch (err) {
+        console.error('[FollowButton] checkFollowStatus:', err)
       } finally {
         setChecked(true)
       }
@@ -54,8 +54,8 @@ export function FollowButton({ targetUsername, targetUserId, className = '' }: F
         const data = await res.json()
         setIsFollowing(data.isFollowing)
       }
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.error('[FollowButton] toggleFollow:', err)
     } finally {
       setLoading(false)
     }

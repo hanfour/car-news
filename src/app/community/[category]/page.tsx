@@ -32,7 +32,7 @@ export default function CategoryPage() {
           const found = data.categories?.find((c: Category) => c.slug === categorySlug)
           setCategory(found || null)
         }
-      } catch { /* */ }
+      } catch (err) { console.error('[CategoryPage] fetchCategory:', err) }
     }
     fetchCategory()
   }, [categorySlug])

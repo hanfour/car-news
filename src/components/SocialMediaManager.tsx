@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, ChangeEvent } from 'react'
+import { useToast } from '@/components/ToastContainer'
 
 type StatusFilter = 'all' | 'pending' | 'posted' | 'failed'
 
@@ -37,6 +38,7 @@ const PLATFORM_COLORS = {
 }
 
 export default function SocialMediaManager() {
+  const { showToast } = useToast()
   const [posts, setPosts] = useState<SocialPost[]>([])
   const [loading, setLoading] = useState(true)
   const [publishing, setPublishing] = useState<string | null>(null)
@@ -81,13 +83,13 @@ export default function SocialMediaManager() {
       const data = await response.json()
 
       if (data.success) {
-        alert(`成功發布到 ${platform}！\n${data.postUrl || ''}`)
-        fetchPosts() // 刷新列表
+        showToast(`成功發布到 ${platform}！`, 'success')
+        fetchPosts()
       } else {
-        alert(`發布失敗：${data.error}`)
+        showToast(`發布失敗：${data.error}`, 'error')
       }
     } catch (error) {
-      alert('發布失敗：' + (error instanceof Error ? error.message : '未知錯誤'))
+      showToast('發布失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error')
     } finally {
       setPublishing(null)
     }

@@ -32,8 +32,8 @@ export default function PrivacySettingsPage() {
         const data = await res.json()
         setBlockedUsers(data.blocks || [])
       }
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.error('[PrivacySettingsPage] fetchBlockedUsers:', err)
     } finally {
       setLoadingBlocks(false)
     }
@@ -56,7 +56,7 @@ export default function PrivacySettingsPage() {
         setIsFavoritesPublic(!isFavoritesPublic)
         refreshProfile()
       }
-    } catch { /* */ } finally { setSaving(false) }
+    } catch (err) { console.error('[PrivacySettingsPage] toggleFavoritesPublic:', err) } finally { setSaving(false) }
   }
 
   const handleUnblock = async (bu: BlockedUser) => {
@@ -71,8 +71,8 @@ export default function PrivacySettingsPage() {
       if (res.ok) {
         setBlockedUsers(prev => prev.filter(b => b.blocked_id !== bu.blocked_id))
       }
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.error('[PrivacySettingsPage] handleUnblock:', err)
     } finally {
       setUnblocking(null)
     }

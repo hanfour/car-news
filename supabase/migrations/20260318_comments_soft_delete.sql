@@ -1,0 +1,2 @@
+-- 評論軟刪除欄位
+ALTER TABLE comments ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE;
