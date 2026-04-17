@@ -1,18 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { verifySessionToken } from '@/lib/admin/session'
-import { timingSafeEqual } from 'crypto'
 
 /**
- * Timing-safe string comparison to prevent timing attacks on secret comparison
+ * Timing-safe string comparison using Web Crypto API (Edge Runtime 兼容)
+ * 防止 timing attack 洩漏 secret 長度/內容
  */
-function secureCompare(a: string, b: string): boolean {
+async function secureCompare(a: string, b: string): Promise<boolean> {
   if (a.length !== b.length) return false
-  try {
-    return timingSafeEqual(Buffer.from(a), Buffer.from(b))
-  } catch {
-    return false
+  const encoder = new TextEncoder()
+  const keyData = encoder.encode(a)
+  const key = await crypto.subtle.importKey(
+    'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  )
+  const sig1 = await crypto.subtle.sign('HMAC', key, encoder.encode(a))
+  const sig2 = await crypto.subtle.sign('HMAC', key, encoder.encode(b))
+  const arr1 = new Uint8Array(sig1)
+  const arr2 = new Uint8Array(sig2)
+  if (arr1.length !== arr2.length) return false
+  let result = 0
+  for (let i = 0; i < arr1.length; i++) {
+    result |= arr1[i] ^ arr2[i]
   }
+  return result === 0
 }
 
 /**
@@ -57,7 +67,7 @@ export async function verifyAdminAuth(request: NextRequest): Promise<boolean> {
 
   if (ADMIN_API_KEY && authHeader?.startsWith('Bearer ')) {
     const providedKey = authHeader.slice(7)
-    if (secureCompare(providedKey, ADMIN_API_KEY)) {
+    if (await secureCompare(providedKey, ADMIN_API_KEY)) {
       return true
     }
   }

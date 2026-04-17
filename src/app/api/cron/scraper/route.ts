@@ -7,10 +7,10 @@ import { getErrorMessage } from '@/lib/utils/error'
 export const maxDuration = 300 // Vercel Pro限制：最长5分钟（与generator一致）
 
 async function handleCronJob(request: NextRequest) {
-  // 驗證 Cron Secret（fail-closed：無 secret 或不匹配時一律拒絕）
+  // 驗證 Vercel Cron（x-vercel-cron: 1）或手動觸發（Bearer CRON_SECRET）
   const CRON_SECRET = process.env.CRON_SECRET?.trim()
   const authHeader = request.headers.get('authorization')
-  const isVercelCron = !!request.headers.get('x-vercel-cron-signature')
+  const isVercelCron = request.headers.get('x-vercel-cron') === '1'
   const isManualTrigger = CRON_SECRET && authHeader === `Bearer ${CRON_SECRET}`
 
   if (!isVercelCron && !isManualTrigger) {
