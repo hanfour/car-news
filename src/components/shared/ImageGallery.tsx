@@ -29,8 +29,8 @@ export function ImageGallery({ images, alt = '' }: ImageGalleryProps) {
           src={validImages[currentIndex]}
           alt={alt}
           fill
+          sizes="(max-width: 768px) 100vw, 800px"
           className="object-cover"
-          unoptimized
         />
 
         {/* Navigation arrows */}
@@ -80,7 +80,7 @@ export function ImageGallery({ images, alt = '' }: ImageGalleryProps) {
                 i === currentIndex ? 'border-[var(--brand-primary)]' : 'border-transparent'
               }`}
             >
-              <Image src={img} alt="" width={64} height={64} className="w-full h-full object-cover" unoptimized />
+              <Image src={img} alt={`縮圖 ${i + 1}`} width={64} height={64} className="w-full h-full object-cover" />
             </button>
           ))}
         </div>

@@ -21,7 +21,6 @@ export function Avatar({ src, name, size = 32, className = '' }: AvatarProps) {
           width={size}
           height={size}
           className="w-full h-full object-cover"
-          unoptimized
         />
       </div>
     )

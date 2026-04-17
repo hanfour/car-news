@@ -36,8 +36,14 @@ export async function GET(request: NextRequest) {
 
     // 搜尋（sanitize 特殊字元防止 PostgREST filter injection）
     if (search) {
-      const sanitized = search.replace(/[%_\\]/g, '\\$&').replace(/[.,()]/g, '')
-      query = query.or(`title.ilike.%${sanitized}%,content.ilike.%${sanitized}%`)
+      const trimmed = search.trim().slice(0, 100)
+      if (trimmed.length >= 2) {
+        // 移除 PostgREST filter 語法中的危險字元，保留中日韓文字和字母數字
+        const sanitized = trimmed
+          .replace(/[%_\\]/g, '\\$&')
+          .replace(/[.,()'"]/g, '')
+        query = query.or(`title.ilike.%${sanitized}%,content.ilike.%${sanitized}%`)
+      }
     }
 
     // 排序

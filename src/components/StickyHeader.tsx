@@ -178,7 +178,6 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                           width={32}
                           height={32}
                           className="rounded-full object-cover"
-                          unoptimized
                         />
                       ) : (
                         <div className="w-8 h-8 rounded-full bg-[var(--brand-primary)] flex items-center justify-center">
@@ -303,7 +302,6 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                             width={28}
                             height={28}
                             className="rounded-full object-cover"
-                            unoptimized
                           />
                         ) : (
                           <div className="w-7 h-7 rounded-full bg-[var(--brand-primary)] flex items-center justify-center">
@@ -445,7 +443,6 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                           width={48}
                           height={48}
                           className="object-contain filter grayscale group-hover:grayscale-0 transition-all"
-                          unoptimized
                         />
                       </div>
                       <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
@@ -570,7 +567,6 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                                 width={32}
                                 height={32}
                                 className="object-contain filter grayscale group-hover:grayscale-0 transition-all"
-                                unoptimized
                               />
                             </div>
                             <span className="text-sm" style={{ color: 'var(--text-primary)' }}>

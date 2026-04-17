@@ -43,7 +43,7 @@ export function ClubPostCard({ post }: ClubPostCardProps) {
           <Link href={`/user/${post.author.username || post.author.id}`} className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full overflow-hidden">
               {post.author.avatar_url && isValidImageUrl(post.author.avatar_url) ? (
-                <Image src={post.author.avatar_url} alt="" width={32} height={32} className="w-full h-full object-cover" unoptimized />
+                <Image src={post.author.avatar_url} alt={post.author.display_name || '作者頭像'} width={32} height={32} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full bg-[var(--brand-primary)] flex items-center justify-center">
                   <span className="text-xs font-bold">{post.author.display_name?.[0] || 'U'}</span>

@@ -5,10 +5,11 @@ import { getErrorMessage } from '@/lib/utils/error'
 export const maxDuration = 30 // 清理任务应该很快
 
 async function handleCronJob(request: NextRequest) {
-  // 验证 Vercel Cron 或手动触发
-  const isVercelCron = request.headers.get('x-vercel-cron') === '1'
+  // 驗證 Vercel Cron（x-vercel-cron: 1）或手動觸發（Bearer CRON_SECRET）
+  const CRON_SECRET = process.env.CRON_SECRET?.trim()
   const authHeader = request.headers.get('authorization')
-  const isManualTrigger = authHeader === `Bearer ${process.env.CRON_SECRET?.trim()}`
+  const isVercelCron = request.headers.get('x-vercel-cron') === '1'
+  const isManualTrigger = CRON_SECRET && authHeader === `Bearer ${CRON_SECRET}`
 
   if (!isVercelCron && !isManualTrigger) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -55,7 +56,12 @@ async function handleCronJob(request: NextRequest) {
     const deletedImages = await deleteOldImages(30)
     results.old_images = deletedImages
 
-    // 5. 记录清理日志
+    // 5. 清理過期的 admin sessions
+    const { cleanupExpiredSessions } = await import('@/lib/admin/session')
+    const expiredSessions = await cleanupExpiredSessions()
+    results.expired_sessions = expiredSessions
+
+    // 6. 记录清理日志
     await supabase.from('cron_logs').insert({
       job_name: 'cleanup',
       status: 'success',

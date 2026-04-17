@@ -9,73 +9,62 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     const handleCallback = async () => {
-      // 檢查是否有 hash fragment (Implicit Flow)
+      const supabase = createClient()
+
+      // 1. PKCE Flow — code 在 query params 中（Supabase JS v2 預設）
+      const code = new URLSearchParams(window.location.search).get('code')
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        if (error) {
+          router.replace('/auth/error?reason=session_error')
+          return
+        }
+        redirectToReturnUrl()
+        return
+      }
+
+      // 2. Implicit Flow — tokens 在 hash fragment 中（相容舊版）
       const hash = window.location.hash
-
       if (hash && hash.length > 1) {
-        console.log('[Auth] Implicit flow detected')
-
-        // 解析 hash
         const params = new URLSearchParams(hash.substring(1))
         const accessToken = params.get('access_token')
         const refreshToken = params.get('refresh_token')
-        const expiresIn = params.get('expires_in')
 
         if (accessToken && refreshToken) {
-          // 使用 Supabase client 的 setSession() 來正確設置 session
-          // 這會自動處理 localStorage 和 cookies
-          const supabase = createClient()
-
           const { error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken
           })
-
           if (error) {
-            console.error('[Auth] Failed to set session:', error)
             router.replace('/auth/error?reason=session_error')
             return
           }
-
-          console.log('[Auth] Session set successfully')
-
-          // 讀取返回 URL
-          const cookies = document.cookie.split(';')
-          const returnUrlCookie = cookies.find(c => c.trim().startsWith('auth_return_url='))
-          const returnUrl = returnUrlCookie
-            ? decodeURIComponent(returnUrlCookie.split('=')[1])
-            : '/'
-
-          // 清除 cookie
-          document.cookie = 'auth_return_url=; path=/; max-age=0'
-
-          console.log('[Auth] Redirecting to:', returnUrl)
-
-          // 重定向（不帶 hash）
-          router.replace(returnUrl)
+          redirectToReturnUrl()
+          return
         } else {
-          console.error('[Auth] Missing tokens in hash')
           router.replace('/auth/error?reason=missing_tokens')
-        }
-      } else {
-        // 沒有 hash，檢查是否已有 session
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-        const projectRef = supabaseUrl.split('//')[1]?.split('.')[0] || ''
-        if (projectRef) {
-          const storageKey = `sb-${projectRef}-auth-token`
-          const existingSession = localStorage.getItem(storageKey)
-
-          if (existingSession) {
-            console.log('[Auth] Session exists, redirecting to home')
-            router.replace('/')
-          } else {
-            console.log('[Auth] No session and no hash, redirect to home')
-            router.replace('/')
-          }
-        } else {
-          router.replace('/')
+          return
         }
       }
+
+      // 3. 無 code 也無 hash — 可能是 detectSessionInUrl 已自動處理
+      //    等待 auth state change 再決定
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        redirectToReturnUrl()
+      } else {
+        router.replace('/')
+      }
+    }
+
+    function redirectToReturnUrl() {
+      const cookies = document.cookie.split(';')
+      const returnUrlCookie = cookies.find(c => c.trim().startsWith('auth_return_url='))
+      const returnUrl = returnUrlCookie
+        ? decodeURIComponent(returnUrlCookie.split('=')[1])
+        : '/'
+      document.cookie = 'auth_return_url=; path=/; max-age=0'
+      router.replace(returnUrl)
     }
 
     handleCallback()

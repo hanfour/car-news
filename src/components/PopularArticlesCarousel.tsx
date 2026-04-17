@@ -104,9 +104,9 @@ export function PopularArticlesCarousel({ articles }: PopularArticlesCarouselPro
                         src={article.cover_image}
                         alt={article.title_zh}
                         fill
+                        sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 400px"
                         className="object-cover"
                         loading="lazy"
-                        unoptimized
                       />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">

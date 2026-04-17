@@ -91,7 +91,6 @@ export function AvatarUploader({ currentAvatar }: AvatarUploaderProps) {
             width={80}
             height={80}
             className="w-full h-full object-cover"
-            unoptimized
           />
         ) : (
           <div className="w-full h-full bg-[var(--brand-primary)] flex items-center justify-center">

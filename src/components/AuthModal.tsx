@@ -64,12 +64,9 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       }
     } catch (err) {
       const error = err as Error
-      console.error('[Auth Error - Email]', {
-        mode,
-        email,
-        error: error.message,
-        stack: error.stack
-      })
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[Auth Error - Email]', error.message)
+      }
       setError(error.message || '操作失敗')
     } finally {
       setLoading(false)
@@ -97,11 +94,9 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       if (error) throw error
     } catch (err) {
       const error = err as Error
-      console.error('[Auth Error - Social Login]', {
-        provider,
-        error: error.message,
-        stack: error.stack
-      })
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[Auth Error - Social Login]', error.message)
+      }
       setError(error.message || '社交登入失敗')
       setLoading(false)
     }

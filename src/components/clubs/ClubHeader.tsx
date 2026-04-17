@@ -34,7 +34,7 @@ export function ClubHeader({ club, isMember, isOwner, onStatusChange }: ClubHead
       {/* Banner */}
       <div className="h-32 sm:h-48 bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-primary-dark)] relative">
         {club.cover_image && isValidImageUrl(club.cover_image) && (
-          <Image src={club.cover_image} alt="" fill className="object-cover" unoptimized />
+          <Image src={club.cover_image} alt={`${club.name} 封面`} fill className="object-cover" />
         )}
       </div>
 

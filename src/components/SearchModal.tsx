@@ -246,7 +246,6 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                               fill
                               className="object-cover"
                               loading="lazy"
-                              unoptimized
                             />
                           ) : (
                             <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">

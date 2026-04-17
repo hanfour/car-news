@@ -40,6 +40,11 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'fgwbcgniwnupufxnrljz.supabase.co',
+        pathname: '/storage/**',
+      },
+      {
+        protocol: 'https',
         hostname: 'pub-212c7eaf59fa41c69e2d4959e72c4a29.r2.dev',
         pathname: '/**',
       },

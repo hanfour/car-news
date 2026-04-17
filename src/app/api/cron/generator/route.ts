@@ -35,10 +35,11 @@ const TIMEOUT_CONFIG = {
 }
 
 async function handleCronJob(request: NextRequest) {
-  // 验证 Vercel Cron 或手动触发
-  const isVercelCron = request.headers.get('x-vercel-cron') === '1'
+  // 驗證 Vercel Cron（x-vercel-cron: 1）或手動觸發（Bearer CRON_SECRET）
+  const CRON_SECRET = process.env.CRON_SECRET?.trim()
   const authHeader = request.headers.get('authorization')
-  const isManualTrigger = authHeader === `Bearer ${process.env.CRON_SECRET?.trim()}`
+  const isVercelCron = request.headers.get('x-vercel-cron') === '1'
+  const isManualTrigger = CRON_SECRET && authHeader === `Bearer ${CRON_SECRET}`
 
   if (!isVercelCron && !isManualTrigger) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

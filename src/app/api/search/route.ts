@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { checkRateLimit } from '@/lib/utils/rate-limiter'
+import { rateLimit } from '@/lib/rate-limit'
 
 /**
  * Full-text search API using PostgreSQL tsvector
@@ -9,7 +9,7 @@ import { checkRateLimit } from '@/lib/utils/rate-limiter'
  */
 export async function GET(request: NextRequest) {
   const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-  const { allowed } = checkRateLimit(clientIp, 30)
+  const { allowed } = rateLimit(`search:${clientIp}`, { maxRequests: 30, windowMs: 60_000 })
 
   if (!allowed) {
     return NextResponse.json(

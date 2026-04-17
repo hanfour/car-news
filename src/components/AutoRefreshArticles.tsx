@@ -49,10 +49,6 @@ export function AutoRefreshArticles({ ssrLatestTime }: AutoRefreshArticlesProps)
 
             if (dbTime > ssrTime) {
               // DB 有更新的文章，自動刷新頁面數據
-              console.log('[AutoRefresh] SSR data is stale, refreshing...', {
-                ssrTime: ssrTime.toISOString(),
-                dbTime: dbTime.toISOString()
-              })
               hasAutoRefreshed.current = true
               router.refresh()
               return
@@ -67,7 +63,6 @@ export function AutoRefreshArticles({ ssrLatestTime }: AutoRefreshArticlesProps)
               const dbTime = new Date(dbLatestTime)
 
               if (dbTime > lastSeen && !hasAutoRefreshed.current) {
-                console.log('[AutoRefresh] New articles since last visit, refreshing...')
                 hasAutoRefreshed.current = true
                 router.refresh()
                 return
@@ -97,8 +92,6 @@ export function AutoRefreshArticles({ ssrLatestTime }: AutoRefreshArticlesProps)
           filter: 'published=eq.true'
         },
         (payload) => {
-          console.log('[AutoRefresh] New article published:', payload.new)
-
           // 檢查是否真的有新文章（發布時間晚於當前最新）
           if (latestArticleTime) {
             const newArticleTime = new Date(payload.new.published_at as string)
@@ -125,7 +118,6 @@ export function AutoRefreshArticles({ ssrLatestTime }: AutoRefreshArticlesProps)
         (payload) => {
           // 如果文章從未發布變為已發布
           if (payload.old?.published === false && payload.new?.published === true) {
-            console.log('[AutoRefresh] Article published:', payload.new)
             setHasNewArticles(true)
           }
         }

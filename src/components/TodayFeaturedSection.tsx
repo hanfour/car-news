@@ -68,9 +68,9 @@ export function TodayFeaturedSection({ articles }: TodayFeaturedSectionProps) {
                     src={featuredArticle.cover_image}
                     alt={featuredArticle.title_zh}
                     fill
+                    sizes="(max-width: 768px) 100vw, 66vw"
                     className="object-cover"
                     priority
-                    unoptimized
                   />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
@@ -152,9 +152,9 @@ export function TodayFeaturedSection({ articles }: TodayFeaturedSectionProps) {
                           src={article.cover_image}
                           alt={article.title_zh}
                           fill
+                          sizes="140px"
                           className="object-cover"
                           loading="lazy"
-                          unoptimized
                         />
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
