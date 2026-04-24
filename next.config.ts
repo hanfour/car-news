@@ -1,6 +1,18 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // 明確標記僅 server 端使用的套件，避免被錯誤打包進 client bundle
+  serverExternalPackages: [
+    '@anthropic-ai/sdk',
+    '@google/generative-ai',
+    'openai',
+    '@fal-ai/client',
+    'cheerio',
+    'rss-parser',
+    'rss',
+    'youtube-transcript',
+    'sharp',
+  ],
   images: {
     remotePatterns: [
       {

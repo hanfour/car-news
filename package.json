@@ -7,10 +7,25 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "backfill": "tsx scripts/backfill-articles.ts"
+    "verify": "npm run typecheck && npm run lint && npm run test",
+    "backfill": "tsx scripts/backfill-articles.ts",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml,css}": [
+      "prettier --write"
+    ]
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
@@ -37,6 +52,7 @@
     "remark-gfm": "^4.0.1",
     "rss": "^1.2.2",
     "rss-parser": "^3.13.0",
+    "server-only": "^0.0.1",
     "sharp": "^0.34.5",
     "youtube-transcript": "^1.3.0"
   },
@@ -52,8 +68,11 @@
     "dotenv": "^17.2.3",
     "eslint": "^9",
     "eslint-config-next": "^16.1.0",
+    "husky": "^9.1.7",
     "jest": "^30.2.0",
     "jest-environment-jsdom": "^30.2.0",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.3",
     "tailwindcss": "^4",
     "ts-jest": "^29.4.5",
     "tsx": "^4.20.6",

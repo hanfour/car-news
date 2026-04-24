@@ -1,3 +1,4 @@
+import 'server-only'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import type { GenerateArticleInput, GenerateArticleOutput } from './claude'
 import { getErrorMessage } from '@/lib/utils/error'

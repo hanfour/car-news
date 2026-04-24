@@ -1,8 +1,13 @@
+import 'server-only'
 import sources from '@/config/sources.json'
 import { NewsSource } from '@/types/database'
 import { parseRSSFeed, ScrapedArticle } from './rss-parser'
 import { scrapeYouTubeChannel } from './youtube-scraper'
 import { fetchWebpage, extractTextFromHtml } from './fetcher'
+import { withTimeout } from '@/lib/utils/with-timeout'
+
+// 任何單一來源被限制在 20 秒內完成，避免單一卡死拖垮整批抓取
+const PER_SOURCE_TIMEOUT_MS = 20_000
 
 export async function scrapeAllSources(): Promise<ScrapedArticle[]> {
   const enabledSources = sources.filter((s) => s.enabled) as NewsSource[]
@@ -16,11 +21,19 @@ export async function scrapeAllSources(): Promise<ScrapedArticle[]> {
         console.log(`Scraping ${source.name}...`)
 
         if (source.type === 'rss') {
-          const articles = await parseRSSFeed(source as NewsSource)
+          const articles = await withTimeout(
+            parseRSSFeed(source as NewsSource),
+            PER_SOURCE_TIMEOUT_MS,
+            `rss:${source.name}`
+          )
           console.log(`  → Found ${articles.length} articles from ${source.name}`)
           return articles
         } else if (source.type === 'youtube') {
-          const articles = await scrapeYouTubeChannel(source as NewsSource)
+          const articles = await withTimeout(
+            scrapeYouTubeChannel(source as NewsSource),
+            PER_SOURCE_TIMEOUT_MS,
+            `youtube:${source.name}`
+          )
           console.log(`  → Found ${articles.length} videos with transcripts from ${source.name}`)
           return articles
         } else if (source.type === 'scrape') {

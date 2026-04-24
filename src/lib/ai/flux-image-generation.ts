@@ -1,3 +1,4 @@
+import 'server-only'
 /**
  * Flux 圖片生成工具
  * 使用 fal.ai 的 Flux 模型生成封面圖
