@@ -20,6 +20,9 @@ import Script from 'next/script'
 import { cache } from 'react'
 import { SourceBanner } from '@/components/SourceBanner'
 
+// 文章詳情發布後極少變動，設 1 小時 ISR 即可兼顧新鮮度與 CDN 命中
+export const revalidate = 3600
+
 interface PageProps {
   params: Promise<{
     year: string
