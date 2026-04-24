@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
+import { verifyDebugAccess } from '@/lib/admin/auth'
 
 /**
  * 重複文章清理 API
@@ -40,6 +41,9 @@ interface DuplicateGroup {
 }
 
 export async function GET(request: NextRequest) {
+  const access = await verifyDebugAccess(request)
+  if (!access.allowed) return access.response!
+
   const { searchParams } = new URL(request.url)
   const dryRun = searchParams.get('dryRun') !== 'false'
   const similarityThreshold = parseFloat(searchParams.get('threshold') || '0.90')

@@ -1,29 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { verifySessionToken } from '@/lib/admin/session'
-
-/**
- * Timing-safe string comparison using Web Crypto API (Edge Runtime 兼容)
- * 防止 timing attack 洩漏 secret 長度/內容
- */
-async function secureCompare(a: string, b: string): Promise<boolean> {
-  if (a.length !== b.length) return false
-  const encoder = new TextEncoder()
-  const keyData = encoder.encode(a)
-  const key = await crypto.subtle.importKey(
-    'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
-  )
-  const sig1 = await crypto.subtle.sign('HMAC', key, encoder.encode(a))
-  const sig2 = await crypto.subtle.sign('HMAC', key, encoder.encode(b))
-  const arr1 = new Uint8Array(sig1)
-  const arr2 = new Uint8Array(sig2)
-  if (arr1.length !== arr2.length) return false
-  let result = 0
-  for (let i = 0; i < arr1.length; i++) {
-    result |= arr1[i] ^ arr2[i]
-  }
-  return result === 0
-}
+import { secureCompare } from '@/lib/utils/secure-compare'
 
 /**
  * Debug API 訪問控制

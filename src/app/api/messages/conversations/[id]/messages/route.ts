@@ -1,8 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { rateLimit } from '@/lib/rate-limit'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+async function isConversationParticipant(
+  supabase: SupabaseClient,
+  conversationId: string,
+  userId: string
+): Promise<boolean> {
+  const { data } = await supabase
+    .from('conversation_participants')
+    .select('user_id')
+    .eq('conversation_id', conversationId)
+    .eq('user_id', userId)
+    .maybeSingle()
+  return !!data
+}
 
 // GET: 訊息列表（分頁）
 export async function GET(
@@ -14,10 +29,13 @@ export async function GET(
     if (!auth) {
       return NextResponse.json({ error: '請先登入' }, { status: 401 })
     }
-    const { supabase } = auth
+    const { supabase, userId } = auth
     const { id } = await params
     if (!UUID_RE.test(id)) {
       return NextResponse.json({ error: '無效的 ID' }, { status: 400 })
+    }
+    if (!(await isConversationParticipant(supabase, id, userId))) {
+      return NextResponse.json({ error: '無權存取此對話' }, { status: 403 })
     }
     const searchParams = request.nextUrl.searchParams
     const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100)
@@ -83,6 +101,9 @@ export async function POST(
     if (!UUID_RE.test(id)) {
       return NextResponse.json({ error: '無效的 ID' }, { status: 400 })
     }
+    if (!(await isConversationParticipant(supabase, id, userId))) {
+      return NextResponse.json({ error: '無權存取此對話' }, { status: 403 })
+    }
 
     const rl = rateLimit(`dm-send:${userId}`, { maxRequests: 30, windowMs: 60_000 })
     if (!rl.allowed) {
@@ -134,6 +155,9 @@ export async function DELETE(
     const { id } = await params
     if (!UUID_RE.test(id)) {
       return NextResponse.json({ error: '無效的 ID' }, { status: 400 })
+    }
+    if (!(await isConversationParticipant(supabase, id, userId))) {
+      return NextResponse.json({ error: '無權存取此對話' }, { status: 403 })
     }
 
     const { message_id } = await request.json()
