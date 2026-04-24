@@ -12,10 +12,12 @@ function getProjectRef(): string {
   return match?.[1] || ''
 }
 
-// 共用的 global fetch 配置
-const globalFetchOptions = {
-  next: { revalidate: 0 },  // 不快取 API 響應
-} as RequestInit
+// 注意：之前此處硬設 `next: { revalidate: 0 }` 會讓所有 server-side
+// Supabase 查詢的頁面被強制成 dynamic render，等於蓋過 page 層級的
+// `export const revalidate = 3600`，ISR 完全沒生效（PR #10 的文章詳情
+// 快取就因此失效）。現在保持預設（不額外 cache），由呼叫方自己決定
+// — API routes 本來就是 dynamic（route handler 的 default），Page
+// 用 `revalidate` 指令即可走 ISR。
 
 // 缺 env 時回傳的 stub：避免 build-time prerender 直接在 constructor 拋
 // 「supabaseUrl is required」；實際呼叫 stub 時仍會 fail（連到 .invalid），
@@ -58,9 +60,7 @@ export function createClient() {
           autoRefreshToken: false,
           persistSession: false
         },
-        global: {
-          fetch: (url, options) => fetch(url, { ...options, ...globalFetchOptions })
-        }
+        // 不覆寫 global fetch — 讓 Next.js 預設行為與 page 層級 revalidate 指令生效
       }
     )
   }
@@ -79,9 +79,7 @@ export function createServiceClient() {
           autoRefreshToken: false,
           persistSession: false
         },
-        global: {
-          fetch: (url, options) => fetch(url, { ...options, ...globalFetchOptions })
-        }
+        // 不覆寫 global fetch — 讓 Next.js 預設行為與 page 層級 revalidate 指令生效
       }
     )
   }
