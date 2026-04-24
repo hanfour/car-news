@@ -13,6 +13,7 @@ import type { Element } from 'domhandler'
 import { BasePressroomScraper, cleanText, htmlToText } from './base'
 import type { PressroomArticle, PressroomImage, PressroomScraperConfig } from './types'
 import { PRESSROOM_CONFIGS } from './types'
+import { logger } from '@/lib/logger'
 
 export class LexusToyotaScraper extends BasePressroomScraper {
   constructor(brand: 'lexus' | 'toyota') {
@@ -125,7 +126,7 @@ export class LexusToyotaScraper extends BasePressroomScraper {
                   $('title').text()
 
     if (!title) {
-      console.warn(`[${this.config.brand}] No title found for ${url}`)
+      logger.warn('scraper.pressroom.no_title', { brand: this.config.brand, url })
       return null
     }
 
@@ -138,7 +139,7 @@ export class LexusToyotaScraper extends BasePressroomScraper {
     const content = contentEl.length > 0 ? htmlToText(contentEl.html() || '') : ''
 
     if (!content) {
-      console.warn(`[${this.config.brand}] No content found for ${url}`)
+      logger.warn('scraper.pressroom.no_content', { brand: this.config.brand, url })
       return null
     }
 

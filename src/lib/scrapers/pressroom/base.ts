@@ -4,6 +4,7 @@
 
 import * as cheerio from 'cheerio'
 import { getErrorMessage } from '@/lib/utils/error'
+import { logger } from '@/lib/logger'
 import type {
   PressroomArticle,
   PressroomImage,
@@ -42,14 +43,13 @@ export abstract class BasePressroomScraper {
     }
 
     try {
-      console.log(`[${this.config.brand}] Starting pressroom scrape...`)
-      console.log(`   URL: ${this.config.newsListUrl}`)
+      logger.info('scraper.pressroom.start', { brand: this.config.brand, url: this.config.newsListUrl })
 
       // 1. 獲取文章列表
       const listHtml = await this.fetchPage(this.config.newsListUrl)
       const articleUrls = await this.parseArticleList(listHtml)
 
-      console.log(`[${this.config.brand}] Found ${articleUrls.length} articles`)
+      logger.info('scraper.pressroom.list_found', { brand: this.config.brand, count: articleUrls.length })
       result.stats.total = articleUrls.length
 
       // 2. 過濾已存在的文章
@@ -57,12 +57,12 @@ export abstract class BasePressroomScraper {
       result.stats.skipped = articleUrls.length - newUrls.length
 
       if (newUrls.length === 0) {
-        console.log(`[${this.config.brand}] No new articles found`)
+        logger.info('scraper.pressroom.no_new', { brand: this.config.brand })
         result.success = true
         return result
       }
 
-      console.log(`[${this.config.brand}] ${newUrls.length} new articles to process`)
+      logger.info('scraper.pressroom.to_process', { brand: this.config.brand, count: newUrls.length })
 
       // 3. 限制數量
       const urlsToProcess = newUrls.slice(0, this.config.maxArticles || 20)
@@ -83,7 +83,7 @@ export abstract class BasePressroomScraper {
             if (this.isWithinDateRange(article.publishedAt)) {
               result.articles.push(article)
               result.stats.new++
-              console.log(`[${this.config.brand}] ✓ ${article.title.slice(0, 50)}...`)
+              logger.debug('scraper.pressroom.article_ok', { brand: this.config.brand, title: article.title.slice(0, 100) })
             } else {
               result.stats.skipped++
             }
@@ -95,11 +95,11 @@ export abstract class BasePressroomScraper {
       }
 
       result.success = true
-      console.log(`[${this.config.brand}] Scrape complete: ${result.stats.new} new articles`)
+      logger.info('scraper.pressroom.done', { brand: this.config.brand, newCount: result.stats.new })
 
     } catch (error) {
       result.errors.push(getErrorMessage(error))
-      console.error(`[${this.config.brand}] Scrape failed:`, getErrorMessage(error))
+      logger.error('scraper.pressroom.run_fail', error, { brand: this.config.brand })
     }
 
     return result

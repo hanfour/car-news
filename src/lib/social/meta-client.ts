@@ -5,6 +5,8 @@
  * API 文件：https://developers.facebook.com/docs/graph-api
  */
 
+import { logger } from '@/lib/logger'
+
 const GRAPH_API_VERSION = 'v21.0'
 const GRAPH_API_BASE_URL = `https://graph.facebook.com/${GRAPH_API_VERSION}`
 
@@ -79,7 +81,7 @@ export async function postToFacebookPage(
     const data = await response.json()
 
     if (!response.ok) {
-      console.error('[Facebook] Post failed:', data)
+      logger.error('social.facebook.post_fail', data, { pageId })
       return {
         success: false,
         error: data.error?.message || 'Unknown error'
@@ -96,7 +98,7 @@ export async function postToFacebookPage(
       postUrl
     }
   } catch (error) {
-    console.error('[Facebook] Post error:', error)
+    logger.error('social.facebook.post_error', error, { pageId })
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
@@ -156,7 +158,7 @@ export async function postToInstagram(
     const containerData = await containerResponse.json()
 
     if (!containerResponse.ok) {
-      console.error('[Instagram] Container creation failed:', containerData)
+      logger.error('social.instagram.container_fail', containerData, { instagramAccountId })
       return {
         success: false,
         error: containerData.error?.message || 'Failed to create media container'
@@ -183,7 +185,7 @@ export async function postToInstagram(
     const publishData = await publishResponse.json()
 
     if (!publishResponse.ok) {
-      console.error('[Instagram] Publish failed:', publishData)
+      logger.error('social.instagram.publish_fail', publishData, { instagramAccountId })
       return {
         success: false,
         error: publishData.error?.message || 'Failed to publish media'
@@ -199,7 +201,7 @@ export async function postToInstagram(
       postUrl
     }
   } catch (error) {
-    console.error('[Instagram] Post error:', error)
+    logger.error('social.instagram.post_error', error, { instagramAccountId })
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'

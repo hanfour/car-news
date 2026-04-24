@@ -12,6 +12,7 @@ import type { Element } from 'domhandler'
 import { BasePressroomScraper, cleanText, htmlToText } from './base'
 import type { PressroomArticle, PressroomImage } from './types'
 import { PRESSROOM_CONFIGS } from './types'
+import { logger } from '@/lib/logger'
 
 export class KiaScraper extends BasePressroomScraper {
   constructor() {
@@ -69,7 +70,7 @@ export class KiaScraper extends BasePressroomScraper {
                   $('title').text()
 
     if (!title) {
-      console.warn(`[Kia] No title found for ${url}`)
+      logger.warn('scraper.pressroom.no_title', { brand: 'Kia', url })
       return null
     }
 
@@ -87,7 +88,7 @@ export class KiaScraper extends BasePressroomScraper {
     const content = contentEl.length > 0 ? htmlToText(contentEl.html() || '') : ''
 
     if (!content) {
-      console.warn(`[Kia] No content found for ${url}`)
+      logger.warn('scraper.pressroom.no_content', { brand: 'Kia', url })
       return null
     }
 
@@ -164,7 +165,7 @@ export class KiaScraper extends BasePressroomScraper {
         return parsed
       }
     } catch (e) {
-      console.warn(`[Kia] Failed to parse date: ${dateStr}`)
+      logger.warn('scraper.pressroom.date_parse_fail', { brand: 'Kia', dateStr })
     }
 
     return new Date()

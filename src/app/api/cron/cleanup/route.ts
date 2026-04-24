@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { getErrorMessage } from '@/lib/utils/error'
 import { verifyCronAuth, unauthorized } from '@/lib/cron/auth'
+import { logger } from '@/lib/logger'
 
 export const maxDuration = 30 // 清理任务应该很快
 
@@ -73,7 +74,7 @@ async function handleCronJob(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Cleanup error:', error)
+    logger.error('cron.cleanup.fail', error)
 
     // 记录错误日志
     try {
@@ -87,7 +88,7 @@ async function handleCronJob(request: NextRequest) {
         }
       })
     } catch (logError) {
-      console.error('Failed to log error:', logError)
+      logger.error('cron.cleanup.log_fail', logError)
     }
 
     return NextResponse.json(

@@ -2,6 +2,7 @@ import crypto from 'crypto'
 import { getErrorMessage } from '@/lib/utils/error'
 import { isLegalImageSource, getImageSourceCredit } from '@/config/image-sources'
 import { uploadToR2 } from './r2-client'
+import { logger } from '@/lib/logger'
 
 /**
  * 圖片下載和存儲服務
@@ -96,15 +97,20 @@ export async function downloadAndStoreImage(
     const sourceCheck = isLegalImageSource(imageUrl)
 
     if (!sourceCheck.isLegal) {
-      console.warn(`[Image Storage] ⚠️ 非法來源，跳過下載: ${sourceCheck.domain}`)
-      console.warn(`[Image Storage] 原始 URL: ${imageUrl}`)
-      console.warn(`[Image Storage] 建議：使用 AI 生成圖片替代`)
+      logger.warn('storage.image.illegal_source', {
+        domain: sourceCheck.domain,
+        url: imageUrl,
+        suggestion: 'use_ai_generated',
+      })
       return null
     }
 
     const legalCredit = getImageSourceCredit(imageUrl)
-    console.log(`[Image Storage] ✓ 合法來源: ${sourceCheck.source} (${sourceCheck.domain})`)
-    console.log(`[Image Storage] Downloading: ${imageUrl}`)
+    logger.info('storage.image.legal_source', {
+      source: sourceCheck.source,
+      domain: sourceCheck.domain,
+      url: imageUrl,
+    })
 
     // 1. 下載圖片
     const response = await fetch(imageUrl, {
@@ -115,13 +121,17 @@ export async function downloadAndStoreImage(
     })
 
     if (!response.ok) {
-      console.error(`[Image Storage] Download failed: ${response.status} ${response.statusText}`)
+      logger.error('storage.image.download_fail', null, {
+        status: response.status,
+        statusText: response.statusText,
+        url: imageUrl,
+      })
       return null
     }
 
     const contentType = response.headers.get('content-type')
     if (!contentType?.startsWith('image/')) {
-      console.error(`[Image Storage] Invalid content type: ${contentType}`)
+      logger.error('storage.image.invalid_content_type', null, { contentType, url: imageUrl })
       return null
     }
 
@@ -130,23 +140,23 @@ export async function downloadAndStoreImage(
     const buffer = Buffer.from(arrayBuffer)
     const size = buffer.length
 
-    console.log(`[Image Storage] Downloaded ${size} bytes, type: ${contentType}`)
+    logger.info('storage.image.download_done', { size, contentType })
 
     if (size < 5000) {
-      console.warn(`[Image Storage] Image too small (${size} bytes), likely a placeholder or thumbnail`)
+      logger.warn('storage.image.too_small', { size, url: imageUrl })
       return null
     }
 
     if (size > 10 * 1024 * 1024) {
-      console.warn(`[Image Storage] File too large (${size} bytes), attempting to fetch compressed version...`)
+      logger.warn('storage.image.too_large', { size, url: imageUrl })
 
       const compressedUrl = tryCompressUrl(imageUrl)
       if (compressedUrl !== imageUrl) {
-        console.log(`[Image Storage] Retrying with compressed URL: ${compressedUrl}`)
+        logger.info('storage.image.retry_compressed', { compressedUrl })
         return downloadAndStoreImage(compressedUrl, articleId, credit)
       }
 
-      console.error(`[Image Storage] File too large after compression attempt: ${size} bytes`)
+      logger.error('storage.image.too_large_after_compress', null, { size, url: imageUrl })
       return null
     }
 
@@ -154,7 +164,7 @@ export async function downloadAndStoreImage(
     const filename = generateFilename(imageUrl, articleId)
     const publicUrl = await uploadToR2(filename, buffer, contentType)
 
-    console.log(`[Image Storage] ✓ Stored successfully: ${publicUrl}`)
+    logger.info('storage.image.store_success', { publicUrl })
 
     return {
       url: publicUrl,
@@ -164,7 +174,7 @@ export async function downloadAndStoreImage(
       mimeType: contentType,
     }
   } catch (error) {
-    console.error(`[Image Storage] Error:`, getErrorMessage(error))
+    logger.error('storage.image.error', error, { reason: getErrorMessage(error), url: imageUrl })
     return null
   }
 }
@@ -194,7 +204,7 @@ export async function downloadAndStoreImages(
           caption: chunk[j].caption,
         })
       } else {
-        console.warn(`[Image Storage] Skipping image (download failed): ${chunk[j].url}`)
+        logger.warn('storage.image.skip_failed', { url: chunk[j].url })
       }
     }
   }

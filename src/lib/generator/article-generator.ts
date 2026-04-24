@@ -3,6 +3,7 @@ import type { GenerateArticleOutput } from '@/lib/ai/claude'
 import { generateWithFallback } from '@/lib/ai/provider'
 import { loadPrompts } from '@/config/prompts'
 import { checkContentSimilarity } from '@/lib/utils/similarity-checker'
+import { logger } from '@/lib/logger'
 
 // 相似度检测阈值（30% = 0.3）
 const SIMILARITY_THRESHOLD = 0.30
@@ -36,7 +37,7 @@ export async function generateArticle(
   })
 
   // 📊 法律合规相似度检测
-  console.log('→ Running legal compliance similarity check...')
+  logger.info('generator.similarity.check_start')
   const sourceContents = sourceArticles.map(a => a.content)
   const similarityResult = checkContentSimilarity(
     result.content_zh,
@@ -47,12 +48,13 @@ export async function generateArticle(
   // 输出相似度检测结果
   const similarityPct = (similarityResult.overallSimilarity * 100).toFixed(1)
   if (similarityResult.isCompliant) {
-    console.log(`✓ Similarity check PASSED: ${similarityPct}% (threshold: ${SIMILARITY_THRESHOLD * 100}%)`)
+    logger.info('generator.similarity.passed', { similarityPct, threshold: SIMILARITY_THRESHOLD * 100 })
   } else {
-    console.warn(`⚠️ Similarity check WARNING: ${similarityPct}% exceeds threshold ${SIMILARITY_THRESHOLD * 100}%`)
-    for (const warning of similarityResult.warnings) {
-      console.warn(`   ${warning}`)
-    }
+    logger.warn('generator.similarity.exceeded', {
+      similarityPct,
+      threshold: SIMILARITY_THRESHOLD * 100,
+      warnings: similarityResult.warnings,
+    })
   }
 
   // 選擇封面圖：從來源文章中找第一張可用的圖片

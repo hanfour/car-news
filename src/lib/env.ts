@@ -6,6 +6,8 @@
  * Throws errors immediately rather than failing at runtime.
  */
 
+import { logger } from '@/lib/logger'
+
 interface RequiredEnvVars {
   // Supabase
   NEXT_PUBLIC_SUPABASE_URL: string
@@ -90,12 +92,10 @@ export function validateEnv(): RequiredEnvVars {
       NEXT_PUBLIC_BASE_URL: validateEnvVar('NEXT_PUBLIC_BASE_URL', process.env.NEXT_PUBLIC_BASE_URL),
     }
 
-    console.log('✅ All environment variables validated successfully')
+    logger.info('env.validate_success')
     return env
   } catch (error) {
-    console.error('\n🚨 Environment Variable Validation Failed:\n')
-    console.error((error as Error).message)
-    console.error('\nApplication cannot start. Please fix the above issues.\n')
+    logger.error('env.validate_fail', error, { message: (error as Error).message })
     process.exit(1)
   }
 }

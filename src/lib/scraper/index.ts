@@ -5,6 +5,7 @@ import { parseRSSFeed, ScrapedArticle } from './rss-parser'
 import { scrapeYouTubeChannel } from './youtube-scraper'
 import { fetchWebpage, extractTextFromHtml } from './fetcher'
 import { withTimeout } from '@/lib/utils/with-timeout'
+import { logger } from '@/lib/logger'
 
 // 任何單一來源被限制在 20 秒內完成，避免單一卡死拖垮整批抓取
 const PER_SOURCE_TIMEOUT_MS = 20_000
@@ -12,13 +13,13 @@ const PER_SOURCE_TIMEOUT_MS = 20_000
 export async function scrapeAllSources(): Promise<ScrapedArticle[]> {
   const enabledSources = sources.filter((s) => s.enabled) as NewsSource[]
 
-  console.log(`Scraping ${enabledSources.length} sources in parallel...`)
+  logger.info('scraper.run.start', { sourceCount: enabledSources.length })
 
   // 並行處理所有來源（更快！）
   const results = await Promise.allSettled(
     enabledSources.map(async (source) => {
       try {
-        console.log(`Scraping ${source.name}...`)
+        logger.info('scraper.source.start', { source: source.name, type: source.type })
 
         if (source.type === 'rss') {
           const articles = await withTimeout(
@@ -26,7 +27,7 @@ export async function scrapeAllSources(): Promise<ScrapedArticle[]> {
             PER_SOURCE_TIMEOUT_MS,
             `rss:${source.name}`
           )
-          console.log(`  → Found ${articles.length} articles from ${source.name}`)
+          logger.info('scraper.source.done', { source: source.name, type: 'rss', count: articles.length })
           return articles
         } else if (source.type === 'youtube') {
           const articles = await withTimeout(
@@ -34,15 +35,15 @@ export async function scrapeAllSources(): Promise<ScrapedArticle[]> {
             PER_SOURCE_TIMEOUT_MS,
             `youtube:${source.name}`
           )
-          console.log(`  → Found ${articles.length} videos with transcripts from ${source.name}`)
+          logger.info('scraper.source.done', { source: source.name, type: 'youtube', count: articles.length })
           return articles
         } else if (source.type === 'scrape') {
-          console.warn(`Scrape type not implemented for ${source.name}`)
+          logger.warn('scraper.source.unsupported', { source: source.name, type: 'scrape' })
           return []
         }
         return []
       } catch (error) {
-        console.error(`Failed to scrape ${source.name}:`, error)
+        logger.error('scraper.source.fail', error, { source: source.name })
         return []
       }
     })
@@ -58,7 +59,7 @@ export async function scrapeAllSources(): Promise<ScrapedArticle[]> {
 
   // 去重（基于URL）
   const uniqueArticles = deduplicateByUrl(allArticles)
-  console.log(`Total unique articles: ${uniqueArticles.length}`)
+  logger.info('scraper.run.summary', { unique: uniqueArticles.length })
 
   return uniqueArticles
 }

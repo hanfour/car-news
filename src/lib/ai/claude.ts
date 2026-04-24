@@ -2,6 +2,7 @@ import 'server-only'
 import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
 import { getErrorMessage } from '@/lib/utils/error'
+import { logger } from '@/lib/logger'
 
 let client: Anthropic | null = null
 let cachedModel: string | null = null
@@ -39,7 +40,10 @@ async function getAvailableClaudeModel(): Promise<string | null> {
     if (sonnetModels.length > 0) {
       cachedModel = sonnetModels[0].id
       lastModelCheck = Date.now()
-      console.log(`✓ Using Claude model: ${cachedModel} (${sonnetModels[0].display_name})`)
+      logger.info('ai.claude.model_check', {
+        model: cachedModel,
+        displayName: sonnetModels[0].display_name,
+      })
       return cachedModel
     }
 
@@ -47,14 +51,17 @@ async function getAvailableClaudeModel(): Promise<string | null> {
     if (response.data.length > 0) {
       cachedModel = response.data[0].id
       lastModelCheck = Date.now()
-      console.log(`⚠ Using fallback Claude model: ${cachedModel} (${response.data[0].display_name})`)
+      logger.warn('ai.claude.model_fallback', {
+        model: cachedModel,
+        displayName: response.data[0].display_name,
+      })
       return cachedModel
     }
 
-    console.error('✗ No Claude models available')
+    logger.error('ai.claude.no_models_available')
     return null
   } catch (error) {
-    console.error('✗ Failed to fetch Claude models:', error)
+    logger.error('ai.claude.model_fetch_fail', error)
     return null
   }
 }
@@ -166,7 +173,7 @@ ${s.content.slice(0, 2000)}...
 
   if (claudeModel) {
     try {
-      console.log(`→ Attempting to generate article with Claude (${claudeModel})...`)
+      logger.info('ai.claude.generate_start', { model: claudeModel })
       const anthropic = getAnthropic()
 
       const message = await anthropic.messages.create({
@@ -196,18 +203,20 @@ ${s.content.slice(0, 2000)}...
       try {
         result = JSON.parse(jsonText)
       } catch (parseError) {
-        console.error('Failed to parse Claude response JSON:', jsonText.slice(0, 500))
+        logger.error('ai.claude.parse_fail', parseError, {
+          snippet: jsonText.slice(0, 500),
+        })
         throw new Error(`Invalid JSON from Claude: ${(parseError as Error).message}`)
       }
 
-      console.log('✓ Article generated successfully with Claude')
+      logger.info('ai.claude.generate_ok')
       return result
     } catch (error) {
-      console.error(`✗ Claude generation failed: ${getErrorMessage(error)}`)
-      console.log('→ Falling back to OpenAI GPT-4o...')
+      logger.error('ai.claude.generate_fail', error)
+      logger.info('ai.claude.fallback_to_openai')
     }
   } else {
-    console.log('→ No Claude models available, using OpenAI GPT-4o...')
+    logger.info('ai.claude.no_model_fallback_openai')
   }
 
   // 策略2: 降級到 OpenAI GPT-4o
@@ -235,10 +244,10 @@ ${s.content.slice(0, 2000)}...
       .trim()
 
     const result = JSON.parse(jsonText)
-    console.log('✓ Article generated successfully with OpenAI GPT-4o')
+    logger.info('ai.claude.openai_generate_ok')
     return result
   } catch (error) {
-    console.error('✗ OpenAI generation also failed:', error)
+    logger.error('ai.claude.openai_generate_fail', error)
     throw new Error('Failed to generate article with both Claude and OpenAI')
   }
 }

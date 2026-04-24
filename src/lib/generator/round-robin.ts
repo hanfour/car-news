@@ -11,6 +11,7 @@
  */
 
 import { createServiceClient } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 
 // 狀態存儲的 key
 const WHEEL_STATE_KEY = 'brand_wheel_position'
@@ -52,7 +53,7 @@ export async function getWheelState(): Promise<WheelState | null> {
     .single()
 
   if (error || !data) {
-    console.log('[RoundRobin] No previous wheel state found, starting fresh')
+    logger.info('generator.round_robin.no_previous_state')
     return null
   }
 
@@ -76,11 +77,11 @@ export async function saveWheelState(state: WheelState): Promise<boolean> {
     })
 
   if (error) {
-    console.error('[RoundRobin] Failed to save wheel state:', error)
+    logger.error('generator.round_robin.save_state_fail', error, { lastBrandIndex: state.lastBrandIndex })
     return false
   }
 
-  console.log(`[RoundRobin] Saved wheel state: lastBrandIndex=${state.lastBrandIndex}`)
+  logger.info('generator.round_robin.save_state', { lastBrandIndex: state.lastBrandIndex })
   return true
 }
 
@@ -118,10 +119,10 @@ export async function collectByRoundRobin<T>(
         previousState.brandsOrder.every((b, i) => b === currentBrands[i])) {
       // 品牌順序一致，從上次結束位置的下一個開始
       startIndex = (previousState.lastBrandIndex + 1) % brandClusters.length
-      console.log(`[RoundRobin] Resuming from index ${startIndex} (${brandClusters[startIndex].brand})`)
+      logger.info('generator.round_robin.resume', { startIndex, brand: brandClusters[startIndex].brand })
     } else {
       // 品牌列表變化，重置
-      console.log('[RoundRobin] Brand list changed, resetting to index 0')
+      logger.info('generator.round_robin.reset', { reason: 'brand_list_changed' })
     }
   }
 
@@ -140,10 +141,12 @@ export async function collectByRoundRobin<T>(
   let roundNumber = 1
   let consecutiveSkips = 0  // 連續跳過的品牌數（用於檢測是否所有品牌都耗盡）
 
-  console.log(`\n[RoundRobin] 🎡 Starting wheel collection`)
-  console.log(`  Target: ${targetCount} articles`)
-  console.log(`  Brands: ${brandClusters.length}`)
-  console.log(`  Start index: ${startIndex} (${brandClusters[startIndex].brand})`)
+  logger.info('generator.round_robin.start', {
+    target: targetCount,
+    brands: brandClusters.length,
+    startIndex,
+    startBrand: brandClusters[startIndex].brand,
+  })
 
   // 4. 輪盤式收集
   while (collected.length < targetCount) {
@@ -182,14 +185,20 @@ export async function collectByRoundRobin<T>(
       usedClusterIndices.set(brand, usedIndices)
       consecutiveSkips = 0
 
-      console.log(`  [Round ${roundNumber}] ${brand}: collected cluster #${selectedClusterIndex + 1} (${selectedCluster.size} sources) [${collected.length}/${targetCount}]`)
+      logger.debug('generator.round_robin.collected', {
+        round: roundNumber,
+        brand,
+        clusterIndex: selectedClusterIndex + 1,
+        sources: selectedCluster.size,
+        progress: `${collected.length}/${targetCount}`,
+      })
     } else {
       // 這個品牌沒有可用的 cluster
       consecutiveSkips++
 
       // 如果連續跳過了所有品牌，說明所有品牌都耗盡了
       if (consecutiveSkips >= brandClusters.length) {
-        console.log(`  [Round ${roundNumber}] All brands exhausted, stopping`)
+        logger.info('generator.round_robin.exhausted', { round: roundNumber })
         break
       }
     }
@@ -200,11 +209,11 @@ export async function collectByRoundRobin<T>(
     // 如果回到起始位置，進入下一輪
     if (currentIndex === startIndex) {
       roundNumber++
-      console.log(`  --- Round ${roundNumber} ---`)
+      logger.debug('generator.round_robin.next_round', { round: roundNumber })
     }
   }
 
-  console.log(`[RoundRobin] 🎡 Collection complete: ${collected.length} items in ${roundNumber} rounds`)
+  logger.info('generator.round_robin.done', { collected: collected.length, rounds: roundNumber })
 
   // 5. 計算下次的起始位置
   // 下次應該從最後處理的品牌的下一個開始

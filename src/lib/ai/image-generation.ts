@@ -11,6 +11,7 @@ import { getErrorMessage } from '@/lib/utils/error'
 import { generateImagePromptFromArticle, analyzeMultipleImagesWithGemini } from './image-prompt-generator'
 import { generateWithFlux, generateWithFluxImg2Img, buildFluxPrompt, buildImg2ImgPrompt, selectScene } from './flux-image-generation'
 import type { ExperimentParams } from '@/lib/experiments/types'
+import { logger } from '@/lib/logger'
 
 // ============================================================
 // Promoted config 快取（避免每次生成圖片都查 DB）
@@ -30,7 +31,11 @@ async function getPromotedParams(): Promise<ExperimentParams | null> {
     if (config?.params) {
       cachedPromotedParams = config.params
       cacheTimestamp = now
-      console.log(`✓ Loaded promoted experiment config: guidance=${config.params.guidance_scale}, steps=${config.params.num_inference_steps}, temp=${config.params.gemini_temperature}`)
+      logger.info('ai.image.promoted_config_loaded', {
+        guidance: config.params.guidance_scale,
+        steps: config.params.num_inference_steps,
+        temp: config.params.gemini_temperature,
+      })
       return config.params
     }
   } catch {
@@ -80,7 +85,7 @@ export async function generateCoverImage(
     const promoted = await getPromotedParams()
 
     // 使用 Gemini 智能分析文章，生成精准的图片描述
-    console.log('→ Step 1: Analyzing article with Gemini...')
+    logger.info('ai.image.analyze_start')
     const promptResult = await generateImagePromptFromArticle(
       title, content, brands,
       promoted ? { temperature: promoted.gemini_temperature } : undefined
@@ -93,8 +98,7 @@ export async function generateCoverImage(
 
     // 嘗試 Flux（更便宜：$0.008/張）
     if (useFlux) {
-      console.log('→ Step 2: Generating cover image with Flux (fal.ai)...')
-      console.log(`   Cost: ~$0.008 per image`)
+      logger.info('ai.image.flux_attempt', { costEst: 0.008 })
 
       const fluxPrompt = buildFluxPrompt(promptResult.fullPrompt, title, brands?.[0], undefined, qualityBoost)
       const fluxResult = await generateWithFlux(fluxPrompt, {
@@ -103,7 +107,7 @@ export async function generateCoverImage(
       })
 
       if (fluxResult && fluxResult.url && !fluxResult.error) {
-        console.log('✓ Flux image generated successfully')
+        logger.info('ai.image.flux_ok')
         return {
           url: fluxResult.url,
           revisedPrompt: fluxPrompt,
@@ -114,7 +118,7 @@ export async function generateCoverImage(
 
       // Flux 失敗，如果是 auto 模式則 fallback 到 DALL-E
       if (provider === 'auto') {
-        console.log('⚠ Flux failed, falling back to DALL-E 3...')
+        logger.warn('ai.image.flux_fallback_dalle')
       } else {
         // 明確指定 Flux 但失敗
         return {
@@ -128,9 +132,10 @@ export async function generateCoverImage(
 
     // 使用 DALL-E 3（$0.04/張）
     if (useDalle || provider === 'auto') {
-      console.log('→ Step 2: Generating cover image with DALL-E 3...')
-      console.log(`   Cost: ~$0.04 per image`)
-      console.log(`   Prompt: ${prompt.slice(0, 100)}...`)
+      logger.info('ai.image.dalle_start', {
+        costEst: 0.04,
+        promptPrefix: prompt.slice(0, 100),
+      })
 
       const response = await getOpenAI().images.generate({
         model: 'dall-e-3',
@@ -145,12 +150,11 @@ export async function generateCoverImage(
       const revisedPrompt = response.data?.[0]?.revised_prompt
 
       if (!imageUrl) {
-        console.error('✗ DALL-E 3 returned no image URL')
+        logger.error('ai.image.dalle_no_url')
         return null
       }
 
-      console.log('✓ DALL-E 3 image generated successfully')
-      console.log(`   URL: ${imageUrl.slice(0, 60)}...`)
+      logger.info('ai.image.dalle_ok', { urlPrefix: imageUrl.slice(0, 60) })
 
       return {
         url: imageUrl,
@@ -163,7 +167,7 @@ export async function generateCoverImage(
     return null
 
   } catch (error) {
-    console.error('✗ Image generation failed:', getErrorMessage(error))
+    logger.error('ai.image.generate_fail', error)
     return {
       url: '',
       error: getErrorMessage(error)
@@ -189,7 +193,7 @@ export async function generateAndSaveCoverImage(
 
   // 策略 1: 如果有參考圖片，優先使用 Flux Image-to-Image
   if (referenceImages && referenceImages.length > 0) {
-    console.log(`→ Found ${referenceImages.length} reference images, trying Flux img2img first...`)
+    logger.info('ai.image.ref_img2img_try', { refCount: referenceImages.length })
 
     // 選擇最大的圖片作為參考（通常品質最好）
     const bestRef = referenceImages.reduce((best, current) => {
@@ -216,12 +220,14 @@ export async function generateAndSaveCoverImage(
 
         // 選擇適合的場景
         const scene = selectScene(promptResult.vehicleType)
-        console.log(`   Scene: ${scene}`)
+        logger.info('ai.image.scene_selected', { scene })
 
         // 為 img2img 建立專用 prompt，包含多圖特徵 + 場景
         const vehicleDesc = multiImageDescription || promptResult.vehicleType
         const img2imgPrompt = buildImg2ImgPrompt(title, brands?.[0], vehicleDesc, scene)
-        console.log(`   Img2Img Prompt: ${img2imgPrompt.slice(0, 100)}...`)
+        logger.info('ai.image.img2img_prompt_built', {
+          promptPrefix: img2imgPrompt.slice(0, 100),
+        })
 
         const img2imgResult = await generateWithFluxImg2Img(
           bestRef.url,
@@ -230,7 +236,7 @@ export async function generateAndSaveCoverImage(
         )
 
         if (img2imgResult && img2imgResult.url && !img2imgResult.error) {
-          console.log('✓ Successfully generated cover from reference with Flux img2img')
+          logger.info('ai.image.ref_img2img_ok')
 
           // 上傳到永久存儲
           const { uploadImageFromUrl } = await import('@/lib/storage/image-uploader')
@@ -246,7 +252,7 @@ export async function generateAndSaveCoverImage(
           }
         }
       } catch (error) {
-        console.warn('⚠ Flux img2img error:', getErrorMessage(error))
+        logger.warn('ai.image.ref_img2img_error', { error: getErrorMessage(error) })
       }
     }
 
@@ -256,19 +262,18 @@ export async function generateAndSaveCoverImage(
       const variationResult = await generateCoverFromBestReference(referenceImages)
 
       if (variationResult && variationResult.url) {
-        console.log('✓ Successfully generated cover from reference image (DALL-E variation)')
+        logger.info('ai.image.variation_ok')
         return variationResult
       } else {
-        console.log('⚠ Variation generation failed, falling back to text-to-image...')
+        logger.warn('ai.image.variation_fail_fallback_t2i')
       }
     } catch (error) {
-      console.warn('⚠ Variation generation error:', getErrorMessage(error))
-      console.log('→ Falling back to text-to-image generation...')
+      logger.warn('ai.image.variation_error_fallback_t2i', { error: getErrorMessage(error) })
     }
   }
 
   // 策略 2: Fallback 到純文字生成（優先 Flux，備選 DALL-E 3）
-  console.log('→ Using text-to-image generation (Flux preferred, DALL-E 3 fallback)...')
+  logger.info('ai.image.t2i_start')
 
   const result = await generateCoverImage(title, content, brands, 'auto')
 
@@ -284,7 +289,7 @@ export async function generateAndSaveCoverImage(
   const providerPrefix = result.provider === 'flux' ? 'flux' : 'dalle'
   const fileName = `${providerPrefix}-${brandPrefix}-${timestamp}`
 
-  console.log('→ Uploading AI-generated image to permanent storage...')
+  logger.info('ai.image.upload_start')
   const permanentUrl = await uploadImageFromUrl(result.url, fileName, true)
 
   // 根據使用的提供商設定 credit
@@ -292,14 +297,14 @@ export async function generateAndSaveCoverImage(
   const costInfo = result.cost ? ` ($${result.cost.toFixed(3)})` : ''
 
   if (!permanentUrl) {
-    console.warn('⚠ Failed to upload to storage, using temporary URL')
+    logger.warn('ai.image.upload_fail_temp_url')
     return {
       url: result.url,
       credit: `AI 生成示意圖 (${providerName})${costInfo} - Temporary URL`
     }
   }
 
-  console.log(`✓ Image saved to permanent storage (provider: ${providerName}, cost: ${costInfo})`)
+  logger.info('ai.image.upload_ok', { provider: providerName, cost: costInfo })
   return {
     url: permanentUrl,
     credit: `AI 生成示意圖 (${providerName})`

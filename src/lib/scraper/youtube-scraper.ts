@@ -2,6 +2,7 @@ import Parser from 'rss-parser'
 import { fetchTranscript } from 'youtube-transcript'
 import { NewsSource } from '@/types/database'
 import { ScrapedArticle } from './rss-parser'
+import { logger } from '@/lib/logger'
 
 const parser = new Parser({
   timeout: 30000,
@@ -85,7 +86,7 @@ export async function scrapeYouTubeChannel(source: NewsSource): Promise<ScrapedA
     const articles: ScrapedArticle[] = []
 
     if (!feed.items || feed.items.length === 0) {
-      console.log(`  → No videos found for ${source.name}`)
+      logger.info('scraper.youtube.no_videos', { source: source.name })
       return []
     }
 
@@ -128,7 +129,7 @@ export async function scrapeYouTubeChannel(source: NewsSource): Promise<ScrapedA
       return b.publishedAt.getTime() - a.publishedAt.getTime()
     })
   } catch (error) {
-    console.error(`Failed to scrape YouTube channel ${source.name}:`, error)
+    logger.error('scraper.youtube.scrape_fail', error, { source: source.name, url: source.url })
     return []
   }
 }

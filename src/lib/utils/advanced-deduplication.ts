@@ -7,6 +7,7 @@
 
 import { createServiceClient } from '@/lib/supabase'
 import { cosineSimilarity } from '@/lib/ai/embeddings'
+import { logger } from '@/lib/logger'
 
 /**
  * 檢查 embedding 語義重複
@@ -97,7 +98,7 @@ export async function checkBrandFrequency(
     .order('created_at', { ascending: false })
 
   if (error) {
-    console.error('[Brand Frequency] Query error:', error)
+    logger.error('dedup.brand_frequency.query_fail', error, { brand, windowHours })
     return { exceeded: false, count: 0, recentArticles: [] }
   }
 

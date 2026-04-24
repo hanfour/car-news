@@ -7,6 +7,7 @@ import 'server-only'
 
 import { fal } from '@fal-ai/client'
 import { getErrorMessage } from '@/lib/utils/error'
+import { logger } from '@/lib/logger'
 
 // 配置 fal.ai
 let configured = false
@@ -75,9 +76,13 @@ export async function generateWithFlux(
       seed,
     } = options
 
-    console.log('→ Generating image with Flux (fal.ai)...')
-    console.log(`   Prompt: ${prompt.slice(0, 200)}...`)
-    console.log(`   Size: ${imageSize}, guidance: ${guidanceScale}, steps: ${numInferenceSteps}${seed != null ? `, seed: ${seed}` : ''}`)
+    logger.info('ai.flux.generate_start', {
+      promptPrefix: prompt.slice(0, 200),
+      imageSize,
+      guidanceScale,
+      numInferenceSteps,
+      seed: seed ?? null,
+    })
 
     const result = await fal.subscribe('fal-ai/flux/dev', {
       input: {
@@ -95,12 +100,11 @@ export async function generateWithFlux(
     const imageUrl = result.data?.images?.[0]?.url
 
     if (!imageUrl) {
-      console.error('✗ Flux returned no image URL')
+      logger.error('ai.flux.no_url_returned')
       return null
     }
 
-    console.log('✓ Flux image generated successfully')
-    console.log(`   URL: ${imageUrl.slice(0, 60)}...`)
+    logger.info('ai.flux.generate_ok', { urlPrefix: imageUrl.slice(0, 60) })
 
     return {
       url: imageUrl,
@@ -110,7 +114,7 @@ export async function generateWithFlux(
     }
 
   } catch (error) {
-    console.error('✗ Flux generation failed:', getErrorMessage(error))
+    logger.error('ai.flux.generate_fail', error)
     return {
       url: '',
       error: getErrorMessage(error),
@@ -129,7 +133,7 @@ export async function generateWithFluxSchnell(
   try {
     configureFal()
 
-    console.log('→ Generating image with Flux Schnell (fast mode)...')
+    logger.info('ai.flux.schnell_start')
 
     const result = await fal.subscribe('fal-ai/flux/schnell', {
       input: {
@@ -145,11 +149,11 @@ export async function generateWithFluxSchnell(
     const imageUrl = result.data?.images?.[0]?.url
 
     if (!imageUrl) {
-      console.error('✗ Flux Schnell returned no image URL')
+      logger.error('ai.flux.schnell_no_url')
       return null
     }
 
-    console.log('✓ Flux Schnell image generated')
+    logger.info('ai.flux.schnell_ok')
 
     return {
       url: imageUrl,
@@ -159,7 +163,7 @@ export async function generateWithFluxSchnell(
     }
 
   } catch (error) {
-    console.error('✗ Flux Schnell failed:', getErrorMessage(error))
+    logger.error('ai.flux.schnell_fail', error)
     return null
   }
 }
@@ -328,9 +332,10 @@ export async function generateWithFluxImg2Img(
 
     const { strength = 0.75 } = options
 
-    console.log('→ Generating image with Flux Image-to-Image...')
-    console.log(`   Reference: ${referenceImageUrl.slice(0, 60)}...`)
-    console.log(`   Strength: ${strength}`)
+    logger.info('ai.flux.img2img_start', {
+      referencePrefix: referenceImageUrl.slice(0, 60),
+      strength,
+    })
 
     const result = await fal.subscribe('fal-ai/flux/dev/image-to-image', {
       input: {
@@ -347,11 +352,11 @@ export async function generateWithFluxImg2Img(
     const imageUrl = result.data?.images?.[0]?.url
 
     if (!imageUrl) {
-      console.error('✗ Flux img2img returned no image URL')
+      logger.error('ai.flux.img2img_no_url')
       return null
     }
 
-    console.log('✓ Flux img2img generated successfully')
+    logger.info('ai.flux.img2img_ok')
 
     return {
       url: imageUrl,
@@ -361,7 +366,7 @@ export async function generateWithFluxImg2Img(
     }
 
   } catch (error) {
-    console.error('✗ Flux img2img failed:', getErrorMessage(error))
+    logger.error('ai.flux.img2img_fail', error)
     return null
   }
 }
