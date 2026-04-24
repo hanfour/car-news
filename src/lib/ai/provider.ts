@@ -68,9 +68,17 @@ export async function generateWithFallback(
     console.log(`→ Using ${primary.provider} for article generation`)
     const result = await primary.generate(input)
     return { result, usedProvider: primary.provider }
-  } catch (error) {
-    console.error(`✗ ${primary.provider} failed, falling back to ${fallback.provider}:`, error)
-    const result = await fallback.generate(input)
-    return { result, usedProvider: fallback.provider }
+  } catch (primaryError) {
+    console.error(`✗ ${primary.provider} failed, falling back to ${fallback.provider}:`, primaryError)
+    try {
+      const result = await fallback.generate(input)
+      return { result, usedProvider: fallback.provider }
+    } catch (fallbackError) {
+      // 兩端都失敗時保留兩個錯誤方便 debug（否則 primary error 會被吞掉）
+      throw new AggregateError(
+        [primaryError, fallbackError],
+        `Both AI providers failed: ${primary.provider} then ${fallback.provider}`
+      )
+    }
   }
 }

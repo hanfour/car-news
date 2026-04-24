@@ -67,11 +67,19 @@ describe('generateWithFallback', () => {
     expect(fallback.generate).toHaveBeenCalledTimes(1)
   })
 
-  it('propagates fallback failure when both fail', async () => {
+  it('throws AggregateError with both errors when both fail', async () => {
     const primary = fakeGenerator('gemini', 'fail')
     const fallback = fakeGenerator('claude', 'fail')
-    await expect(generateWithFallback(input, { primary, fallback })).rejects.toThrow(
-      'claude failure'
-    )
+    let thrown: unknown
+    try {
+      await generateWithFallback(input, { primary, fallback })
+    } catch (e) {
+      thrown = e
+    }
+    expect(thrown).toBeInstanceOf(AggregateError)
+    const agg = thrown as AggregateError
+    expect(agg.errors).toHaveLength(2)
+    expect((agg.errors[0] as Error).message).toBe('gemini failure')
+    expect((agg.errors[1] as Error).message).toBe('claude failure')
   })
 })
