@@ -40,11 +40,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ conversations: [], total: count || 0 })
     }
 
-    // 取得所有參與者
+    // 只抓當前分頁對話的參與者（不是全部參與的對話）— 避免 user 有大量對話時的額外查詢量
+    const pagedConversationIds = conversations.map(c => c.id)
     const { data: allParticipants } = await supabase
       .from('conversation_participants')
       .select('conversation_id, user_id, last_read_at')
-      .in('conversation_id', conversationIds)
+      .in('conversation_id', pagedConversationIds)
 
     // 取得 profiles
     const allUserIds = [...new Set(allParticipants?.map(p => p.user_id) || [])]

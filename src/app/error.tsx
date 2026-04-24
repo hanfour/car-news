@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import Link from 'next/link'
 
 export default function GlobalError({
   error,
@@ -31,13 +32,13 @@ export default function GlobalError({
           >
             重新載入
           </button>
-          <a
+          <Link
             href="/"
             className="px-6 py-2 rounded-lg font-medium border border-gray-300 hover:bg-gray-50 transition-colors"
             style={{ color: 'var(--text-primary)' }}
           >
             返回首頁
-          </a>
+          </Link>
         </div>
       </div>
     </div>

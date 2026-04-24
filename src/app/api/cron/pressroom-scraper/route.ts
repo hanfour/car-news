@@ -9,12 +9,11 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { scrapeAllPressrooms, getSupportedBrands } from '@/lib/scrapers/pressroom'
+import { verifyCronAuth, verifyBearerSecret, unauthorized } from '@/lib/cron/auth'
 
 // Vercel Cron 需要的 config
 export const runtime = 'nodejs'
 export const maxDuration = 300  // 5 分鐘超時
-
-const CRON_SECRET = process.env.CRON_SECRET?.trim()
 
 /**
  * GET /api/cron/pressroom-scraper
@@ -22,15 +21,10 @@ const CRON_SECRET = process.env.CRON_SECRET?.trim()
  * 執行官方 Pressroom 爬蟲
  */
 export async function GET(request: NextRequest) {
-  // 驗證 Cron Secret（fail-closed：無 secret 或不匹配時一律拒絕）
-  const authHeader = request.headers.get('authorization')
-  const vercelCron = request.headers.get('x-vercel-cron-signature')
-  const isVercelCron = !!vercelCron
-  const isManualTrigger = CRON_SECRET && authHeader === `Bearer ${CRON_SECRET}`
-
-  if (!isVercelCron && !isManualTrigger) {
+  // 驗證 Vercel Cron header 或 Bearer CRON_SECRET（timing-safe）
+  if (!(await verifyCronAuth(request))) {
     console.warn('[Pressroom Cron] Unauthorized request')
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return unauthorized()
   }
 
   const startTime = Date.now()
@@ -89,12 +83,9 @@ export async function GET(request: NextRequest) {
  * 手動觸發爬蟲（需要 Admin 驗證）
  */
 export async function POST(request: NextRequest) {
-  // 檢查 Admin API Key
-  const authHeader = request.headers.get('authorization')
-  const adminApiKey = process.env.ADMIN_API_KEY
-
-  if (!adminApiKey || authHeader !== `Bearer ${adminApiKey}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // 檢查 Admin API Key（timing-safe）
+  if (!(await verifyBearerSecret(request, 'ADMIN_API_KEY'))) {
+    return unauthorized()
   }
 
   // 委託給 GET 處理

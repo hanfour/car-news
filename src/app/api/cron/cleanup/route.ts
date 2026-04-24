@@ -1,18 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { getErrorMessage } from '@/lib/utils/error'
+import { verifyCronAuth, unauthorized } from '@/lib/cron/auth'
 
 export const maxDuration = 30 // 清理任务应该很快
 
 async function handleCronJob(request: NextRequest) {
-  // 驗證 Vercel Cron（x-vercel-cron: 1）或手動觸發（Bearer CRON_SECRET）
-  const CRON_SECRET = process.env.CRON_SECRET?.trim()
-  const authHeader = request.headers.get('authorization')
-  const isVercelCron = request.headers.get('x-vercel-cron') === '1'
-  const isManualTrigger = CRON_SECRET && authHeader === `Bearer ${CRON_SECRET}`
-
-  if (!isVercelCron && !isManualTrigger) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!(await verifyCronAuth(request))) {
+    return unauthorized()
   }
 
   const startTime = Date.now()

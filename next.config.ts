@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // 明確標記僅 server 端使用的套件，避免被錯誤打包進 client bundle
+  // 注意：ESM 套件（youtube-transcript、cheerio 等）放在此列表會被 Turbopack 當 CJS 載入而爆
+  // 只列出「實證需要外部化」的 native / CJS-only 套件
+  serverExternalPackages: [
+    'sharp',
+    'rss-parser',
+    'rss',
+  ],
   images: {
     remotePatterns: [
       {

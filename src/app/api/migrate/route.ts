@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { getErrorMessage } from '@/lib/utils/error'
+import { verifyBearerSecret, unauthorized } from '@/lib/cron/auth'
 
 export async function POST(request: NextRequest) {
-  // Verify admin token
-  const authHeader = request.headers.get('authorization')
-  const cronSecret = process.env.CRON_SECRET
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!(await verifyBearerSecret(request, 'CRON_SECRET'))) {
+    return unauthorized()
   }
 
   try {

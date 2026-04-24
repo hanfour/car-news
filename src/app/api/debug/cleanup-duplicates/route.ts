@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
+import { verifyDebugAccess } from '@/lib/admin/auth'
 
 /**
  * 重複文章清理 API
@@ -10,8 +11,10 @@ import { createServiceClient } from '@/lib/supabase'
  * 3. 取消發布重複的文章
  *
  * 使用方式：
- * - GET /api/debug/cleanup-duplicates?dryRun=true  (預覽模式，不實際修改)
- * - GET /api/debug/cleanup-duplicates?dryRun=false (執行清理)
+ * - POST /api/debug/cleanup-duplicates?dryRun=true   (預覽模式，不實際修改)
+ * - POST /api/debug/cleanup-duplicates?dryRun=false  (執行清理)
+ *
+ * 注意：此端點會 UPDATE 資料，必須用 POST；GET 僅保留相容性並強制 dryRun。
  */
 
 function cosineSimilarity(vec1: number[], vec2: number[]): number {
@@ -39,9 +42,16 @@ interface DuplicateGroup {
   maxSimilarity: number
 }
 
-export async function GET(request: NextRequest) {
+async function handleCleanup(
+  request: NextRequest,
+  opts: { allowMutation: boolean }
+): Promise<NextResponse> {
+  const access = await verifyDebugAccess(request)
+  if (!access.allowed) return access.response!
+
   const { searchParams } = new URL(request.url)
-  const dryRun = searchParams.get('dryRun') !== 'false'
+  // GET 僅供預覽，不允許真正 UPDATE，即使帶了 dryRun=false 也強制 true
+  const dryRun = opts.allowMutation ? searchParams.get('dryRun') !== 'false' : true
   const similarityThreshold = parseFloat(searchParams.get('threshold') || '0.90')
   const windowDays = parseInt(searchParams.get('days') || '7')
 
@@ -210,4 +220,12 @@ export async function GET(request: NextRequest) {
     groups: groupSummaries.slice(0, 50), // 只顯示前 50 組
     ...(unpublishResult ? { unpublishResult } : {})
   })
+}
+
+export async function GET(request: NextRequest) {
+  return handleCleanup(request, { allowMutation: false })
+}
+
+export async function POST(request: NextRequest) {
+  return handleCleanup(request, { allowMutation: true })
 }

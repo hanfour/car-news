@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import Link from 'next/link'
 
 export default function AdminError({
   error,
@@ -28,12 +29,12 @@ export default function AdminError({
           >
             重新載入
           </button>
-          <a
+          <Link
             href="/admin"
             className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-gray-700"
           >
             回到儀表板
-          </a>
+          </Link>
         </div>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import 'server-only'
 import { RawArticle, ArticleCluster } from '@/types/database'
 import { cosineSimilarity } from './embeddings'
 

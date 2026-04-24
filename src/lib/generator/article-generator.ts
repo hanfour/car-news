@@ -1,12 +1,8 @@
 import { RawArticle } from '@/types/database'
-import { generateArticleWithClaude, GenerateArticleOutput } from '@/lib/ai/claude'
-import { generateArticleWithGemini } from '@/lib/ai/gemini'
+import type { GenerateArticleOutput } from '@/lib/ai/claude'
+import { generateWithFallback } from '@/lib/ai/provider'
 import { loadPrompts } from '@/config/prompts'
-import { checkContentSimilarity, SimilarityResult } from '@/lib/utils/similarity-checker'
-
-// 選擇使用的 AI 模型
-const AI_PROVIDER = process.env.AI_PROVIDER || 'gemini' // 'claude' | 'gemini'
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'flash' // 'flash' | 'pro'
+import { checkContentSimilarity } from '@/lib/utils/similarity-checker'
 
 // 相似度检测阈值（30% = 0.3）
 const SIMILARITY_THRESHOLD = 0.30
@@ -32,33 +28,12 @@ export async function generateArticle(
     url: article.url
   }))
 
-  // 根據環境變數選擇 AI 提供商
-  let result: GenerateArticleOutput
-
-  if (AI_PROVIDER === 'gemini') {
-    console.log(`→ Using Gemini ${GEMINI_MODEL} for article generation`)
-    try {
-      result = await generateArticleWithGemini({
-        sources,
-        systemPrompt: prompts.system,
-        styleGuide: prompts.styleGuide
-      }, GEMINI_MODEL as 'flash' | 'pro')
-    } catch (error) {
-      console.error('✗ Gemini failed, falling back to Claude:', error)
-      result = await generateArticleWithClaude({
-        sources,
-        systemPrompt: prompts.system,
-        styleGuide: prompts.styleGuide
-      })
-    }
-  } else {
-    console.log('→ Using Claude for article generation')
-    result = await generateArticleWithClaude({
-      sources,
-      systemPrompt: prompts.system,
-      styleGuide: prompts.styleGuide
-    })
-  }
+  // 透過 provider 抽象層生成，內建主/備 fallback 邏輯
+  const { result } = await generateWithFallback({
+    sources,
+    systemPrompt: prompts.system,
+    styleGuide: prompts.styleGuide,
+  })
 
   // 📊 法律合规相似度检测
   console.log('→ Running legal compliance similarity check...')

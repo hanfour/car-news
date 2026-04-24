@@ -1,3 +1,4 @@
+import 'server-only'
 /**
  * AI 圖片生成工具
  * 優先使用 Flux（$0.008/張），DALL-E 3 作為備選（$0.04/張）

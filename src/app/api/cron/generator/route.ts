@@ -3,14 +3,13 @@ import { createServiceClient } from '@/lib/supabase'
 import { clusterArticles } from '@/lib/ai/clustering'
 import { generateArticle, decidePublish } from '@/lib/generator'
 import { generateShortId } from '@/lib/utils/short-id'
-import { groupArticlesByBrand, filterCarArticles } from '@/lib/utils/brand-extractor'
+import { groupArticlesByBrand } from '@/lib/utils/brand-extractor'
 import { generateAndSaveCoverImage } from '@/lib/ai/image-generation'
 import { downloadAndStoreImage, downloadAndStoreImages } from '@/lib/storage/image-downloader'
-import { generateEmbedding, cosineSimilarity } from '@/lib/ai/embeddings'
+import { generateEmbedding } from '@/lib/ai/embeddings'
 import { RawArticle } from '@/types/database'
 import { getErrorMessage } from '@/lib/utils/error'
 import {
-  checkTitleDuplicate,
   generateTopicHash,
   checkTopicLock,
   createTopicLock,
@@ -19,139 +18,42 @@ import {
 import { comprehensiveDuplicateCheck, checkBrandFrequency } from '@/lib/utils/advanced-deduplication'
 import { collectByRoundRobin, sortBrandsByPriority } from '@/lib/generator/round-robin'
 import { createSocialPostsForArticle } from '@/lib/social/auto-publisher'
+import { verifyCronAuth, unauthorized } from '@/lib/cron/auth'
+import { TIMEOUT_CONFIG, PRIORITY_BRANDS, MAX_ARTICLES_PER_BRAND } from './steps/config'
+import { shouldContinueProcessing } from './steps/should-continue'
+import { prepareRawArticles } from './steps/prepare-articles'
 
 export const maxDuration = 300 // Vercel Pro限制：最长5分钟
 
-// 配置参数：中度擴展策略（Gemini 免費額度內）
-// 策略：每小时执行一次，每次生成 15 篇，确保在 5 分钟内完成
-const TIMEOUT_CONFIG = {
-  MAX_DURATION_MS: 270_000,      // 270秒 (4.5分钟) - 留30秒缓冲
-  MAX_ARTICLES_PER_RUN: 20,      // 每次最多处理20篇（中度擴展）
-  MIN_ARTICLES_PER_BRAND: 1,     // 品牌配額：每個品牌至少生成1篇（確保多樣性）
-  TARGET_ARTICLES: 15,           // 目標文章數：每次執行目標生成15篇（中度擴展）
-  TIME_CHECK_INTERVAL: 1000,     // 每1秒检查一次时间
-  ESTIMATED_TIME_PER_ARTICLE: 35_000,  // img2img + Gemini Vision 分析需要更多時間
-  MIN_TIME_BUFFER: 45_000        // 最小時間緩衝 45 秒
-}
-
 async function handleCronJob(request: NextRequest) {
-  // 驗證 Vercel Cron（x-vercel-cron: 1）或手動觸發（Bearer CRON_SECRET）
-  const CRON_SECRET = process.env.CRON_SECRET?.trim()
-  const authHeader = request.headers.get('authorization')
-  const isVercelCron = request.headers.get('x-vercel-cron') === '1'
-  const isManualTrigger = CRON_SECRET && authHeader === `Bearer ${CRON_SECRET}`
-
-  if (!isVercelCron && !isManualTrigger) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!(await verifyCronAuth(request))) {
+    return unauthorized()
   }
 
   const startTime = Date.now()
 
-  // 辅助函数：检查是否应该继续处理
-  function shouldContinueProcessing(processedCount: number): boolean {
-    const elapsedTime = Date.now() - startTime
-    const remainingTime = TIMEOUT_CONFIG.MAX_DURATION_MS - elapsedTime
-    const estimatedTimeForNext = TIMEOUT_CONFIG.ESTIMATED_TIME_PER_ARTICLE
-
-    // 条件1: 已达到最大文章数限制
-    if (processedCount >= TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN) {
-      console.log(`⏸️  Reached article limit (${TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN}), stopping gracefully`)
-      return false
-    }
-
-    // 条件2: 如果還沒達到目標文章數，繼續處理（除非時間真的不夠了）
-    if (processedCount < TIMEOUT_CONFIG.TARGET_ARTICLES) {
-      const minRequiredTime = estimatedTimeForNext + TIMEOUT_CONFIG.MIN_TIME_BUFFER
-      if (remainingTime < minRequiredTime) {
-        console.log(`⏸️  Target not met (${processedCount}/${TIMEOUT_CONFIG.TARGET_ARTICLES}) but time insufficient (${Math.round(remainingTime/1000)}s < ${Math.round(minRequiredTime/1000)}s)`)
-        return false
-      }
-      // 還沒達到目標且時間充裕，繼續處理
-      return true
-    }
-
-    // 条件3: 已達到目標，但如果時間還很充裕，可以繼續處理更多品牌
-    const minRequiredTime = estimatedTimeForNext + TIMEOUT_CONFIG.MIN_TIME_BUFFER
-    if (remainingTime < minRequiredTime) {
-      console.log(`⏸️  Target met (${processedCount}/${TIMEOUT_CONFIG.TARGET_ARTICLES}), time limit reached`)
-      return false
-    }
-
-    return true
-  }
-
   try {
     const supabase = createServiceClient()
 
-    // 1. 获取所有未过期的文章
-    console.log('Fetching raw articles...')
-    const { data: rawArticles, error: fetchError } = await supabase
-      .from('raw_articles')
-      .select('*')
-      .gt('expires_at', new Date().toISOString())
+    // 1. 前置資料準備：抓取 + 過濾機車/不相關 + 補 embedding
+    const { rawCount, filteredCount, carArticles } = await prepareRawArticles(supabase)
 
-    if (fetchError) {
-      throw new Error(`Failed to fetch articles: ${fetchError.message}`)
-    }
-
-    if (!rawArticles || rawArticles.length < 3) {
+    if (rawCount < 3) {
       return NextResponse.json({
         success: true,
         message: 'Not enough articles to cluster',
-        count: rawArticles?.length || 0
+        count: rawCount
       })
-    }
-
-    console.log(`Found ${rawArticles.length} articles`)
-
-    // 1.5 過濾機車和不相關文章（網站專注於汽車）
-    const carArticles = filterCarArticles(rawArticles as RawArticle[])
-    const filteredCount = rawArticles.length - carArticles.length
-
-    if (filteredCount > 0) {
-      console.log(`🚫 Filtered out ${filteredCount} motorcycle/irrelevant articles`)
     }
 
     if (carArticles.length < 3) {
       return NextResponse.json({
         success: true,
         message: 'Not enough car articles after filtering',
-        total: rawArticles.length,
+        total: rawCount,
         filtered: filteredCount,
         remaining: carArticles.length
       })
-    }
-
-    // 1.6 為沒有 embedding 的文章生成 embedding（批次處理）
-    // 可通過環境變量 DISABLE_EMBEDDINGS=true 臨時禁用（當 OpenAI API 配額用完時）
-    const DISABLE_EMBEDDINGS = process.env.DISABLE_EMBEDDINGS === 'true'
-
-    if (DISABLE_EMBEDDINGS) {
-      console.log('⚠️  Embeddings generation is disabled (DISABLE_EMBEDDINGS=true)')
-    } else {
-      const articlesWithoutEmbedding = carArticles.filter(a => !a.embedding)
-      if (articlesWithoutEmbedding.length > 0) {
-        console.log(`Generating embeddings for ${articlesWithoutEmbedding.length} articles...`)
-
-        for (const article of articlesWithoutEmbedding) {
-          try {
-            const embedding = await generateEmbedding(article.content)
-            const { error: updateError } = await supabase
-              .from('raw_articles')
-              .update({ embedding })
-              .eq('id', article.id)
-
-            if (updateError) {
-              console.error(`Failed to update embedding for ${article.url}:`, updateError)
-            } else {
-              article.embedding = embedding // 更新本地對象
-            }
-          } catch (error) {
-            console.error(`Failed to generate embedding for ${article.url}:`, error)
-          }
-        }
-        console.log(`✓ Embeddings generated`)
-      }
     }
 
     // 2. 按品牌分組
@@ -163,15 +65,8 @@ async function handleCronJob(request: NextRequest) {
       console.log(`- ${brand}: ${articles.length} articles`)
     }
 
-    // 2.5 品牌優先級排序
-    const PRIORITY_BRANDS = [
-      'Tesla', 'BYD', 'Mercedes-Benz', 'BMW', 'Audi', 'Volkswagen',
-      'Toyota', 'Honda', 'Hyundai', 'Kia', 'Ford', 'Chevrolet',
-      'Porsche', 'Ferrari', 'Lamborghini', 'NIO', 'XPeng', 'Li Auto'
-    ]
-
-    // 使用輪盤算法的優先級排序
-    const sortedBrandList = sortBrandsByPriority(brandGroups, PRIORITY_BRANDS)
+    // 2.5 品牌優先級排序（PRIORITY_BRANDS 定義於 steps/config）
+    const sortedBrandList = sortBrandsByPriority(brandGroups, PRIORITY_BRANDS as unknown as string[])
 
     console.log('\n📊 Brand priority order:')
     sortedBrandList.slice(0, 10).forEach(({ brand, articles }, idx) => {
@@ -243,8 +138,7 @@ async function handleCronJob(request: NextRequest) {
 
     console.log(`\n✓ Pre-clustering complete: ${allBrandClusters.length} brands with clusters`)
 
-    // 2.7 使用輪盤算法收集要處理的 clusters
-    const MAX_ARTICLES_PER_BRAND = 3
+    // 2.7 使用輪盤算法收集要處理的 clusters（MAX_ARTICLES_PER_BRAND 定義於 steps/config）
     const { collected, roundsCompleted } = await collectByRoundRobin(
       allBrandClusters,
       TIMEOUT_CONFIG.TARGET_ARTICLES,
@@ -260,9 +154,10 @@ async function handleCronJob(request: NextRequest) {
     // 3. 按輪盤順序處理收集到的 clusters
     for (const { brand, cluster } of collected) {
       // 時間檢查
-      if (!shouldContinueProcessing(totalProcessed)) {
+      const cont = shouldContinueProcessing({ processedCount: totalProcessed, startTime })
+      if (!cont.shouldContinue) {
         skippedDueToTimeout = collected.length - totalProcessed
-        console.log(`⏭️  Stopping - timeout approaching (${skippedDueToTimeout} items remaining)`)
+        console.log(`⏭️  Stopping (${cont.reason}) — ${skippedDueToTimeout} items remaining`)
         break
       }
 
@@ -610,7 +505,7 @@ async function handleCronJob(request: NextRequest) {
       job_name: 'generator',
       status: 'success',
       metadata: {
-        raw_articles: rawArticles.length,
+        raw_articles: rawCount,
         motorcycle_filtered: filteredCount,
         car_articles: carArticles.length,
         brand_groups: brandGroups.size,
