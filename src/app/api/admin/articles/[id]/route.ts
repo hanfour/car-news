@@ -1,46 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
-import { verifySessionToken } from '@/lib/admin/session'
+import { verifyAdminAuth } from '@/lib/admin/auth'
 
-// Secure authentication - no unsafe defaults
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY
-
-if (!ADMIN_API_KEY || ADMIN_API_KEY === 'admin-secret-key-change-me' || ADMIN_API_KEY.length < 20) {
-  throw new Error(
-    '❌ ADMIN_API_KEY must be set to a secure value (at least 20 characters).\n' +
-    'Generate with: openssl rand -hex 32'
-  )
-}
-
-async function verifyAuth(request: NextRequest): Promise<boolean> {
-  // 方式 1: Bearer token (用於 API 調用)
-  const authHeader = request.headers.get('authorization')
-  if (authHeader === `Bearer ${ADMIN_API_KEY}`) {
-    return true
-  }
-
-  // 方式 2: Cookie session (用於 Web UI)
-  const sessionCookie = request.cookies.get('admin_session')
-  if (sessionCookie?.value) {
-    // 驗證 session token 並獲取 userId
-    const userId = await verifySessionToken(sessionCookie.value)
-    if (!userId) {
-      return false
-    }
-
-    // 驗證這個 userId 確實是 admin
-    const supabase = createServiceClient()
-    const { data } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', userId)
-      .single()
-
-    return data?.is_admin === true
-  }
-
-  return false
-}
+// 共用 verifyAdminAuth（lib/admin/auth.ts）：timing-safe Bearer 比對 + cookie session，
+// 取代原本這檔自刻的 verifyAuth + module-level throw 驗證，後者會在 next build
+// collecting page data 時爆（因為無真實 ADMIN_API_KEY 長度不夠）
+const verifyAuth = verifyAdminAuth
 
 // GET /api/admin/articles/[id] - 獲取單篇文章
 export async function GET(
