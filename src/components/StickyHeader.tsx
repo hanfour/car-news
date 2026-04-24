@@ -1,25 +1,17 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { WantCarLogo } from '@/components/WantCarLogo'
 import { SearchModal } from '@/components/SearchModal'
 import { AuthModal } from '@/components/AuthModal'
 import { useAuth } from '@/contexts/AuthContext'
 import { CATEGORIES } from '@/config/categories'
-import { isValidImageUrl } from '@/lib/security'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { useState, useEffect, useRef } from 'react'
-
-interface Brand {
-  name: string
-  logoUrl: string
-}
-
-interface CountryBrands {
-  country: string
-  brands: Brand[]
-}
+import { UserMenu } from '@/components/header/UserMenu'
+import { BrandScroller } from '@/components/header/BrandScroller'
+import { HeaderSidebar } from '@/components/header/HeaderSidebar'
+import type { Brand, CountryBrands } from '@/components/header/types'
 
 interface StickyHeaderProps {
   popularBrands: Brand[]
@@ -35,24 +27,10 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
-  const [expandedCountries, setExpandedCountries] = useState<Set<string>>(new Set())
   const lastScrollY = useRef(0)
   const isTransitioning = useRef(false)
-  const brandScrollRef = useRef<HTMLDivElement>(null)
   const expandedUserMenuRef = useRef<HTMLDivElement>(null)
   const collapsedUserMenuRef = useRef<HTMLDivElement>(null)
-
-  const toggleCountry = (country: string) => {
-    setExpandedCountries(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(country)) {
-        newSet.delete(country)
-      } else {
-        newSet.add(country)
-      }
-      return newSet
-    })
-  }
 
   useEffect(() => {
     let ticking = false
@@ -115,12 +93,6 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
     }
   }, [isUserMenuOpen])
 
-  const scrollBrandsRight = () => {
-    if (brandScrollRef.current) {
-      brandScrollRef.current.scrollBy({ left: 400, behavior: 'smooth' })
-    }
-  }
-
   return (
     <>
       <header className="bg-[var(--background)] sticky top-0 z-30">
@@ -165,75 +137,16 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                     <div className="w-5 h-5 border-2 border-gray-300 border-t-(--brand-primary) rounded-full animate-spin" />
                   </div>
                 ) : user ? (
-                  <div className="relative" ref={expandedUserMenuRef}>
-                    <button
-                      onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                      className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded transition-colors"
-                      aria-label="用戶選單"
-                    >
-                      {profile?.avatar_url && isValidImageUrl(profile.avatar_url) ? (
-                        <Image
-                          src={profile.avatar_url}
-                          alt={profile.display_name || 'User'}
-                          width={32}
-                          height={32}
-                          className="rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-[var(--brand-primary)] flex items-center justify-center">
-                          <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
-                            {profile?.display_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
-                          </span>
-                        </div>
-                      )}
-                    </button>
-
-                    {/* 用戶下拉選單 */}
-                    {isUserMenuOpen && (
-                      <div
-                        ref={expandedUserMenuRef}
-                        className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border py-1"
-                        style={{ borderColor: '#cdcdcd', zIndex: 9999 }}
-                      >
-                        <div className="px-4 py-2 border-b" style={{ borderColor: '#e5e5e5' }}>
-                          <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                            {profile?.display_name || user.email}
-                          </p>
-                          {profile?.display_name && (
-                            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                              {user.email}
-                            </p>
-                          )}
-                        </div>
-                        <Link
-                          href={`/user/${profile?.username || user.id}`}
-                          onClick={() => setIsUserMenuOpen(false)}
-                          className="block px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
-                          style={{ color: 'var(--text-secondary)' }}
-                        >
-                          個人頁面
-                        </Link>
-                        <Link
-                          href="/settings/profile"
-                          onClick={() => setIsUserMenuOpen(false)}
-                          className="block px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
-                          style={{ color: 'var(--text-secondary)' }}
-                        >
-                          設定
-                        </Link>
-                        <button
-                          onClick={() => {
-                            signOut()
-                            setIsUserMenuOpen(false)
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
-                          style={{ color: 'var(--text-secondary)' }}
-                        >
-                          登出
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  <UserMenu
+                    variant="expanded"
+                    user={user}
+                    profile={profile}
+                    isOpen={isUserMenuOpen}
+                    onToggle={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                    onClose={() => setIsUserMenuOpen(false)}
+                    onSignOut={signOut}
+                    wrapperRef={expandedUserMenuRef}
+                  />
                 ) : (
                   <button
                     onClick={() => setIsAuthModalOpen(true)}
@@ -289,74 +202,16 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
                       <div className="w-4 h-4 border-2 border-gray-300 border-t-(--brand-primary) rounded-full animate-spin" />
                     </div>
                   ) : user ? (
-                    <div className="relative" ref={collapsedUserMenuRef}>
-                      <button
-                        onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                        className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded transition-colors"
-                        aria-label="用戶選單"
-                      >
-                        {profile?.avatar_url && isValidImageUrl(profile.avatar_url) ? (
-                          <Image
-                            src={profile.avatar_url}
-                            alt={profile.display_name || 'User'}
-                            width={28}
-                            height={28}
-                            className="rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-7 h-7 rounded-full bg-[var(--brand-primary)] flex items-center justify-center">
-                            <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>
-                              {profile?.display_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
-                            </span>
-                          </div>
-                        )}
-                      </button>
-
-                      {/* 用戶下拉選單 */}
-                      {isUserMenuOpen && (
-                        <div
-                          className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border py-1"
-                          style={{ borderColor: '#cdcdcd', zIndex: 9999 }}
-                        >
-                          <div className="px-4 py-2 border-b" style={{ borderColor: '#e5e5e5' }}>
-                            <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                              {profile?.display_name || user.email}
-                            </p>
-                            {profile?.display_name && (
-                              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                                {user.email}
-                              </p>
-                            )}
-                          </div>
-                          <Link
-                            href={`/user/${profile?.username || user.id}`}
-                            onClick={() => setIsUserMenuOpen(false)}
-                            className="block px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
-                            style={{ color: 'var(--text-secondary)' }}
-                          >
-                            個人頁面
-                          </Link>
-                          <Link
-                            href="/settings/profile"
-                            onClick={() => setIsUserMenuOpen(false)}
-                            className="block px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
-                            style={{ color: 'var(--text-secondary)' }}
-                          >
-                            設定
-                          </Link>
-                          <button
-                            onClick={() => {
-                              signOut()
-                              setIsUserMenuOpen(false)
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
-                            style={{ color: 'var(--text-secondary)' }}
-                          >
-                            登出
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                    <UserMenu
+                      variant="collapsed"
+                      user={user}
+                      profile={profile}
+                      isOpen={isUserMenuOpen}
+                      onToggle={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                      onClose={() => setIsUserMenuOpen(false)}
+                      onSignOut={signOut}
+                      wrapperRef={collapsedUserMenuRef}
+                    />
                   ) : (
                     <button
                       onClick={() => setIsAuthModalOpen(true)}
@@ -414,222 +269,18 @@ export function StickyHeader({ popularBrands, brandsByCountry, showBrands = true
 
         {/* 展開狀態 - 第3行：品牌 Logo 滾動列表 */}
         {showBrands && (
-          <div
-            className="bg-[var(--background)] border-b"
-            style={{
-              borderColor: '#cdcdcd',
-              height: isScrolled ? '0' : '121px',
-              overflow: 'hidden'
-            }}
-          >
-          <div className="w-full px-4 sm:px-6 lg:px-12 py-4 h-full overflow-hidden">
-            <div className="w-full h-full overflow-x-auto scrollbar-hide">
-              <div className="flex items-center gap-0.5">
-                <div
-                  ref={brandScrollRef}
-                  className="flex items-center gap-0.5"
-                >
-                  {popularBrands.map((brand) => (
-                    <Link
-                      key={brand.name}
-                      href={`/brand/${brand.name}`}
-                      prefetch={false}
-                      className="flex flex-col items-center gap-1 p-2 hover:bg-gray-50 rounded transition-colors group flex-shrink-0"
-                    >
-                      <div className="relative w-12 h-12 flex items-center justify-center">
-                        <Image
-                          src={brand.logoUrl}
-                          alt={`${brand.name} logo`}
-                          width={48}
-                          height={48}
-                          className="object-contain filter grayscale group-hover:grayscale-0 transition-all"
-                        />
-                      </div>
-                      <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                        {brand.name}
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-                <button
-                  onClick={scrollBrandsRight}
-                  className="hidden flex-shrink-0 p-2 hover:bg-gray-100 rounded transition-colors"
-                  style={{ color: 'var(--text-secondary)' }}
-                  aria-label="向右滾動更多品牌"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+          <BrandScroller popularBrands={popularBrands} isScrolled={isScrolled} />
         )}
       </header>
 
       {/* Sidebar */}
-      <div
-        className={`fixed top-0 left-0 bottom-0 w-[85vw] sm:w-80 max-w-sm pb-10 bg-[var(--background)] z-50 transform transition-transform duration-300 ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-        style={{
-          boxShadow: '2px 0 8px rgba(0,0,0,0.1)',
-          height: '100%'
-        }}
-      >
-        <div className="flex flex-col h-full">
-          {/* Sidebar Header */}
-          <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: '#cdcdcd' }}>
-            <WantCarLogo size={36} />
-            <button
-              onClick={() => setIsSidebarOpen(false)}
-              className="p-2 hover:bg-gray-100 rounded"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Sidebar Content */}
-          <nav className="flex-1 overflow-y-auto p-4">
-            <div className="space-y-1">
-              <Link
-                href="/latest"
-                prefetch={false}
-                className={`block px-4 py-3 text-sm font-medium rounded transition-colors ${
-                  currentPath === '/latest' ? 'bg-[#FFF3CC]' : 'hover:bg-gray-100'
-                }`}
-                style={{ color: currentPath === '/latest' ? 'var(--brand-primary)' : 'var(--text-secondary)' }}
-                onClick={() => setIsSidebarOpen(false)}
-              >
-                最新
-              </Link>
-              {CATEGORIES.map(category => (
-                <Link
-                  key={category.slug}
-                  href={`/category/${category.slug}`}
-                  prefetch={false}
-                  className={`block px-4 py-3 text-sm font-medium rounded transition-colors ${
-                    currentPath === `/category/${category.slug}` ? 'bg-[#FFF3CC]' : 'hover:bg-gray-100'
-                  }`}
-                  style={{ color: currentPath === `/category/${category.slug}` ? 'var(--brand-primary)' : 'var(--text-secondary)' }}
-                  onClick={() => setIsSidebarOpen(false)}
-                >
-                  {category.name}
-                </Link>
-              ))}
-            </div>
-
-            <div className="mt-8 pt-8 border-t" style={{ borderColor: '#cdcdcd' }}>
-              <h3 className="px-4 mb-3 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
-                熱門品牌
-              </h3>
-              <div className="space-y-2">
-                {brandsByCountry.map((countryGroup) => (
-                  <div key={countryGroup.country}>
-                    {/* Country Header - Clickable to expand/collapse */}
-                    <button
-                      onClick={() => toggleCountry(countryGroup.country)}
-                      className="w-full flex items-center justify-between px-4 py-2 hover:bg-gray-100 rounded transition-colors"
-                    >
-                      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                        {countryGroup.country}
-                      </span>
-                      <svg
-                        className={`w-4 h-4 transition-transform ${expandedCountries.has(countryGroup.country) ? 'rotate-180' : ''}`}
-                        style={{ color: 'var(--text-secondary)' }}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-
-                    {/* Brand List - Show when expanded */}
-                    {expandedCountries.has(countryGroup.country) && (
-                      <div className="space-y-1 pl-2">
-                        {countryGroup.brands.map((brand) => (
-                          <Link
-                            key={brand.name}
-                            href={`/brand/${brand.name}`}
-                            prefetch={false}
-                            className="flex items-center gap-3 px-4 py-2 rounded hover:bg-gray-100 transition-colors group"
-                            onClick={() => setIsSidebarOpen(false)}
-                          >
-                            <div className="relative w-8 h-8 flex items-center justify-center">
-                              <Image
-                                src={brand.logoUrl}
-                                alt={`${brand.name} logo`}
-                                width={32}
-                                height={32}
-                                className="object-contain filter grayscale group-hover:grayscale-0 transition-all"
-                              />
-                            </div>
-                            <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
-                              {brand.name}
-                            </span>
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 社群區塊 */}
-            <div className="mt-8 pt-8 border-t" style={{ borderColor: '#cdcdcd' }}>
-              <h3 className="px-4 mb-3 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
-                社群
-              </h3>
-              <div className="space-y-1">
-                <Link
-                  href="/community"
-                  prefetch={false}
-                  className="block px-4 py-3 text-sm font-medium rounded hover:bg-gray-100 transition-colors"
-                  style={{ color: 'var(--text-secondary)' }}
-                  onClick={() => setIsSidebarOpen(false)}
-                >
-                  討論區
-                </Link>
-                <Link
-                  href="/garage"
-                  prefetch={false}
-                  className="block px-4 py-3 text-sm font-medium rounded hover:bg-gray-100 transition-colors"
-                  style={{ color: 'var(--text-secondary)' }}
-                  onClick={() => setIsSidebarOpen(false)}
-                >
-                  愛車展示
-                </Link>
-                <Link
-                  href="/clubs"
-                  prefetch={false}
-                  className="block px-4 py-3 text-sm font-medium rounded hover:bg-gray-100 transition-colors"
-                  style={{ color: 'var(--text-secondary)' }}
-                  onClick={() => setIsSidebarOpen(false)}
-                >
-                  車友會
-                </Link>
-                {user && (
-                  <Link
-                    href="/messages"
-                    prefetch={false}
-                    className="block px-4 py-3 text-sm font-medium rounded hover:bg-gray-100 transition-colors"
-                    style={{ color: 'var(--text-secondary)' }}
-                    onClick={() => setIsSidebarOpen(false)}
-                  >
-                    私訊
-                  </Link>
-                )}
-              </div>
-            </div>
-          </nav>
-        </div>
-      </div>
+      <HeaderSidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        brandsByCountry={brandsByCountry}
+        currentPath={currentPath}
+        user={user}
+      />
 
       {/* Search Modal */}
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />

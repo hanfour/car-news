@@ -58,9 +58,9 @@ describe('keysToCamel', () => {
 
   it('保留 Date 物件不變', () => {
     const d = new Date('2026-01-01')
-    const res = keysToCamel({ created_at: d })
+    const res = keysToCamel({ created_at: d }) as unknown as { createdAt: Date }
     expect(res).toEqual({ createdAt: d })
-    expect((res as { createdAt: Date }).createdAt).toBe(d)
+    expect(res.createdAt).toBe(d)
   })
 
   it('null / undefined / primitive 直接返回', () => {
