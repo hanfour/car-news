@@ -1,7 +1,7 @@
 'use client'
 
-import { createContext, useContext, useEffect, useRef, useState } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
+import { createContext, useContext } from 'react'
+import { useUnreadCount } from '@/hooks/useUnreadCount'
 
 interface NotificationContextType {
   unreadCount: number
@@ -10,61 +10,20 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined)
 
-async function fetchUnreadCount(accessToken: string): Promise<number | null> {
-  try {
-    const res = await fetch('/api/notifications/unread-count', {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    return typeof data.count === 'number' ? data.count : 0
-  } catch {
-    return null
-  }
-}
-
+/**
+ * 未讀通知 Provider。過去自刻 setInterval + useState + useRef 同步 token，
+ * 現在由 SWR（useUnreadCount）統一處理 polling / dedup / focus-revalidate，
+ * Provider 只做 context 轉接。
+ */
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
-  const { session } = useAuth()
-  const [unreadCount, setUnreadCount] = useState(0)
-  // 透過 ref 暴露最新的 token，讓 refreshCount 不需要重建（ref 更新放在 effect 避免 render 期間 mutation）
-  const tokenRef = useRef<string | undefined>(session?.access_token)
-  useEffect(() => {
-    tokenRef.current = session?.access_token
-  }, [session?.access_token])
+  const { unreadCount, refresh } = useUnreadCount()
 
-  // 登出狀態直接 derive，避免 effect 內 setState 造成 cascading render
-  const visibleCount = session?.access_token ? unreadCount : 0
-
-  // Polling：切換帳號時才重建 interval，refresh 邏輯內聯避免 memoization 警告
-  useEffect(() => {
-    if (!session?.access_token) return
-
-    let cancelled = false
-    const doRefresh = async () => {
-      const token = tokenRef.current
-      if (!token) return
-      const count = await fetchUnreadCount(token)
-      if (!cancelled && count !== null) setUnreadCount(count)
-    }
-
-    doRefresh()
-    const intervalId = setInterval(doRefresh, 30000)
-    return () => {
-      cancelled = true
-      clearInterval(intervalId)
-    }
-  }, [session?.access_token])
-
-  // 對外曝露的 refreshCount 用 ref 讀 token，consumer 不會因 token 變動取得不同 reference
   const refreshCount = async () => {
-    const token = tokenRef.current
-    if (!token) return
-    const count = await fetchUnreadCount(token)
-    if (count !== null) setUnreadCount(count)
+    await refresh()
   }
 
   return (
-    <NotificationContext.Provider value={{ unreadCount: visibleCount, refreshCount }}>
+    <NotificationContext.Provider value={{ unreadCount, refreshCount }}>
       {children}
     </NotificationContext.Provider>
   )
