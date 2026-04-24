@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 
 // GET: 查詢當前用戶是否已追蹤目標用戶
 export async function GET(
@@ -38,7 +39,7 @@ export async function GET(
 
     return NextResponse.json({ isFollowing: !!existing })
   } catch (error) {
-    console.error('[Follow GET] Unexpected error:', error)
+    logger.error('api.user.follow_get_unexpected', error)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }
@@ -92,7 +93,7 @@ export async function POST(
         .eq('following_id', targetProfile.id)
 
       if (error) {
-        console.error('[Follow] Unfollow error:', error)
+        logger.error('api.user.unfollow_fail', error, { userId, targetId: targetProfile.id })
         return NextResponse.json({ error: '取消追蹤失敗' }, { status: 500 })
       }
       return NextResponse.json({ isFollowing: false })
@@ -103,13 +104,13 @@ export async function POST(
         .insert({ follower_id: userId, following_id: targetProfile.id })
 
       if (error) {
-        console.error('[Follow] Follow error:', error)
+        logger.error('api.user.follow_fail', error, { userId, targetId: targetProfile.id })
         return NextResponse.json({ error: '追蹤失敗' }, { status: 500 })
       }
       return NextResponse.json({ isFollowing: true })
     }
   } catch (error) {
-    console.error('[Follow] Unexpected error:', error)
+    logger.error('api.user.follow_unexpected', error)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }

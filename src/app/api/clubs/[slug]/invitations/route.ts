@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { rateLimit } from '@/lib/rate-limit'
+import { logger } from '@/lib/logger'
 
 // GET: 車友會邀請列表（owner/admin 可查看）
 export async function GET(
@@ -139,7 +140,7 @@ export async function POST(
       if (error.code === '23505') {
         return NextResponse.json({ error: '已經邀請過此使用者' }, { status: 400 })
       }
-      console.error('[Club Invitations POST] Error:', error)
+      logger.error('api.clubs.invitation_create_fail', error, { clubId: club.id, inviteeId: invitee.id })
       return NextResponse.json({ error: '邀請失敗' }, { status: 500 })
     }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 
 // POST: 上傳頭像
 export async function POST(request: NextRequest) {
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
       })
 
     if (uploadError) {
-      console.error('[Avatar Upload] Error:', uploadError)
+      logger.error('api.user.avatar_upload_fail', uploadError, { userId })
       return NextResponse.json({ error: '上傳失敗' }, { status: 500 })
     }
 
@@ -59,13 +60,13 @@ export async function POST(request: NextRequest) {
       .eq('id', userId)
 
     if (updateError) {
-      console.error('[Avatar Upload] Profile update error:', updateError)
+      logger.error('api.user.avatar_update_fail', updateError, { userId })
       return NextResponse.json({ error: '更新頭像失敗' }, { status: 500 })
     }
 
     return NextResponse.json({ avatar_url: publicUrl })
   } catch (error) {
-    console.error('[Avatar Upload] Unexpected error:', error)
+    logger.error('api.user.avatar_unexpected', error)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }

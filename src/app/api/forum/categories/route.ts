@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 
 // GET: 論壇分類列表
 export async function GET() {
@@ -13,7 +14,7 @@ export async function GET() {
       .order('sort_order', { ascending: true })
 
     if (error) {
-      console.error('[Forum Categories] Error:', error)
+      logger.error('api.forum.categories_list_fail', error)
       return NextResponse.json({ error: '查詢失敗' }, { status: 500 })
     }
 

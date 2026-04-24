@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { generateSocialSummary } from '@/lib/social/content-generator'
 import { verifyAdminAuth } from '@/lib/admin/auth'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
     const { data: posts, error } = await query
 
     if (error) {
-      console.error('[Social Posts] Failed to fetch posts:', error)
+      logger.error('api.admin.social_posts_list_fail', error)
       return NextResponse.json(
         { error: 'Failed to fetch posts' },
         { status: 500 }
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ posts })
   } catch (error) {
-    console.error('[Social Posts] Error:', error)
+    logger.error('api.admin.social_posts_list_unexpected', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -130,7 +131,7 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (postError) {
-        console.error(`[Social Posts] Failed to create ${platform} post:`, postError)
+        logger.error('api.admin.social_posts_create_fail', postError, { platform, articleId })
         continue
       }
 
@@ -142,7 +143,7 @@ export async function POST(request: NextRequest) {
       posts: createdPosts
     })
   } catch (error) {
-    console.error('[Social Posts] Error:', error)
+    logger.error('api.admin.social_posts_create_unexpected', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

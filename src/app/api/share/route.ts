@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 
 const VALID_PLATFORMS = ['facebook', 'twitter', 'line', 'copy'] as const
 type Platform = typeof VALID_PLATFORMS[number]
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
       })
 
     if (error) {
-      console.error('Failed to log share event:', error)
+      logger.error('api.share.log_fail', error, { articleId: article_id, platform })
       return NextResponse.json(
         { error: 'Failed to log share event' },
         { status: 500 }
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
     // 触发器会自动增加 share_count
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Unexpected error:', error)
+    logger.error('api.share.unexpected', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { rateLimit } from '@/lib/rate-limit'
+import { logger } from '@/lib/logger'
 
 // GET: 對話列表
 export async function GET(request: NextRequest) {
@@ -123,7 +124,7 @@ export async function POST(request: NextRequest) {
       .rpc('find_or_create_conversation', { p_user1: userId, p_user2: target.id })
 
     if (error) {
-      console.error('[Conversations POST] RPC error:', error)
+      logger.error('api.messages.conversation_create_fail', error, { userId, targetId: target.id })
       return NextResponse.json({ error: '建立對話失敗' }, { status: 500 })
     }
 

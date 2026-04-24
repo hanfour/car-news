@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 
 // GET: 追蹤列表
 export async function GET(
@@ -63,7 +64,7 @@ export async function GET(
 
     return NextResponse.json({ users: [], total: 0, page: 1, totalPages: 0 })
   } catch (error) {
-    console.error('[Following] Error:', error)
+    logger.error('api.user.following_list_fail', error)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }

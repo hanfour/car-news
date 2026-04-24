@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 
 // GET: 我的愛車列表
 export async function GET(request: NextRequest) {
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('[Garage POST] Error:', error)
+      logger.error('api.garage.create_fail', error, { userId })
       return NextResponse.json({ error: '新增失敗' }, { status: 500 })
     }
 

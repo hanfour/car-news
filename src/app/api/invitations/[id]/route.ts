@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -54,7 +55,7 @@ export async function PATCH(
         })
 
       if (joinError && joinError.code !== '23505') {
-        console.error('[Invitations PATCH] Join error:', joinError)
+        logger.error('api.invitations.accept_join_fail', joinError, { invitationId: id, userId })
         return NextResponse.json({ error: '加入車友會失敗' }, { status: 500 })
       }
     }

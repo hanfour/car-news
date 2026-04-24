@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/logger'
 
 /**
  * Increment article view count
@@ -19,7 +20,7 @@ export async function POST(
       .rpc('increment_view_count', { article_id: id })
 
     if (error) {
-      console.error('Failed to increment view count:', error)
+      logger.error('api.articles.view_increment_fail', error, { articleId: id })
       return NextResponse.json(
         { error: 'Failed to update view count' },
         { status: 500 }
@@ -28,7 +29,7 @@ export async function POST(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('View count error:', error)
+    logger.error('api.articles.view_unexpected', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

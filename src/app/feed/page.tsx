@@ -1,47 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useFeed } from '@/hooks/useFeed'
 import { FeedItem } from '@/components/feed/FeedItem'
 import { Pagination } from '@/components/shared/Pagination'
 import { EmptyState } from '@/components/shared/EmptyState'
 
-interface FeedData {
-  type: string
-  id: string
-  created_at: string
-  data: Record<string, unknown>
-}
-
 export default function FeedPage() {
   const { session, loading: authLoading } = useAuth()
-  const [items, setItems] = useState<FeedData[]>([])
-  const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(0)
-
-  useEffect(() => {
-    const fetchFeed = async () => {
-      if (!session?.access_token) return
-
-      setLoading(true)
-      try {
-        const res = await fetch(`/api/feed?page=${page}`, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        })
-        if (res.ok) {
-          const data = await res.json()
-          setItems(data.items)
-          setTotalPages(data.totalPages)
-        }
-      } catch (err) {
-        console.error('[FeedPage] fetchFeed:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchFeed()
-  }, [session?.access_token, page])
+  const { items, totalPages, isLoading } = useFeed(page)
 
   if (authLoading) {
     return (
@@ -67,7 +36,7 @@ export default function FeedPage() {
       <div className="max-w-2xl mx-auto px-4 py-8">
         <h1 className="text-xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>動態牆</h1>
 
-        {loading ? (
+        {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="w-6 h-6 border-2 border-gray-300 border-t-[var(--brand-primary)] rounded-full animate-spin" />
           </div>

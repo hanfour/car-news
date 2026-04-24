@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 
 // GET: 通知列表（分頁）
 export async function GET(request: NextRequest) {
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
       .range(offset, offset + limit - 1)
 
     if (error) {
-      console.error('[Notifications GET] Error:', error)
+      logger.error('api.notifications.list_fail', error, { userId })
       return NextResponse.json({ error: '查詢失敗' }, { status: 500 })
     }
 
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ notifications: [], total: 0, page: 1, totalPages: 0 })
   } catch (error) {
-    console.error('[Notifications GET] Unexpected error:', error)
+    logger.error('api.notifications.list_unexpected', error)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }

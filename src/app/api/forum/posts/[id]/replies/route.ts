@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { moderateComment } from '@/lib/ai/claude'
 import { rateLimit } from '@/lib/rate-limit'
+import { logger } from '@/lib/logger'
 
 // POST: 新增回覆
 export async function POST(
@@ -50,13 +51,13 @@ export async function POST(
       .single()
 
     if (error) {
-      console.error('[Forum Reply POST] Error:', error)
+      logger.error('api.forum.reply_create_fail', error, { postId, userId })
       return NextResponse.json({ error: '回覆失敗' }, { status: 500 })
     }
 
     return NextResponse.json({ reply: data })
   } catch (error) {
-    console.error('[Forum Reply POST] Unexpected error:', error)
+    logger.error('api.forum.reply_unexpected', error)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }

@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase'
 import { verifyAdminAuth } from '@/lib/admin/auth'
 import { downloadAndStoreImages } from '@/lib/storage/image-downloader'
 import { isLegalImageSource } from '@/config/image-sources'
+import { logger } from '@/lib/logger'
 
 export const maxDuration = 300 // 5 分鐘
 
@@ -185,7 +186,11 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  console.log(`→ Image backfill: ${toProcess.length} articles to process (dryRun=${dryRun}, regenerate=${regenerate})`)
+  logger.info('api.admin.image_backfill_start', {
+    toProcess: toProcess.length,
+    dryRun,
+    regenerate,
+  })
 
   const details: BackfillDetail[] = []
   let totalImagesFound = 0
@@ -205,7 +210,11 @@ export async function POST(request: NextRequest) {
       regenerated: false,
     }
 
-    console.log(`  [${i + 1}/${toProcess.length}] ${article.title_zh?.slice(0, 40)}...`)
+    logger.info('api.admin.image_backfill_item', {
+      index: i + 1,
+      total: toProcess.length,
+      articleId: article.id,
+    })
 
     try {
       // 對每個 source_url fetch HTML 提取圖片
@@ -236,7 +245,11 @@ export async function POST(request: NextRequest) {
       })
       detail.legalImages = legalImages
 
-      console.log(`    Found ${uniqueImages.length} images, ${legalImages.length} from legal sources`)
+      logger.info('api.admin.image_backfill_found', {
+        articleId: article.id,
+        total: uniqueImages.length,
+        legal: legalImages.length,
+      })
 
       if (dryRun || legalImages.length === 0) {
         details.push(detail)
@@ -260,7 +273,10 @@ export async function POST(request: NextRequest) {
           .update({ images: storedImages })
           .eq('id', article.id)
 
-        console.log(`    ✓ Stored ${storedImages.length} images`)
+        logger.info('api.admin.image_backfill_stored', {
+          articleId: article.id,
+          count: storedImages.length,
+        })
 
         // 可選：用新圖片重新生成封面
         if (regenerate) {
@@ -290,17 +306,17 @@ export async function POST(request: NextRequest) {
 
               detail.regenerated = true
               totalRegenerated++
-              console.log(`    ✓ Regenerated cover image`)
+              logger.info('api.admin.image_backfill_cover_regen', { articleId: article.id })
             }
           } catch (err) {
-            console.error(`    ✗ Regeneration failed:`, err instanceof Error ? err.message : err)
+            logger.error('api.admin.image_backfill_cover_regen_fail', err, { articleId: article.id })
             detail.error = `Regeneration failed: ${err instanceof Error ? err.message : String(err)}`
           }
         }
       }
     } catch (err) {
       detail.error = err instanceof Error ? err.message : String(err)
-      console.error(`    ✗ Failed:`, detail.error)
+      logger.error('api.admin.image_backfill_item_fail', err, { articleId: article.id })
     }
 
     details.push(detail)
@@ -311,7 +327,12 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  console.log(`✓ Backfill complete: ${toProcess.length} processed, ${totalImagesFound} found, ${totalImagesStored} stored, ${totalRegenerated} regenerated`)
+  logger.info('api.admin.image_backfill_complete', {
+    processed: toProcess.length,
+    imagesFound: totalImagesFound,
+    imagesStored: totalImagesStored,
+    regenerated: totalRegenerated,
+  })
 
   return NextResponse.json({
     processed: toProcess.length,

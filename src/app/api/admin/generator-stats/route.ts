@@ -1,6 +1,7 @@
 import { createServiceClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/admin/auth'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -119,7 +120,7 @@ export async function GET(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error('Generator stats error:', error)
+    logger.error('api.admin.generator_stats_fail', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

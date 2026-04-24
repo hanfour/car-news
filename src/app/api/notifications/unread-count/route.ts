@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 
 // GET: 未讀通知數量
 export async function GET(request: NextRequest) {
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
       .eq('is_read', false)
 
     if (error) {
-      console.error('[Unread Count] Error:', error)
+      logger.error('api.notifications.unread_count_fail', error, { userId })
       return NextResponse.json({ count: 0 })
     }
 

@@ -5,6 +5,7 @@ import { generateCoverImage, generateAndSaveCoverImage } from '@/lib/ai/image-ge
 import { generateWithFlux, generateWithFluxSchnell, buildFluxPrompt } from '@/lib/ai/flux-image-generation'
 import { generateImagePromptFromArticle } from '@/lib/ai/image-prompt-generator'
 import { uploadImageFromUrl } from '@/lib/storage/image-uploader'
+import { logger } from '@/lib/logger'
 
 // 可選的生成方法
 type GenerationMethod = 'auto' | 'flux-dev' | 'flux-schnell' | 'dalle' | 'flux-img2img'
@@ -74,7 +75,7 @@ export async function POST(
   const brands = article.brands || (article.primary_brand ? [article.primary_brand] : undefined)
 
   try {
-    console.log(`→ Regenerating cover image for article ${id} using method: ${method}`)
+    logger.info('api.admin.regenerate_image_start', { articleId: id, method })
 
     let imageUrl: string | null = null
     let provider: 'flux' | 'dalle' = 'flux'
@@ -111,7 +112,7 @@ export async function POST(
           return NextResponse.json({ error: updateError.message }, { status: 500 })
         }
 
-        console.log(`✓ Cover image regenerated for article ${id} using Flux img2img ($0.025)`)
+        logger.info('api.admin.regenerate_image_done', { articleId: id, provider: 'flux-img2img', cost: 0.025 })
         return NextResponse.json({
           success: true,
           cover_image: img2imgResult.url,
@@ -218,7 +219,7 @@ export async function POST(
       return NextResponse.json({ error: updateError.message }, { status: 500 })
     }
 
-    console.log(`✓ Cover image regenerated for article ${id} using ${providerName} ($${cost})`)
+    logger.info('api.admin.regenerate_image_done', { articleId: id, provider: providerName, cost })
 
     return NextResponse.json({
       success: true,
@@ -228,7 +229,7 @@ export async function POST(
     })
 
   } catch (error) {
-    console.error('Regenerate image error:', error)
+    logger.error('api.admin.regenerate_image_fail', error, { articleId: id, method })
     return NextResponse.json({
       error: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })

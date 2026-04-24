@@ -1,72 +1,38 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNotifications } from '@/contexts/NotificationContext'
+import { useNotificationsList } from '@/hooks/useNotifications'
 import { NotificationItem } from '@/components/notifications/NotificationItem'
 import { Pagination } from '@/components/shared/Pagination'
 import { EmptyState } from '@/components/shared/EmptyState'
 
-interface Notification {
-  id: string
-  type: string
-  body?: string
-  is_read: boolean
-  created_at: string
-  resource_type?: string
-  resource_id?: string
-  metadata: Record<string, string>
-  actor?: {
-    id: string
-    username?: string
-    display_name?: string
-    avatar_url?: string
-  }
-}
-
 export default function NotificationsPage() {
   const { session, loading: authLoading } = useAuth()
   const { refreshCount } = useNotifications()
-  const [notifications, setNotifications] = useState<Notification[]>([])
-  const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(0)
-
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      if (!session?.access_token) return
-
-      setLoading(true)
-      try {
-        const res = await fetch(`/api/notifications?page=${page}&limit=20`, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        })
-        if (res.ok) {
-          const data = await res.json()
-          setNotifications(data.notifications)
-          setTotalPages(data.totalPages)
-        }
-      } catch (err) {
-        console.error('[NotificationsPage] fetchNotifications:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchNotifications()
-  }, [session?.access_token, page])
+  const { notifications, totalPages, isLoading, refresh } = useNotificationsList(page)
 
   const handleMarkAllRead = async () => {
     if (!session?.access_token) return
-
     try {
       await fetch('/api/notifications/read-all', {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${session.access_token}` },
       })
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+      // Optimistic：把目前 cache 的 notifications 全部標已讀，然後背景 revalidate
+      await refresh(
+        (current) =>
+          current
+            ? { ...current, notifications: current.notifications.map((n) => ({ ...n, is_read: true })) }
+            : current,
+        { revalidate: true }
+      )
       await refreshCount()
-    } catch (err) {
-      console.error('[NotificationsPage] markAllRead:', err)
+    } catch {
+      // 失敗就讓 SWR revalidate 取回真實狀態
+      await refresh()
     }
   }
 
@@ -101,7 +67,7 @@ export default function NotificationsPage() {
         </div>
 
         <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border-color)' }}>
-          {loading ? (
+          {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="w-6 h-6 border-2 border-gray-300 border-t-[var(--brand-primary)] rounded-full animate-spin" />
             </div>

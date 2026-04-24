@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 
 // GET: 取得通知偏好
 export async function GET(request: NextRequest) {
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
       .maybeSingle()
 
     if (error) {
-      console.error('[Notification Settings GET] Error:', error)
+      logger.error('api.notifications.settings_get_fail', error, { userId })
       return NextResponse.json({ error: '查詢失敗' }, { status: 500 })
     }
 
@@ -64,7 +65,7 @@ export async function PATCH(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('[Notification Settings PATCH] Error:', error)
+      logger.error('api.notifications.settings_update_fail', error, { userId })
       return NextResponse.json({ error: '更新失敗' }, { status: 500 })
     }
 

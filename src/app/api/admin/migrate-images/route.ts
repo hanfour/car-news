@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/admin/auth'
 import { ArticleImage } from '@/types/article'
 import { getErrorMessage } from '@/lib/utils/error'
+import { logger } from '@/lib/logger'
 
 /**
  * 圖片遷移 API - 將歷史文章的外部圖片下載並存儲到 Supabase Storage
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. 獲取所有文章
-    console.log('[Image Migration] Fetching all articles...')
+    logger.info('api.admin.migrate_images_fetch_start')
     const { data: articles, error: fetchError } = await supabase
       .from('generated_articles')
       .select('id, title_zh, cover_image, images')
@@ -63,11 +64,11 @@ export async function POST(request: NextRequest) {
     }
 
     results.total = articles.length
-    console.log(`[Image Migration] Found ${articles.length} articles to process`)
+    logger.info('api.admin.migrate_images_found', { total: articles.length })
 
     // 2. 處理每篇文章
     for (const article of articles) {
-      console.log(`\n[Image Migration] Processing article: ${article.id}`)
+      logger.info('api.admin.migrate_images_item', { articleId: article.id })
 
       try {
         let migrated = false
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
 
         // 2.1 處理封面圖片
         if (article.cover_image && isExternalUrl(article.cover_image)) {
-          console.log(`[Image Migration] → Migrating cover image...`)
+          logger.info('api.admin.migrate_images_cover_start', { articleId: article.id })
 
           const stored = await downloadAndStoreImage(
             article.cover_image,
@@ -88,15 +89,18 @@ export async function POST(request: NextRequest) {
             newCoverImage = stored.url
             results.coverImagesMigrated++
             migrated = true
-            console.log(`[Image Migration] ✓ Cover image migrated`)
+            logger.info('api.admin.migrate_images_cover_done', { articleId: article.id })
           } else {
-            console.log(`[Image Migration] ✗ Cover image migration failed, keeping original`)
+            logger.warn('api.admin.migrate_images_cover_fail', { articleId: article.id })
           }
         }
 
         // 2.2 處理 images 陣列
         if (Array.isArray(article.images) && article.images.length > 0) {
-          console.log(`[Image Migration] → Migrating ${article.images.length} images...`)
+          logger.info('api.admin.migrate_images_array_start', {
+            articleId: article.id,
+            count: article.images.length,
+          })
 
           const externalImages = article.images.filter((img: ArticleImage) =>
             img.url && isExternalUrl(img.url)
@@ -121,7 +125,11 @@ export async function POST(request: NextRequest) {
             newImages = [...unchangedImages, ...storedImages]
             results.imagesArrayMigrated += storedImages.length
             migrated = true
-            console.log(`[Image Migration] ✓ Migrated ${storedImages.length}/${externalImages.length} images`)
+            logger.info('api.admin.migrate_images_array_done', {
+              articleId: article.id,
+              stored: storedImages.length,
+              total: externalImages.length,
+            })
           }
         }
 
@@ -140,9 +148,9 @@ export async function POST(request: NextRequest) {
           }
 
           results.success++
-          console.log(`[Image Migration] ✓ Article ${article.id} updated successfully`)
+          logger.info('api.admin.migrate_images_article_done', { articleId: article.id })
         } else {
-          console.log(`[Image Migration] → No migration needed for article ${article.id}`)
+          logger.info('api.admin.migrate_images_skip', { articleId: article.id })
           results.success++
         }
 
@@ -154,7 +162,10 @@ export async function POST(request: NextRequest) {
         })
 
       } catch (error) {
-        console.error(`[Image Migration] ✗ Error processing article ${article.id}:`, getErrorMessage(error))
+        logger.error('api.admin.migrate_images_item_fail', error, {
+          articleId: article.id,
+          message: getErrorMessage(error),
+        })
         results.failed++
         results.details.push({
           id: article.id,
@@ -168,13 +179,14 @@ export async function POST(request: NextRequest) {
 
     const duration = Date.now() - startTime
 
-    console.log(`\n[Image Migration] Complete!`)
-    console.log(`  Total: ${results.total}`)
-    console.log(`  Success: ${results.success}`)
-    console.log(`  Failed: ${results.failed}`)
-    console.log(`  Cover images migrated: ${results.coverImagesMigrated}`)
-    console.log(`  Images array items migrated: ${results.imagesArrayMigrated}`)
-    console.log(`  Duration: ${duration}ms`)
+    logger.info('api.admin.migrate_images_complete', {
+      total: results.total,
+      success: results.success,
+      failed: results.failed,
+      coverImagesMigrated: results.coverImagesMigrated,
+      imagesArrayMigrated: results.imagesArrayMigrated,
+      durationMs: duration,
+    })
 
     return NextResponse.json({
       success: true,
@@ -190,7 +202,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('[Image Migration] Fatal error:', getErrorMessage(error))
+    logger.error('api.admin.migrate_images_fatal', error, { message: getErrorMessage(error) })
 
     return NextResponse.json(
       {

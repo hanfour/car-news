@@ -7,6 +7,7 @@ import {
 } from '@/lib/utils/advanced-deduplication'
 import { verifySessionToken } from '@/lib/admin/session'
 import { getErrorMessage } from '@/lib/utils/error'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -147,7 +148,7 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('[Duplicate Monitor] Error:', getErrorMessage(error))
+    logger.error('api.admin.duplicate_monitor_fail', error, { message: getErrorMessage(error) })
     return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 })
   }
 }

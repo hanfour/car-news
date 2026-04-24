@@ -3,6 +3,7 @@ import { createAuthenticatedClient } from '@/lib/auth'
 import { moderateComment } from '@/lib/ai/claude'
 import { getErrorMessage } from '@/lib/utils/error'
 import { rateLimit } from '@/lib/rate-limit'
+import { logger } from '@/lib/logger'
 
 // PATCH: 編輯評論（僅作者可操作）
 export async function PATCH(
@@ -61,7 +62,7 @@ export async function PATCH(
 
     return NextResponse.json({ success: true, comment: data })
   } catch (error) {
-    console.error('[Comment PATCH] Unexpected error:', getErrorMessage(error))
+    logger.error('api.comments.update_unexpected', error, { message: getErrorMessage(error) })
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }
@@ -99,7 +100,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('[Comment DELETE] Unexpected error:', getErrorMessage(error))
+    logger.error('api.comments.delete_unexpected', error, { message: getErrorMessage(error) })
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }

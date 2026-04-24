@@ -3,6 +3,7 @@ import { createAuthenticatedClient } from '@/lib/auth'
 import { uploadToR2, deleteFromR2 } from '@/lib/storage/r2-client'
 import { getErrorMessage } from '@/lib/utils/error'
 import { rateLimit } from '@/lib/rate-limit'
+import { logger } from '@/lib/logger'
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_SIZE = 5 * 1024 * 1024 // 5MB
@@ -117,7 +118,7 @@ export async function POST(
 
     return NextResponse.json({ success: true, url: publicUrl, type })
   } catch (error) {
-    console.error('[Garage Images POST]:', getErrorMessage(error))
+    logger.error('api.garage.image_upload_fail', error, { message: getErrorMessage(error) })
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }
@@ -186,7 +187,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('[Garage Images DELETE]:', getErrorMessage(error))
+    logger.error('api.garage.image_delete_fail', error, { message: getErrorMessage(error) })
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }

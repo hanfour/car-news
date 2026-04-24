@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { rateLimit } from '@/lib/rate-limit'
+import { logger } from '@/lib/logger'
 
 export async function POST(
   request: NextRequest,
@@ -49,13 +50,13 @@ export async function POST(
     }
 
     if (error) {
-      console.error('[Bookmark POST] Error:', error)
+      logger.error('api.forum.bookmark_add_fail', error, { postId, userId })
       return NextResponse.json({ error: '書籤操作失敗' }, { status: 500 })
     }
 
     return NextResponse.json({ isBookmarked: true })
   } catch (error) {
-    console.error('[Bookmark POST] Unexpected error:', error)
+    logger.error('api.forum.bookmark_unexpected', error)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }

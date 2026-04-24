@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 
 // GET: 動態牆 (fan-out-on-read)
 export async function GET(request: NextRequest) {
@@ -114,7 +115,7 @@ export async function GET(request: NextRequest) {
       totalPages: Math.ceil(allItems.length / limit),
     })
   } catch (error) {
-    console.error('[Feed] Error:', error)
+    logger.error('api.feed.list_fail', error)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }

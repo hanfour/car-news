@@ -3,6 +3,7 @@ import { createAuthenticatedClient } from '@/lib/auth'
 import { moderateComment } from '@/lib/ai/claude'
 import { createClient } from '@/lib/supabase'
 import { getErrorMessage } from '@/lib/utils/error'
+import { logger } from '@/lib/logger'
 
 // GET: Fetch replies for a comment
 export async function GET(
@@ -24,7 +25,7 @@ export async function GET(
       .order('created_at', { ascending: true })
 
     if (error) {
-      console.error('[Replies API] Error fetching replies:', error)
+      logger.error('api.comments.replies_list_fail', error, { parentId })
       return NextResponse.json(
         { error: '查詢失敗' },
         { status: 500 }
@@ -51,7 +52,7 @@ export async function GET(
 
     return NextResponse.json({ replies: repliesWithProfiles })
   } catch (error) {
-    console.error('[Replies API GET] Unexpected error:', getErrorMessage(error))
+    logger.error('api.comments.replies_list_unexpected', error, { message: getErrorMessage(error) })
     return NextResponse.json(
       { error: '系統錯誤' },
       { status: 500 }
@@ -108,7 +109,7 @@ export async function POST(
     }
 
     // AI moderation
-    console.log('[Reply API] Moderating reply...')
+    logger.info('api.comments.replies_moderate_start', { parentId, userId })
     const moderation = await moderateComment(content)
 
     // Reject if high confidence violation
@@ -138,7 +139,7 @@ export async function POST(
       .single()
 
     if (insertError) {
-      console.error('[Reply API] Error inserting reply:', insertError)
+      logger.error('api.comments.replies_create_fail', insertError, { parentId, userId })
       return NextResponse.json(
         { error: '保存失敗，請稍後再試' },
         { status: 500 }
@@ -160,7 +161,7 @@ export async function POST(
       }
     })
   } catch (error) {
-    console.error('[Reply API POST] Unexpected error:', getErrorMessage(error))
+    logger.error('api.comments.replies_create_unexpected', error, { message: getErrorMessage(error) })
     return NextResponse.json(
       { error: '系統錯誤，請稍後再試' },
       { status: 500 }

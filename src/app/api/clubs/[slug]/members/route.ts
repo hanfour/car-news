@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 
 export async function GET(
   _request: NextRequest,
@@ -31,7 +32,7 @@ export async function GET(
       .limit(200)
 
     if (error) {
-      console.error('[Club Members GET] Error:', error)
+      logger.error('api.clubs.members_list_fail', error, { clubId: club.id })
       return NextResponse.json({ error: '查詢失敗' }, { status: 500 })
     }
 
@@ -69,7 +70,7 @@ export async function GET(
 
     return NextResponse.json({ members: result })
   } catch (error) {
-    console.error('[Club Members GET] Unexpected error:', error)
+    logger.error('api.clubs.members_list_unexpected', error)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }

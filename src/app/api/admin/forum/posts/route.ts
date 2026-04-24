@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/admin/auth'
 import { createServiceClient } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 
 // GET: 論壇貼文管理列表（搜尋、篩選、分頁）
 export async function GET(request: NextRequest) {
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
   const { data: posts, count, error } = await query.range(offset, offset + limit - 1)
 
   if (error) {
-    console.error('[Admin Forum GET] Error:', error)
+    logger.error('api.admin.forum_posts_list_fail', error)
     return NextResponse.json({ error: '查詢失敗' }, { status: 500 })
   }
 
