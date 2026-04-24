@@ -1,5 +1,6 @@
 import Parser from 'rss-parser'
 import { NewsSource } from '@/types/database'
+import { logger } from '@/lib/logger'
 
 const parser = new Parser({
   timeout: 30000,
@@ -102,7 +103,7 @@ export async function parseRSSFeed(source: NewsSource): Promise<ScrapedArticle[]
 
     return articles
   } catch (error) {
-    console.error(`Failed to parse RSS feed ${source.name}:`, error)
+    logger.error('scraper.rss.parse_fail', error, { source: source.name, url: source.url })
     return []
   }
 }

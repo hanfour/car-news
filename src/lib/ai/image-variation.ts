@@ -6,6 +6,7 @@
 import OpenAI from 'openai'
 import sharp from 'sharp'
 import { getErrorMessage } from '@/lib/utils/error'
+import { logger } from '@/lib/logger'
 
 // Lazy initialization
 let openai: OpenAI | null = null
@@ -29,7 +30,7 @@ interface ImageVariationResult {
  */
 async function downloadAndConvertToPNG(imageUrl: string): Promise<Buffer | null> {
   try {
-    console.log(`→ Downloading reference image: ${imageUrl.slice(0, 60)}...`)
+    logger.info('ai.variation.download_ref', { urlPrefix: imageUrl.slice(0, 60) })
 
     const response = await fetch(imageUrl, {
       headers: {
@@ -39,14 +40,14 @@ async function downloadAndConvertToPNG(imageUrl: string): Promise<Buffer | null>
     })
 
     if (!response.ok) {
-      console.error(`✗ Download failed: ${response.status}`)
+      logger.error('ai.variation.download_fail', null, { status: response.status })
       return null
     }
 
     const arrayBuffer = await response.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
-    console.log(`→ Converting to PNG and resizing...`)
+    logger.info('ai.variation.convert_png_start')
 
     // 轉換為 PNG 並調整尺寸（DALL-E variations 限制：< 4MB, 正方形）
     const pngBuffer = await sharp(buffer)
@@ -58,11 +59,11 @@ async function downloadAndConvertToPNG(imageUrl: string): Promise<Buffer | null>
       .toBuffer()
 
     const sizeInMB = pngBuffer.length / (1024 * 1024)
-    console.log(`✓ Converted to PNG: ${sizeInMB.toFixed(2)} MB`)
+    logger.info('ai.variation.convert_png_ok', { sizeMb: Number(sizeInMB.toFixed(2)) })
 
     // DALL-E 限制 4MB
     if (pngBuffer.length > 4 * 1024 * 1024) {
-      console.warn(`⚠ Image too large (${sizeInMB.toFixed(2)} MB), compressing...`)
+      logger.warn('ai.variation.image_too_large', { sizeMb: Number(sizeInMB.toFixed(2)) })
 
       // 進一步壓縮
       const compressed = await sharp(pngBuffer)
@@ -73,14 +74,16 @@ async function downloadAndConvertToPNG(imageUrl: string): Promise<Buffer | null>
         .png({ quality: 80 })
         .toBuffer()
 
-      console.log(`✓ Compressed to ${(compressed.length / (1024 * 1024)).toFixed(2)} MB`)
+      logger.info('ai.variation.compressed', {
+        sizeMb: Number((compressed.length / (1024 * 1024)).toFixed(2)),
+      })
       return compressed
     }
 
     return pngBuffer
 
   } catch (error) {
-    console.error(`✗ Image processing failed:`, getErrorMessage(error))
+    logger.error('ai.variation.process_fail', error)
     return null
   }
 }
@@ -100,7 +103,7 @@ export async function generateImageVariation(
     const pngBuffer = await downloadAndConvertToPNG(referenceImageUrl)
 
     if (!pngBuffer) {
-      console.error('✗ Failed to process reference image')
+      logger.error('ai.variation.ref_process_fail')
       return null
     }
 
@@ -110,7 +113,7 @@ export async function generateImageVariation(
     const blob = new Blob([uint8Array], { type: 'image/png' })
     const file = new File([blob], 'reference.png', { type: 'image/png' })
 
-    console.log('→ Generating image variation with DALL-E 2...')
+    logger.info('ai.variation.dalle2_start')
 
     // 3. 呼叫 DALL-E 2 variations API
     const response = await getOpenAI().images.createVariation({
@@ -123,19 +126,18 @@ export async function generateImageVariation(
     const imageUrl = response.data?.[0]?.url
 
     if (!imageUrl) {
-      console.error('✗ DALL-E 2 returned no image URL')
+      logger.error('ai.variation.dalle2_no_url')
       return null
     }
 
-    console.log('✓ Variation generated successfully')
-    console.log(`   URL: ${imageUrl.slice(0, 60)}...`)
+    logger.info('ai.variation.dalle2_ok', { urlPrefix: imageUrl.slice(0, 60) })
 
     return {
       url: imageUrl
     }
 
   } catch (error) {
-    console.error('✗ Variation generation failed:', getErrorMessage(error))
+    logger.error('ai.variation.generate_fail', error)
 
     // 如果是 quota exceeded 或其他 OpenAI 錯誤，返回錯誤信息
     return {
@@ -157,7 +159,7 @@ export async function generateCoverFromBestReference(
   images: Array<{ url: string; caption?: string; size?: number }>
 ): Promise<{ url: string; credit: string } | null> {
   if (!images || images.length === 0) {
-    console.log('✗ No reference images available')
+    logger.warn('ai.variation.no_refs')
     return null
   }
 
@@ -184,7 +186,7 @@ export async function generateCoverFromBestReference(
   })
 
   if (validImages.length === 0) {
-    console.log('⚠ No valid reference images after filtering, using all images')
+    logger.warn('ai.variation.no_valid_refs_use_all')
     // 如果過濾後沒有圖片，就用全部
     validImages.push(...images)
   }
@@ -192,10 +194,11 @@ export async function generateCoverFromBestReference(
   // 按尺寸排序，選擇最大的（大圖通常質量更好，包含更多細節）
   const bestImage = validImages.sort((a, b) => (b.size || 0) - (a.size || 0))[0]
 
-  console.log(`→ Selected best reference image:`)
-  console.log(`   URL: ${bestImage.url}`)
-  console.log(`   Size: ${bestImage.size ? (bestImage.size / 1024).toFixed(1) + ' KB' : 'unknown'}`)
-  console.log(`   Caption: ${bestImage.caption || 'N/A'}`)
+  logger.info('ai.variation.best_ref_selected', {
+    url: bestImage.url,
+    sizeKb: bestImage.size ? Number((bestImage.size / 1024).toFixed(1)) : null,
+    caption: bestImage.caption || null,
+  })
 
   // 生成變體
   const variation = await generateImageVariation(bestImage.url)
@@ -210,18 +213,18 @@ export async function generateCoverFromBestReference(
   const timestamp = Date.now()
   const fileName = `variation-${timestamp}`
 
-  console.log('→ Uploading variation to permanent storage...')
+  logger.info('ai.variation.upload_start')
   const permanentUrl = await uploadImageFromUrl(variation.url, fileName, true) // 啟用浮水印
 
   if (!permanentUrl) {
-    console.warn('⚠ Failed to upload to storage, using temporary DALL-E URL')
+    logger.warn('ai.variation.upload_fail_temp_url')
     return {
       url: variation.url,
       credit: 'AI Generated Variation (DALL-E 2) - Temporary URL'
     }
   }
 
-  console.log('✓ Variation saved to permanent storage')
+  logger.info('ai.variation.upload_ok')
   return {
     url: permanentUrl,
     credit: 'AI Generated Variation (DALL-E 2)'

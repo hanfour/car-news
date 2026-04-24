@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { scrapeAllPressrooms, getSupportedBrands } from '@/lib/scrapers/pressroom'
 import { verifyCronAuth, verifyBearerSecret, unauthorized } from '@/lib/cron/auth'
+import { logger } from '@/lib/logger'
 
 // Vercel Cron 需要的 config
 export const runtime = 'nodejs'
@@ -23,13 +24,14 @@ export const maxDuration = 300  // 5 分鐘超時
 export async function GET(request: NextRequest) {
   // 驗證 Vercel Cron header 或 Bearer CRON_SECRET（timing-safe）
   if (!(await verifyCronAuth(request))) {
-    console.warn('[Pressroom Cron] Unauthorized request')
+    logger.warn('cron.pressroom.unauthorized')
     return unauthorized()
   }
 
   const startTime = Date.now()
-  console.log('[Pressroom Cron] Starting official pressroom scrape...')
-  console.log(`[Pressroom Cron] Supported brands: ${getSupportedBrands().join(', ')}`)
+  logger.info('cron.pressroom.start', {
+    supportedBrands: getSupportedBrands(),
+  })
 
   try {
     // 從 URL 參數獲取要爬取的品牌（可選）
@@ -42,10 +44,11 @@ export async function GET(request: NextRequest) {
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(1)
 
-    console.log('[Pressroom Cron] Scrape completed')
-    console.log(`[Pressroom Cron] Duration: ${duration}s`)
-    console.log(`[Pressroom Cron] New articles: ${totalNew}`)
-    console.log(`[Pressroom Cron] Errors: ${totalErrors}`)
+    logger.info('cron.pressroom.complete', {
+      duration: `${duration}s`,
+      totalNew,
+      totalErrors,
+    })
 
     // 格式化結果
     const summary = Object.entries(results).map(([brand, result]) => ({
@@ -67,7 +70,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     const duration = ((Date.now() - startTime) / 1000).toFixed(1)
-    console.error('[Pressroom Cron] Fatal error:', error)
+    logger.error('cron.pressroom.fatal', error, { duration: `${duration}s` })
 
     return NextResponse.json({
       success: false,

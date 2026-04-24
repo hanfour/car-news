@@ -1,5 +1,6 @@
 import 'server-only'
 import OpenAI from 'openai'
+import { logger } from '@/lib/logger'
 
 let openai: OpenAI | null = null
 
@@ -100,7 +101,7 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 
   // Prevent division by zero
   if (denominator === 0) {
-    console.warn('Division by zero in cosineSimilarity - zero vectors detected')
+    logger.warn('ai.embeddings.cosine_zero_vector')
     return 0
   }
 

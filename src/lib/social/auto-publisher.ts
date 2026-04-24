@@ -8,6 +8,7 @@ import { generateMultiPlatformContent, formatPostContent, validatePostContent } 
 import { postToFacebookPage } from '@/lib/social/meta-client'
 import { postToInstagram } from '@/lib/social/meta-client'
 import { postToThreads } from '@/lib/social/threads-client'
+import { logger } from '@/lib/logger'
 
 interface ArticleInput {
   id: string
@@ -47,7 +48,7 @@ export async function createSocialPostsForArticle(article: ArticleInput): Promis
   const newPlatforms = platforms.filter(p => !existingPlatforms.has(p))
 
   if (newPlatforms.length === 0) {
-    console.log(`[Auto Publisher] Article ${article.id} already has posts for all platforms`)
+    logger.info('social.auto_publish.skip_existing', { articleId: article.id })
     return result
   }
 
@@ -86,7 +87,7 @@ export async function createSocialPostsForArticle(article: ArticleInput): Promis
       }
 
       result.created++
-      console.log(`[Auto Publisher] Created ${platform} post for article ${article.id}`)
+      logger.info('social.auto_publish.post_created', { articleId: article.id, platform })
 
       // 自動發布
       if (autoPublish && post) {
@@ -242,7 +243,7 @@ export async function publishSocialPost(postId: string): Promise<{
     }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[Auto Publisher] Publish error:', error)
+    logger.error('social.publish_fail', error, { postId })
 
     await supabase
       .from('social_posts')

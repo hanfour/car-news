@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 
 export type AdminAction =
   | 'login'
@@ -43,7 +44,7 @@ export async function logAdminAction(entry: AuditLogEntry): Promise<boolean> {
   })
 
   if (error) {
-    console.error('[Audit Log] Failed to log action:', error)
+    logger.error('admin.audit.log_fail', error, { action: entry.action, userId: entry.userId })
     return false
   }
 
@@ -95,7 +96,7 @@ export async function getAuditLogs(options?: {
   const { data, error } = await query
 
   if (error) {
-    console.error('[Audit Log] Failed to fetch logs:', error)
+    logger.error('admin.audit.fetch_fail', error, { options })
     return []
   }
 

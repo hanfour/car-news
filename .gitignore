@@ -44,3 +44,4 @@ next-env.d.ts
 # playwright / supabase 臨時產物
 .playwright-mcp/
 supabase/.temp/
+.claude/

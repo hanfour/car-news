@@ -22,6 +22,7 @@ import { verifyCronAuth, unauthorized } from '@/lib/cron/auth'
 import { TIMEOUT_CONFIG, PRIORITY_BRANDS, MAX_ARTICLES_PER_BRAND } from './steps/config'
 import { shouldContinueProcessing } from './steps/should-continue'
 import { prepareRawArticles } from './steps/prepare-articles'
+import { logger } from '@/lib/logger'
 
 export const maxDuration = 300 // Vercel Pro限制：最长5分钟
 
@@ -57,28 +58,31 @@ async function handleCronJob(request: NextRequest) {
     }
 
     // 2. 按品牌分組
-    console.log('Grouping articles by brand...')
+    logger.info('cron.generator.grouping_start')
     const brandGroups = groupArticlesByBrand(carArticles)
 
-    console.log(`Found ${brandGroups.size} brand groups:`)
-    for (const [brand, articles] of brandGroups.entries()) {
-      console.log(`- ${brand}: ${articles.length} articles`)
-    }
+    logger.info('cron.generator.brand_groups_found', {
+      groupCount: brandGroups.size,
+      groups: Array.from(brandGroups.entries()).map(([brand, articles]) => ({
+        brand,
+        count: articles.length,
+      })),
+    })
 
     // 2.5 品牌優先級排序（PRIORITY_BRANDS 定義於 steps/config）
     const sortedBrandList = sortBrandsByPriority(brandGroups, PRIORITY_BRANDS as unknown as string[])
 
-    console.log('\n📊 Brand priority order:')
-    sortedBrandList.slice(0, 10).forEach(({ brand, articles }, idx) => {
-      const isPriority = PRIORITY_BRANDS.includes(brand)
-      console.log(`  ${idx + 1}. ${brand}: ${articles.length} articles ${isPriority ? '⭐' : ''}`)
+    logger.info('cron.generator.brand_priority_order', {
+      top: sortedBrandList.slice(0, 10).map(({ brand, articles }) => ({
+        brand,
+        count: articles.length,
+        isPriority: PRIORITY_BRANDS.includes(brand),
+      })),
+      extraBrandCount: sortedBrandList.length > 10 ? sortedBrandList.length - 10 : 0,
     })
-    if (sortedBrandList.length > 10) {
-      console.log(`  ... and ${sortedBrandList.length - 10} more brands\n`)
-    }
 
     // 2.6 預先對所有品牌進行聚類
-    console.log('\n🔄 Pre-clustering all brands...')
+    logger.info('cron.generator.pre_clustering_start')
     type BrandClusterData = {
       brand: string
       clusters: Array<{
@@ -132,11 +136,13 @@ async function handleCronJob(request: NextRequest) {
 
       if (brandClusters.length > 0) {
         allBrandClusters.push({ brand, clusters: brandClusters })
-        console.log(`  [${brand}] ${brandClusters.length} clusters`)
+        logger.info('cron.generator.brand_clustered', { brand, clusterCount: brandClusters.length })
       }
     }
 
-    console.log(`\n✓ Pre-clustering complete: ${allBrandClusters.length} brands with clusters`)
+    logger.info('cron.generator.pre_clustering_done', {
+      brandsWithClusters: allBrandClusters.length,
+    })
 
     // 2.7 使用輪盤算法收集要處理的 clusters（MAX_ARTICLES_PER_BRAND 定義於 steps/config）
     const { collected, roundsCompleted } = await collectByRoundRobin(
@@ -145,7 +151,10 @@ async function handleCronJob(request: NextRequest) {
       MAX_ARTICLES_PER_BRAND
     )
 
-    console.log(`\n🎡 Round-robin collection: ${collected.length} items from ${roundsCompleted} rounds`)
+    logger.info('cron.generator.round_robin_done', {
+      collected: collected.length,
+      roundsCompleted,
+    })
 
     const results = []
     let totalProcessed = 0
@@ -157,11 +166,17 @@ async function handleCronJob(request: NextRequest) {
       const cont = shouldContinueProcessing({ processedCount: totalProcessed, startTime })
       if (!cont.shouldContinue) {
         skippedDueToTimeout = collected.length - totalProcessed
-        console.log(`⏭️  Stopping (${cont.reason}) — ${skippedDueToTimeout} items remaining`)
+        logger.info('cron.generator.stop_early', {
+          reason: cont.reason,
+          remaining: skippedDueToTimeout,
+        })
         break
       }
 
-      console.log(`\n[${brand}] Processing cluster (${cluster.size} sources)...`)
+      logger.info('cron.generator.cluster_process_start', {
+        brand,
+        sources: cluster.size,
+      })
       // ============ SOLUTION 3: Topic Lock Check ============
       // Generate topic hash from cluster centroid
       let centroid = cluster.centroid
@@ -173,8 +188,11 @@ async function handleCronJob(request: NextRequest) {
       // Check if this topic was generated recently (within 2 days)
       const topicLockResult = await checkTopicLock(topicHash, 2)
       if (topicLockResult.locked) {
-        console.log(`[${brand}] 🔒 Topic locked (generated ${topicLockResult.date}, article: ${topicLockResult.articleId})`)
-        console.log(`[${brand}] → Skipping to avoid duplicate topic`)
+        logger.info('cron.generator.topic_locked_skip', {
+          brand,
+          date: topicLockResult.date,
+          articleId: topicLockResult.articleId,
+        })
         continue
       }
       // ======================================================
@@ -183,9 +201,13 @@ async function handleCronJob(request: NextRequest) {
         // 3.1 品牌頻率前置檢查（避免浪費 Gemini API 調用）
         const frequencyCheck = await checkBrandFrequency(brand, 24, 3)
         if (frequencyCheck.exceeded) {
-          console.log(`[${brand}] 🚫 Brand frequency exceeded (${frequencyCheck.count}/3 in 24h)`)
-          console.log(`[${brand}]   Recent: "${frequencyCheck.recentArticles[0]?.title_zh}"`)
-          console.log(`[${brand}] → Skipping to save API quota`)
+          logger.info('cron.generator.brand_frequency_skip', {
+            brand,
+            count: frequencyCheck.count,
+            limit: 3,
+            windowHours: 24,
+            recentTitle: frequencyCheck.recentArticles[0]?.title_zh,
+          })
           continue
         }
 
@@ -193,12 +215,15 @@ async function handleCronJob(request: NextRequest) {
         const shortId = generateShortId()
 
         // 3.3 调用AI生成文章
-        console.log(`[${brand}] → Generating article for cluster (${cluster.articles.length} sources)...`)
+        logger.info('cron.generator.article_generate_start', {
+          brand,
+          sources: cluster.articles.length,
+        })
         const generated = await generateArticle(cluster.articles)
 
         // ============ COMPREHENSIVE DUPLICATE CHECK ============
         // Step 1: Generate embedding for the new article
-        console.log(`[${brand}] → Running comprehensive duplicate check...`)
+        logger.info('cron.generator.dup_check_start', { brand })
         const newContentEmbedding = await generateEmbedding(
           `${generated.title_zh}\n\n${generated.content_zh}`
         )
@@ -211,15 +236,15 @@ async function handleCronJob(request: NextRequest) {
         })
 
         if (duplicateResult.isDuplicate) {
-          console.log(`[${brand}] 🚫 Duplicate detected: ${duplicateResult.reason}`)
-          if (duplicateResult.relatedArticle) {
-            console.log(`[${brand}]   Related: "${duplicateResult.relatedArticle.title_zh}"`)
-          }
-          console.log(`[${brand}] → Skipping to avoid duplicate`)
+          logger.info('cron.generator.duplicate_skip', {
+            brand,
+            reason: duplicateResult.reason,
+            relatedTitle: duplicateResult.relatedArticle?.title_zh,
+          })
           continue
         }
 
-        console.log(`[${brand}] ✓ Passed duplicate check`)
+        logger.info('cron.generator.dup_check_passed', { brand })
         // =======================================================
 
         // 3.5 收集該 cluster 所有圖片（外部 URL）
@@ -272,14 +297,21 @@ async function handleCronJob(request: NextRequest) {
         // 檢查是否有官方圖片
         const hasOfficialImage = sourceImages.some(img => img.isOfficial)
         if (hasOfficialImage) {
-          console.log(`[${brand}] → Found official pressroom image!`)
+          logger.info('cron.generator.official_image_found', { brand })
         }
 
-        console.log(`[${brand}] → Found ${sourceImages.length} source images, downloading and storing...`)
+        logger.info('cron.generator.source_images_download_start', {
+          brand,
+          sourceCount: sourceImages.length,
+        })
 
         // 3.4.1 下載並存儲圖片到 Supabase Storage
         const storedImages = await downloadAndStoreImages(sourceImages, shortId)
-        console.log(`[${brand}] → Successfully stored ${storedImages.length}/${sourceImages.length} images`)
+        logger.info('cron.generator.source_images_stored', {
+          brand,
+          stored: storedImages.length,
+          total: sourceImages.length,
+        })
 
         // 3.4.2 決定封面圖片來源
         let coverImage: string | undefined = undefined
@@ -302,7 +334,7 @@ async function handleCronJob(request: NextRequest) {
             ? matchingSource.credit
             : (generated.imageCredit || 'Unknown')
 
-          console.log(`[${brand}] → Downloading cover image (credit: ${credit})...`)
+          logger.info('cron.generator.cover_download_start', { brand, credit })
           const storedCover = await downloadAndStoreImage(
             generated.coverImage,
             shortId,
@@ -311,9 +343,12 @@ async function handleCronJob(request: NextRequest) {
           if (storedCover) {
             coverImage = storedCover.url
             imageCredit = storedCover.credit
-            console.log(`[${brand}] → ✓ Cover image stored (from: ${matchingSource ? 'source' : 'external'})`)
+            logger.info('cron.generator.cover_stored', {
+              brand,
+              from: matchingSource ? 'source' : 'external',
+            })
           } else {
-            console.log(`[${brand}] → ✗ Cover image download failed, trying fallback...`)
+            logger.warn('cron.generator.cover_download_fail', { brand })
           }
         }
 
@@ -321,18 +356,22 @@ async function handleCronJob(request: NextRequest) {
         if (!coverImage && storedImages.length > 0) {
           coverImage = storedImages[0].url
           imageCredit = storedImages[0].credit
-          console.log(`[${brand}] → Using first stored source image as cover`)
+          logger.info('cron.generator.cover_fallback_source', { brand })
         }
 
         // Fallback 2: AI 生成（僅當完全沒有可用圖片時）
         if (!coverImage) {
-          console.log(`[${brand}] → No images available (source: ${sourceImages.length}, stored: ${storedImages.length})`)
+          logger.info('cron.generator.no_images_available', {
+            brand,
+            source: sourceImages.length,
+            stored: storedImages.length,
+          })
 
           // 成本考量：Flux ($0.008/張) / DALL-E 3 ($0.04/張) vs Gemini 文字 ($0.000675/篇)
           const enableAIGeneration = process.env.ENABLE_AI_IMAGE_GENERATION !== 'false'
 
           if (enableAIGeneration) {
-            console.log(`[${brand}] → Generating AI cover (Flux ~$0.008, DALL-E fallback ~$0.04)...`)
+            logger.info('cron.generator.ai_cover_start', { brand })
             const aiImage = await generateAndSaveCoverImage(
               generated.title_zh,
               generated.content_zh,
@@ -343,12 +382,12 @@ async function handleCronJob(request: NextRequest) {
             if (aiImage && aiImage.url) {
               coverImage = aiImage.url
               imageCredit = aiImage.credit
-              console.log(`[${brand}] ✓ AI cover image generated and saved`)
+              logger.info('cron.generator.ai_cover_ok', { brand })
             } else {
-              console.log(`[${brand}] ✗ AI image generation failed, article will have no cover`)
+              logger.warn('cron.generator.ai_cover_fail', { brand })
             }
           } else {
-            console.log(`[${brand}] ⏭️  AI image generation disabled, article will have no cover`)
+            logger.info('cron.generator.ai_cover_disabled', { brand })
           }
         }
 
@@ -417,7 +456,7 @@ async function handleCronJob(request: NextRequest) {
           .single()
 
         if (insertError) {
-          console.error('Failed to insert article:', insertError)
+          logger.error('cron.generator.article_insert_fail', insertError, { brand, shortId })
           continue
           // 但我們還是保留已生成的文章(因為已經消耗了 API 額度)
         }
@@ -427,9 +466,12 @@ async function handleCronJob(request: NextRequest) {
         const rawArticleIds = cluster.articles.map(a => a.id)
         const markedSuccess = await markRawArticlesAsUsed(rawArticleIds, shortId)
         if (markedSuccess) {
-          console.log(`[${brand}] 📌 Marked ${rawArticleIds.length} raw articles as used`)
+          logger.info('cron.generator.raw_marked_used', {
+            brand,
+            count: rawArticleIds.length,
+          })
         } else {
-          console.log(`[${brand}] ⚠ Failed to mark raw articles as used (non-fatal)`)
+          logger.warn('cron.generator.raw_mark_used_fail', { brand })
         }
         // ===============================================================
 
@@ -437,9 +479,12 @@ async function handleCronJob(request: NextRequest) {
         // Lock this topic to prevent regeneration within 2 days
         const lockSuccess = await createTopicLock(topicHash, shortId)
         if (lockSuccess) {
-          console.log(`[${brand}] 🔒 Topic locked: ${topicHash.slice(0, 12)}...`)
+          logger.info('cron.generator.topic_lock_created', {
+            brand,
+            topicHashPrefix: topicHash.slice(0, 12),
+          })
         } else {
-          console.log(`[${brand}] ⚠ Failed to create topic lock (non-fatal)`)
+          logger.warn('cron.generator.topic_lock_fail', { brand })
         }
         // =======================================================
 
@@ -455,12 +500,14 @@ async function handleCronJob(request: NextRequest) {
               slug_en: generated.slug_en,
               cover_image: coverImage || null
             })
-            console.log(`[${brand}] 📱 Social posts: ${socialResult.created} created, ${socialResult.published} published`)
-            if (socialResult.errors.length > 0) {
-              console.log(`[${brand}] ⚠ Social errors: ${socialResult.errors.join(', ')}`)
-            }
+            logger.info('cron.generator.social_posts_done', {
+              brand,
+              created: socialResult.created,
+              published: socialResult.published,
+              errors: socialResult.errors,
+            })
           } catch (socialError) {
-            console.error(`[${brand}] ⚠ Social post creation failed (non-fatal):`, getErrorMessage(socialError))
+            logger.error('cron.generator.social_post_fail', socialError, { brand })
           }
         }
         // =============================================
@@ -477,10 +524,17 @@ async function handleCronJob(request: NextRequest) {
 
         totalProcessed++  // 增加已处理计数
 
-        console.log(`[${brand}] ✓ ${decision.shouldPublish ? 'Published' : 'Saved'}: ${generated.title_zh} (${storedImages.length} images stored) [${totalProcessed}/${TIMEOUT_CONFIG.TARGET_ARTICLES}]`)
+        logger.info('cron.generator.article_saved', {
+          brand,
+          published: decision.shouldPublish,
+          title: generated.title_zh,
+          imagesStored: storedImages.length,
+          processed: totalProcessed,
+          target: TIMEOUT_CONFIG.TARGET_ARTICLES,
+        })
 
       } catch (error) {
-        console.error(`[${brand}] Error generating article for cluster:`, getErrorMessage(error))
+        logger.error('cron.generator.cluster_fail', error, { brand })
         // 继续处理下一个聚类
       }
     }
@@ -494,11 +548,12 @@ async function handleCronJob(request: NextRequest) {
                        elapsedTime >= TIMEOUT_CONFIG.MAX_DURATION_MS
 
     if (hitTimeout) {
-      console.log(`\n⏸️  === GRACEFUL STOP ===`)
-      console.log(`Processed: ${totalProcessed} articles`)
-      console.log(`Time: ${Math.round(elapsedTime/1000)}s / ${TIMEOUT_CONFIG.MAX_DURATION_MS/1000}s`)
-      console.log(`Reason: ${totalProcessed >= TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN ? 'Article limit' : 'Time limit'}`)
-      console.log(`Note: Remaining articles will be processed in next run\n`)
+      logger.info('cron.generator.graceful_stop', {
+        processed: totalProcessed,
+        elapsedSec: Math.round(elapsedTime / 1000),
+        maxDurationSec: TIMEOUT_CONFIG.MAX_DURATION_MS / 1000,
+        reason: totalProcessed >= TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN ? 'article_limit' : 'time_limit',
+      })
     }
 
     await supabase.from('cron_logs').insert({
@@ -541,7 +596,7 @@ async function handleCronJob(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Generator error:', error)
+    logger.error('cron.generator.fail', error)
 
     // 记录错误日志
     try {
@@ -556,7 +611,7 @@ async function handleCronJob(request: NextRequest) {
         }
       })
     } catch (logError) {
-      console.error('Failed to log error:', logError)
+      logger.error('cron.generator.log_fail', logError)
     }
 
     return NextResponse.json(

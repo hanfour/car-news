@@ -12,6 +12,7 @@ import type { Element } from 'domhandler'
 import { BasePressroomScraper, cleanText, htmlToText } from './base'
 import type { PressroomArticle, PressroomImage } from './types'
 import { PRESSROOM_CONFIGS } from './types'
+import { logger } from '@/lib/logger'
 
 export class BMWScraper extends BasePressroomScraper {
   constructor() {
@@ -79,7 +80,7 @@ export class BMWScraper extends BasePressroomScraper {
                   $('title').text()
 
     if (!title) {
-      console.warn(`[BMW] No title found for ${url}`)
+      logger.warn('scraper.pressroom.no_title', { brand: 'BMW', url })
       return null
     }
 
@@ -94,7 +95,7 @@ export class BMWScraper extends BasePressroomScraper {
     const content = contentEl.length > 0 ? htmlToText(contentEl.html() || '') : ''
 
     if (!content) {
-      console.warn(`[BMW] No content found for ${url}`)
+      logger.warn('scraper.pressroom.no_content', { brand: 'BMW', url })
       return null
     }
 
@@ -162,7 +163,7 @@ export class BMWScraper extends BasePressroomScraper {
         )
       }
     } catch (e) {
-      console.warn(`[BMW] Failed to parse date: ${dateStr}`)
+      logger.warn('scraper.pressroom.date_parse_fail', { brand: 'BMW', dateStr })
     }
 
     return new Date()

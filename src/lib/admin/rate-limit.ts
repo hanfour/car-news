@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 
 /**
  * 記錄登入嘗試
@@ -19,7 +20,7 @@ export async function recordLoginAttempt(
   })
 
   if (error) {
-    console.error('[Rate Limit] Failed to record login attempt:', error)
+    logger.error('admin.rate_limit.record_fail', error, { email, success })
     return false
   }
 
@@ -55,7 +56,7 @@ export async function checkLoginRateLimit(
   const { count, error } = await query
 
   if (error) {
-    console.error('[Rate Limit] Failed to check rate limit:', error)
+    logger.error('admin.rate_limit.check_fail', error, { email })
     return { allowed: false, remainingAttempts: 0 }
   }
 
@@ -100,7 +101,7 @@ export async function cleanupOldLoginAttempts(): Promise<number> {
     .select('id')
 
   if (error) {
-    console.error('[Rate Limit] Failed to cleanup:', error)
+    logger.error('admin.rate_limit.cleanup_fail', error)
     return 0
   }
 
@@ -122,7 +123,7 @@ export async function getLoginStats(days: number = 7) {
     .order('created_at', { ascending: true })
 
   if (error) {
-    console.error('[Rate Limit] Failed to get stats:', error)
+    logger.error('admin.rate_limit.stats_fail', error, { days })
     return { total: 0, success: 0, failed: 0 }
   }
 

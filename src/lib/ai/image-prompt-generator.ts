@@ -6,6 +6,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { getErrorMessage } from '@/lib/utils/error'
 import { extractCarModel, getVehicleVisualDescription } from './flux-image-generation'
+import { logger } from '@/lib/logger'
 
 let genAI: GoogleGenerativeAI | null = null
 
@@ -95,7 +96,7 @@ Output a JSON object with these fields:
 Respond with valid JSON only, no markdown.`
 
   try {
-    console.log('→ Analyzing article with Gemini for image prompt...')
+    logger.info('ai.prompt.analyze_start')
 
     const result = await model.generateContent(prompt)
     const response = result.response
@@ -123,7 +124,9 @@ Respond with valid JSON only, no markdown.`
       parsed = JSON.parse(jsonText) as ImagePromptResult
     } catch (parseError) {
       // 如果 JSON 解析失败，尝试提取关键信息
-      console.warn('⚠ JSON parse failed, trying regex extraction...')
+      logger.warn('ai.prompt.parse_fail_regex_extract', {
+        error: getErrorMessage(parseError),
+      })
 
       const fullPromptMatch = jsonText.match(/"fullPrompt"\s*:\s*"([^"]+(?:\\"[^"]*)*[^"]*)"/)
 
@@ -145,15 +148,16 @@ Respond with valid JSON only, no markdown.`
       throw parseError
     }
 
-    console.log('✓ Image prompt generated:')
-    console.log(`   Subject: ${parsed.subject}`)
-    console.log(`   Vehicle: ${parsed.vehicleType}`)
-    console.log(`   Style: ${parsed.brandStyle}`)
+    logger.info('ai.prompt.generate_ok', {
+      subject: parsed.subject,
+      vehicle: parsed.vehicleType,
+      style: parsed.brandStyle,
+    })
 
     return parsed
 
   } catch (error) {
-    console.error('✗ Gemini prompt generation failed:', getErrorMessage(error))
+    logger.error('ai.prompt.generate_fail', error)
 
     // Fallback：返回基础描述（传递 content 以提取车型关键词）
     return createFallbackPrompt(title, brands, content)
@@ -324,7 +328,11 @@ export async function analyzeMultipleImagesWithGemini(
         // 檢查圖片大小，避免記憶體爆炸
         const contentLength = parseInt(response.headers.get('content-length') || '0')
         if (contentLength > MAX_IMAGE_SIZE) {
-          console.warn(`⚠ Skipping large image (${(contentLength / 1024 / 1024).toFixed(1)}MB): ${url.slice(0, 60)}...`)
+          logger.warn('ai.prompt.vision_skip_large', {
+            sizeMb: Number((contentLength / 1024 / 1024).toFixed(1)),
+            urlPrefix: url.slice(0, 60),
+            source: 'content_length',
+          })
           continue
         }
 
@@ -333,7 +341,11 @@ export async function analyzeMultipleImagesWithGemini(
 
         // 雙重檢查：content-length 可能不準確
         if (buffer.byteLength > MAX_IMAGE_SIZE) {
-          console.warn(`⚠ Skipping large image (${(buffer.byteLength / 1024 / 1024).toFixed(1)}MB actual): ${url.slice(0, 60)}...`)
+          logger.warn('ai.prompt.vision_skip_large', {
+            sizeMb: Number((buffer.byteLength / 1024 / 1024).toFixed(1)),
+            urlPrefix: url.slice(0, 60),
+            source: 'actual',
+          })
           continue
         }
 
@@ -346,16 +358,16 @@ export async function analyzeMultipleImagesWithGemini(
           }
         })
       } catch {
-        console.warn(`⚠ Failed to download image for analysis: ${url.slice(0, 60)}...`)
+        logger.warn('ai.prompt.vision_download_fail', { urlPrefix: url.slice(0, 60) })
       }
     }
 
     if (imageParts.length === 0) {
-      console.warn('⚠ No images could be downloaded for multi-image analysis')
+      logger.warn('ai.prompt.vision_no_images')
       return null
     }
 
-    console.log(`→ Analyzing ${imageParts.length} images with Gemini Vision...`)
+    logger.info('ai.prompt.vision_analyze_start', { imageCount: imageParts.length })
 
     const result = await model.generateContent([
       ...imageParts,
@@ -367,11 +379,13 @@ Describe this vehicle's unique exterior design features visible across these ima
     ])
 
     const description = result.response.text().trim()
-    console.log(`✓ Multi-image analysis: ${description.slice(0, 80)}...`)
+    logger.info('ai.prompt.vision_analyze_ok', {
+      descriptionPrefix: description.slice(0, 80),
+    })
     return description
 
   } catch (error) {
-    console.warn('⚠ Multi-image Gemini Vision analysis failed:', getErrorMessage(error))
+    logger.warn('ai.prompt.vision_analyze_fail', { error: getErrorMessage(error) })
     return null
   }
 }

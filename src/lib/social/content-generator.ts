@@ -4,6 +4,7 @@
  */
 
 import { generateText } from '@/lib/ai/claude'
+import { logger } from '@/lib/logger'
 
 /**
  * 生成社群媒體貼文摘要
@@ -75,7 +76,7 @@ ${articleContent.substring(0, 1500)}
 
     return trimmed
   } catch (error) {
-    console.error('[Content Generator] Failed to generate summary:', error)
+    logger.error('social.content.summary_fail', error, { platform, articleTitle })
 
     // Fallback: 使用文章標題加上簡單的 CTA
     const fallbackSummary = `${articleTitle}\n\n最新汽車資訊，立即查看 👇`

@@ -1,5 +1,6 @@
 import axios from 'axios'
 import * as cheerio from 'cheerio'
+import { logger } from '@/lib/logger'
 
 const axiosInstance = axios.create({
   timeout: 15000,
@@ -13,7 +14,7 @@ export async function fetchWebpage(url: string): Promise<string> {
     const response = await axiosInstance.get(url)
     return response.data
   } catch (error) {
-    console.error(`Failed to fetch ${url}:`, error)
+    logger.error('scraper.fetch.webpage_fail', error, { url })
     throw error
   }
 }
@@ -89,7 +90,7 @@ export function extractTextFromHtml(
       imageUrl: imageUrl || undefined
     }
   } catch (error) {
-    console.error('Failed to extract text from HTML:', error)
+    logger.error('scraper.fetch.extract_fail', error)
     return null
   }
 }

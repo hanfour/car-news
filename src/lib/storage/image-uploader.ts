@@ -6,6 +6,7 @@
 import crypto from 'crypto'
 import { getErrorMessage } from '@/lib/utils/error'
 import { uploadToR2, listR2Objects, deleteFromR2 } from './r2-client'
+import { logger } from '@/lib/logger'
 
 /**
  * 從 URL 下載圖片並上傳到 R2
@@ -17,11 +18,15 @@ export async function uploadImageFromUrl(
 ): Promise<string | null> {
   try {
     // 1. 下載圖片
-    console.log(`→ Downloading image from: ${imageUrl.slice(0, 60)}...`)
+    logger.info('storage.image.download_start', { url: imageUrl.slice(0, 120) })
     const response = await fetch(imageUrl)
 
     if (!response.ok) {
-      console.error(`✗ Failed to download image: ${response.status} ${response.statusText}`)
+      logger.error('storage.image.download_fail', null, {
+        status: response.status,
+        statusText: response.statusText,
+        url: imageUrl.slice(0, 120),
+      })
       return null
     }
 
@@ -30,11 +35,11 @@ export async function uploadImageFromUrl(
 
     // 浮水印功能已停用
     if (addWatermark) {
-      console.log('→ Watermark disabled (no font support on Vercel serverless)')
+      logger.info('storage.image.watermark_skipped', { reason: 'no font support on Vercel serverless' })
     }
 
     // 2. 優化和轉換圖片為 WebP 格式
-    console.log('→ Optimizing and converting to WebP...')
+    logger.info('storage.image.optimize_start')
     const sharp = (await import('sharp')).default
     buffer = await sharp(buffer)
       .resize(1792, 1024, {
@@ -47,7 +52,7 @@ export async function uploadImageFromUrl(
       })
       .toBuffer()
 
-    console.log('✓ Image optimized and converted to WebP')
+    logger.info('storage.image.optimize_done')
 
     // 3. 生成唯一文件名
     const hash = crypto.createHash('md5').update(buffer).digest('hex')
@@ -56,16 +61,15 @@ export async function uploadImageFromUrl(
       : `${Date.now()}-${hash.slice(0, 8)}.webp`
 
     // 4. 上傳到 R2
-    console.log(`→ Uploading to R2: ${finalFileName}`)
+    logger.info('storage.image.upload_start', { fileName: finalFileName })
     const publicUrl = await uploadToR2(finalFileName, buffer, 'image/webp')
 
-    console.log(`✓ Image uploaded successfully`)
-    console.log(`   Public URL: ${publicUrl.slice(0, 60)}...`)
+    logger.info('storage.image.upload_success', { fileName: finalFileName, urlPreview: publicUrl.slice(0, 120) })
 
     return publicUrl
 
   } catch (error) {
-    console.error('✗ Image upload error:', getErrorMessage(error))
+    logger.error('storage.image.upload_fail', error, { reason: getErrorMessage(error) })
     return null
   }
 }
@@ -104,7 +108,7 @@ export async function deleteOldImages(olderThanDays: number = 30): Promise<numbe
     )
 
     if (toDelete.length === 0) {
-      console.log('No old images to delete')
+      logger.info('storage.image.cleanup_none')
       return 0
     }
 
@@ -112,11 +116,11 @@ export async function deleteOldImages(olderThanDays: number = 30): Promise<numbe
       await deleteFromR2(obj.key)
     }
 
-    console.log(`✓ Deleted ${toDelete.length} old images`)
+    logger.info('storage.image.cleanup_done', { deleted: toDelete.length })
     return toDelete.length
 
   } catch (error) {
-    console.error('Delete error:', getErrorMessage(error))
+    logger.error('storage.image.cleanup_fail', error, { reason: getErrorMessage(error) })
     return 0
   }
 }

@@ -1,5 +1,6 @@
 import crypto from 'crypto'
 import { createServiceClient } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 
 /**
  * Calculate Levenshtein distance between two strings
@@ -161,7 +162,7 @@ export async function createTopicLock(
     )
 
   if (error) {
-    console.error('[Topic Lock] Failed to create lock:', error)
+    logger.error('dedup.topic_lock.create_fail', error, { topicHash, articleId })
     return false
   }
 
@@ -174,7 +175,7 @@ export async function createTopicLock(
     .single()
 
   if (lock?.article_id !== articleId) {
-    console.warn(`[Topic Lock] Lock already held by article ${lock?.article_id}, skipping`)
+    logger.warn('dedup.topic_lock.held_by_other', { topicHash, heldBy: lock?.article_id, requested: articleId })
     return false
   }
 
@@ -198,13 +199,17 @@ export async function markRawArticlesAsUsed(
     .select('id')
 
   if (error) {
-    console.error('[Dedup] Failed to mark raw articles as used:', error)
+    logger.error('dedup.mark_used.fail', error, { generatedArticleId })
     return false
   }
 
   const updatedCount = data?.length ?? 0
   if (updatedCount !== rawArticleIds.length) {
-    console.warn(`[Dedup] Expected to mark ${rawArticleIds.length} articles, but only ${updatedCount} were available (rest already claimed)`)
+    logger.warn('dedup.mark_used.partial', {
+      generatedArticleId,
+      expected: rawArticleIds.length,
+      updated: updatedCount,
+    })
   }
 
   return true

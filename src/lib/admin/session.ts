@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 
 /**
  * 生成安全的 session token
@@ -38,7 +39,7 @@ export async function createAdminSession(
     .single()
 
   if (error) {
-    console.error('[Admin Session] Failed to create session:', error)
+    logger.error('admin.session.create_fail', error, { userId })
     return null
   }
 
@@ -127,7 +128,7 @@ export async function cleanupExpiredSessions(): Promise<number> {
     .select('id')
 
   if (error) {
-    console.error('[Admin Session] Failed to cleanup:', error)
+    logger.error('admin.session.cleanup_fail', error)
     return 0
   }
 

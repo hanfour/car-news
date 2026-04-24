@@ -18,6 +18,7 @@ import { createKiaScraper } from './kia'
 import { createServiceClient } from '@/lib/supabase'
 import type { ScraperResult, PressroomArticle } from './types'
 import { SUPPORTED_PRESSROOM_BRANDS } from './types'
+import { logger } from '@/lib/logger'
 
 /**
  * 執行所有支援品牌的 Pressroom 爬蟲
@@ -60,7 +61,7 @@ export async function scrapeAllPressrooms(brands?: string[]): Promise<{
           break
         // TODO: 新增更多品牌（Mercedes-Benz, Audi, Ford, Honda, Hyundai - 需要處理防爬機制）
         default:
-          console.warn(`[Pressroom] Unknown brand: ${brand}`)
+          logger.warn('scraper.pressroom.unknown_brand', { brand })
           continue
       }
 
@@ -80,7 +81,7 @@ export async function scrapeAllPressrooms(brands?: string[]): Promise<{
       }
 
     } catch (error) {
-      console.error(`[Pressroom] Error scraping ${brand}:`, error)
+      logger.error('scraper.pressroom.scrape_fail', error, { brand })
       results[brand] = {
         success: false,
         articles: [],
@@ -106,7 +107,7 @@ async function getExistingOfficialUrls(): Promise<string[]> {
     .eq('source_type', 'official')
 
   if (error) {
-    console.error('[Pressroom] Error fetching existing URLs:', error)
+    logger.error('scraper.pressroom.fetch_urls_fail', error)
     return []
   }
 
@@ -158,16 +159,16 @@ async function saveArticlesToDatabase(articles: PressroomArticle[]): Promise<num
         })
 
       if (error) {
-        console.error(`[Pressroom] Error saving article ${article.url}:`, error)
+        logger.error('scraper.pressroom.save_article_fail', error, { url: article.url })
       } else {
         savedCount++
       }
     } catch (error) {
-      console.error(`[Pressroom] Error processing article ${article.url}:`, error)
+      logger.error('scraper.pressroom.process_article_fail', error, { url: article.url })
     }
   }
 
-  console.log(`[Pressroom] Saved ${savedCount}/${articles.length} articles to database`)
+  logger.info('scraper.pressroom.save_summary', { saved: savedCount, total: articles.length })
   return savedCount
 }
 

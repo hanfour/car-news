@@ -5,6 +5,8 @@
  * API 文件：https://developers.facebook.com/docs/threads
  */
 
+import { logger } from '@/lib/logger'
+
 const GRAPH_API_VERSION = 'v21.0'
 const GRAPH_API_BASE_URL = `https://graph.facebook.com/${GRAPH_API_VERSION}`
 
@@ -91,7 +93,7 @@ export async function postToThreads(
     const containerData = await containerResponse.json()
 
     if (!containerResponse.ok) {
-      console.error('[Threads] Container creation failed:', containerData)
+      logger.error('social.threads.container_fail', containerData, { threadsUserId })
       return {
         success: false,
         error: containerData.error?.message || 'Failed to create thread container'
@@ -118,7 +120,7 @@ export async function postToThreads(
     const publishData = await publishResponse.json()
 
     if (!publishResponse.ok) {
-      console.error('[Threads] Publish failed:', publishData)
+      logger.error('social.threads.publish_fail', publishData, { threadsUserId })
       return {
         success: false,
         error: publishData.error?.message || 'Failed to publish thread'
@@ -140,7 +142,7 @@ export async function postToThreads(
       postUrl
     }
   } catch (error) {
-    console.error('[Threads] Post error:', error)
+    logger.error('social.threads.post_fail', error, { threadsUserId })
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'

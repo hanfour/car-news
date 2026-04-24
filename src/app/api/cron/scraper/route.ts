@@ -4,6 +4,7 @@ import { scrapeAllSources } from '@/lib/scraper'
 import { generateEmbedding } from '@/lib/ai/embeddings'
 import { getErrorMessage } from '@/lib/utils/error'
 import { verifyCronAuth, unauthorized } from '@/lib/cron/auth'
+import { logger } from '@/lib/logger'
 
 export const maxDuration = 300 // Vercel Pro限制：最长5分钟（与generator一致）
 
@@ -18,7 +19,7 @@ async function handleCronJob(request: NextRequest) {
     const supabase = createServiceClient()
 
     // 1. 爬取所有新闻源
-    console.log('Starting scraper...')
+    logger.info('cron.scraper.start')
     const articles = await scrapeAllSources()
 
     if (articles.length === 0) {
@@ -36,7 +37,7 @@ async function handleCronJob(request: NextRequest) {
 
     // 2. 批次檢查重複（分批處理避免 Supabase 限制）
     const urls = articles.map(a => a.url)
-    console.log(`Checking ${urls.length} URLs for duplicates...`)
+    logger.info('cron.scraper.dedup_check_start', { urlCount: urls.length })
 
     const existingUrls = new Set<string>()
     const BATCH_SIZE = 100  // Supabase .in() 限制約 100 個
@@ -49,13 +50,13 @@ async function handleCronJob(request: NextRequest) {
         .in('url', batchUrls)
 
       if (checkError) {
-        console.error(`Error checking duplicates batch ${i}:`, checkError)
+        logger.error('cron.scraper.dedup_batch_fail', checkError, { batchIndex: i })
       } else if (existingArticles) {
         existingArticles.forEach(a => existingUrls.add(a.url))
       }
     }
 
-    console.log(`Found ${existingUrls.size} existing articles to skip`)
+    logger.info('cron.scraper.dedup_existing', { existing: existingUrls.size })
 
     // 3. 準備要保存的文章（過濾重複）
     const articlesToSave = []
@@ -85,12 +86,12 @@ async function handleCronJob(request: NextRequest) {
           title: article.title.slice(0, 100)
         })
       } catch (error) {
-        console.error(`Error processing article ${article.url}:`, error)
+        logger.error('cron.scraper.article_process_fail', error, { url: article.url })
       }
     }
 
     // 4. 批次保存到數據庫（分批避免 Supabase 限制）
-    console.log(`Preparing to save ${articlesToSave.length} articles...`)
+    logger.info('cron.scraper.save_prepare', { toSave: articlesToSave.length })
 
     if (articlesToSave.length > 0) {
       const INSERT_BATCH_SIZE = 50  // 每批插入 50 條
@@ -102,15 +103,15 @@ async function handleCronJob(request: NextRequest) {
           .insert(batch)
 
         if (bulkInsertError) {
-          console.error(`Bulk insert error batch ${i}:`, bulkInsertError)
+          logger.error('cron.scraper.bulk_insert_fail', bulkInsertError, { batchIndex: i })
         } else {
           savedCount += batch.length
-          console.log(`✓ Saved batch ${i}: ${batch.length} articles`)
+          logger.info('cron.scraper.batch_saved', { batchIndex: i, count: batch.length })
         }
       }
-      console.log(`✓ Total saved: ${savedCount} articles`)
+      logger.info('cron.scraper.save_complete', { savedCount })
     } else {
-      console.log('No articles to save (all were duplicates or filtered out)')
+      logger.info('cron.scraper.nothing_to_save')
     }
 
     // 3. 清理过期文章
@@ -120,7 +121,7 @@ async function handleCronJob(request: NextRequest) {
       .lt('expires_at', new Date().toISOString())
 
     if (cleanupError) {
-      console.error('Cleanup error:', cleanupError)
+      logger.error('cron.scraper.cleanup_fail', cleanupError)
     }
 
     // 4. 记录日志
@@ -145,7 +146,7 @@ async function handleCronJob(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Scraper error:', error)
+    logger.error('cron.scraper.fail', error)
 
     // 记录错误日志
     try {
@@ -159,7 +160,7 @@ async function handleCronJob(request: NextRequest) {
         }
       })
     } catch (logError) {
-      console.error('Failed to log error:', logError)
+      logger.error('cron.scraper.log_fail', logError)
     }
 
     return NextResponse.json(

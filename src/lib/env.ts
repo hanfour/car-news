@@ -6,6 +6,8 @@
  * Throws errors immediately rather than failing at runtime.
  */
 
+import { logger } from '@/lib/logger'
+
 interface RequiredEnvVars {
   // Supabase
   NEXT_PUBLIC_SUPABASE_URL: string
@@ -90,15 +92,38 @@ export function validateEnv(): RequiredEnvVars {
       NEXT_PUBLIC_BASE_URL: validateEnvVar('NEXT_PUBLIC_BASE_URL', process.env.NEXT_PUBLIC_BASE_URL),
     }
 
-    console.log('✅ All environment variables validated successfully')
+    logger.info('env.validate_success')
     return env
   } catch (error) {
-    console.error('\n🚨 Environment Variable Validation Failed:\n')
-    console.error((error as Error).message)
-    console.error('\nApplication cannot start. Please fix the above issues.\n')
+    logger.error('env.validate_fail', error, { message: (error as Error).message })
     process.exit(1)
   }
 }
 
-// Export validated environment
-export const env = validateEnv()
+// Lazy-validate：module 載入時不驗證，第一次存取 env.XXX 才觸發 validateEnv()。
+// 這讓 CI / next build 可以在沒有真實 secrets 的情況下完成 code analysis 與
+// static page generation（路由模組被掃描時只是 import，不會存取 env 屬性）。
+// 真正 runtime request 命到需要 env 的程式碼時，才會對當下的 process.env 做檢查。
+let cached: RequiredEnvVars | null = null
+function getEnv(): RequiredEnvVars {
+  if (!cached) cached = validateEnv()
+  return cached
+}
+
+export const env = new Proxy({} as RequiredEnvVars, {
+  get(_target, prop: string) {
+    return getEnv()[prop as keyof RequiredEnvVars]
+  },
+  has(_target, prop: string) {
+    return prop in getEnv()
+  },
+  ownKeys() {
+    return Object.keys(getEnv())
+  },
+  getOwnPropertyDescriptor(_target, prop: string) {
+    const value = getEnv()[prop as keyof RequiredEnvVars]
+    return value !== undefined
+      ? { configurable: true, enumerable: true, writable: false, value }
+      : undefined
+  },
+})

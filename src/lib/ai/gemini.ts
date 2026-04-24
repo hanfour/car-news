@@ -2,6 +2,7 @@ import 'server-only'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import type { GenerateArticleInput, GenerateArticleOutput } from './claude'
 import { getErrorMessage } from '@/lib/utils/error'
+import { logger } from '@/lib/logger'
 
 let genAI: GoogleGenerativeAI | null = null
 
@@ -138,7 +139,7 @@ ${s.content.slice(0, 2000)}...
       }
     })
 
-    console.log(`→ Generating article with Gemini ${model}...`)
+    logger.info('ai.gemini.generate_start', { model })
 
     const result = await geminiModel.generateContent(prompt)
     const response = result.response
@@ -155,15 +156,15 @@ ${s.content.slice(0, 2000)}...
 
       parsedResult = JSON.parse(jsonText)
     } catch (parseError) {
-      console.error('Failed to parse Gemini response JSON:', text.slice(0, 500))
+      logger.error('ai.gemini.parse_fail', parseError, { snippet: text.slice(0, 500) })
       throw new Error(`Invalid JSON from Gemini: ${(parseError as Error).message}`)
     }
 
-    console.log(`✓ Article generated successfully with Gemini ${model}`)
+    logger.info('ai.gemini.generate_ok', { model })
     return parsedResult
 
   } catch (error) {
-    console.error(`✗ Gemini generation failed: ${getErrorMessage(error)}`)
+    logger.error('ai.gemini.generate_fail', error)
     throw error
   }
 }
@@ -224,7 +225,7 @@ ${content}
 
     return JSON.parse(jsonText)
   } catch (error) {
-    console.error('✗ Gemini moderation failed:', getErrorMessage(error))
+    logger.error('ai.gemini.moderate_fail', error)
     // 預設通過，避免 false positive
     return {
       passed: true,
@@ -263,7 +264,7 @@ export async function generateTextWithGemini(
     const response = result.response
     return response.text()
   } catch (error) {
-    console.error('✗ Gemini text generation failed:', getErrorMessage(error))
+    logger.error('ai.gemini.text_generate_fail', error)
     throw error
   }
 }

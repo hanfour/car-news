@@ -12,6 +12,7 @@ import type { Element } from 'domhandler'
 import { BasePressroomScraper, cleanText, htmlToText } from './base'
 import type { PressroomArticle, PressroomImage } from './types'
 import { PRESSROOM_CONFIGS } from './types'
+import { logger } from '@/lib/logger'
 
 export class VolkswagenScraper extends BasePressroomScraper {
   constructor() {
@@ -66,7 +67,7 @@ export class VolkswagenScraper extends BasePressroomScraper {
                   $('title').text()
 
     if (!title) {
-      console.warn(`[Volkswagen] No title found for ${url}`)
+      logger.warn('scraper.pressroom.no_title', { brand: 'Volkswagen', url })
       return null
     }
 
@@ -87,7 +88,7 @@ export class VolkswagenScraper extends BasePressroomScraper {
     const content = contentEl.length > 0 ? htmlToText(contentEl.html() || '') : ''
 
     if (!content) {
-      console.warn(`[Volkswagen] No content found for ${url}`)
+      logger.warn('scraper.pressroom.no_content', { brand: 'Volkswagen', url })
       return null
     }
 
@@ -177,7 +178,7 @@ export class VolkswagenScraper extends BasePressroomScraper {
         return parsed
       }
     } catch (e) {
-      console.warn(`[Volkswagen] Failed to parse date: ${dateStr}`)
+      logger.warn('scraper.pressroom.date_parse_fail', { brand: 'Volkswagen', dateStr })
     }
 
     return new Date()

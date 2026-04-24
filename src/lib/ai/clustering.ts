@@ -1,6 +1,7 @@
 import 'server-only'
 import { RawArticle, ArticleCluster } from '@/types/database'
 import { cosineSimilarity } from './embeddings'
+import { logger } from '@/lib/logger'
 
 // 新增：最大 cluster 大小限制，避免生成過於廣泛的文章
 const MAX_CLUSTER_SIZE = 15
@@ -23,7 +24,10 @@ export async function clusterArticles(
     }))
 
   if (validArticles.length < minClusterSize) {
-    console.warn(`Not enough articles with valid embeddings: ${validArticles.length}/${articles.length}`)
+    logger.warn('ai.clustering.insufficient_embeddings', {
+      valid: validArticles.length,
+      total: articles.length,
+    })
     return []
   }
 
