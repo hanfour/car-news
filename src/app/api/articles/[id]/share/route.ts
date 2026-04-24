@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { getErrorMessage } from '@/lib/utils/error'
+import { logger } from '@/lib/logger'
 
 // POST: Record a share event
 export async function POST(
@@ -38,7 +39,7 @@ export async function POST(
       })
 
     if (insertError) {
-      console.error('[Article Share API] Error recording share:', insertError)
+      logger.error('api.articles.share_record_fail', insertError, { articleId, platform })
       return NextResponse.json(
         { error: '記錄分享失敗' },
         { status: 500 }
@@ -57,7 +58,7 @@ export async function POST(
       shareCount: article?.share_count || 0
     })
   } catch (error) {
-    console.error('[Article Share API] Unexpected error:', getErrorMessage(error))
+    logger.error('api.articles.share_post_unexpected', error, { message: getErrorMessage(error) })
     return NextResponse.json(
       { error: '系統錯誤' },
       { status: 500 }
@@ -86,7 +87,7 @@ export async function GET(
       shareCount: article?.share_count || 0
     })
   } catch (error) {
-    console.error('[Article Share API GET] Unexpected error:', getErrorMessage(error))
+    logger.error('api.articles.share_get_unexpected', error, { message: getErrorMessage(error) })
     return NextResponse.json(
       { error: '系統錯誤' },
       { status: 500 }

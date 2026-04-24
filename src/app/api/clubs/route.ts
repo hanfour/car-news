@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { rateLimit } from '@/lib/rate-limit'
+import { logger } from '@/lib/logger'
 
 // GET: 車友會列表
 export async function GET(request: NextRequest) {
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('[Clubs POST] Error:', error)
+      logger.error('api.clubs.create_fail', error, { slug, userId })
       return NextResponse.json({ error: '建立失敗' }, { status: 500 })
     }
 

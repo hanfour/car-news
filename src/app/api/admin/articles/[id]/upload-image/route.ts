@@ -4,6 +4,7 @@ import { verifySessionToken } from '@/lib/admin/session'
 import sharp from 'sharp'
 import crypto from 'crypto'
 import { uploadToR2 } from '@/lib/storage/r2-client'
+import { logger } from '@/lib/logger'
 
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY
 
@@ -57,12 +58,14 @@ export async function POST(
     const arrayBuffer = await file.arrayBuffer()
     let buffer: Buffer = Buffer.from(new Uint8Array(arrayBuffer))
 
-    console.log(`→ Processing uploaded image for article ${id}`)
-    console.log(`   File size: ${(buffer.length / 1024).toFixed(1)} KB`)
-    console.log(`   Image credit: ${imageCredit}`)
+    logger.info('api.admin.upload_image_start', {
+      articleId: id,
+      fileSizeKb: Number((buffer.length / 1024).toFixed(1)),
+      imageCredit,
+    })
 
     // 2. 浮水印功能已停用
-    console.log('→ Watermark disabled (no font support on Vercel serverless)')
+    logger.info('api.admin.upload_image_watermark_disabled', { articleId: id })
 
     // 3. 優化並轉換為 WebP
     buffer = await sharp(buffer)
@@ -76,7 +79,10 @@ export async function POST(
       })
       .toBuffer()
 
-    console.log(`✓ Image processed, size: ${(buffer.length / 1024).toFixed(1)} KB`)
+    logger.info('api.admin.upload_image_processed', {
+      articleId: id,
+      processedSizeKb: Number((buffer.length / 1024).toFixed(1)),
+    })
 
     // 4. 生成文件名
     const hash = crypto.createHash('md5').update(buffer).digest('hex')
@@ -96,11 +102,11 @@ export async function POST(
       .eq('id', id)
 
     if (updateError) {
-      console.error('✗ Update article failed:', updateError.message)
+      logger.error('api.admin.upload_image_update_fail', updateError, { articleId: id })
       return NextResponse.json({ error: updateError.message }, { status: 500 })
     }
 
-    console.log(`✓ Image uploaded and article updated: ${publicUrl}`)
+    logger.info('api.admin.upload_image_done', { articleId: id, publicUrl })
 
     return NextResponse.json({
       success: true,
@@ -109,7 +115,7 @@ export async function POST(
     })
 
   } catch (error) {
-    console.error('Upload image error:', error)
+    logger.error('api.admin.upload_image_fail', error, { articleId: id })
     return NextResponse.json({
       error: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })

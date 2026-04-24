@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 
 export async function PATCH(
   request: NextRequest,
@@ -98,13 +99,13 @@ export async function PATCH(
       .eq('user_id', targetUserId)
 
     if (error) {
-      console.error('[Club Member PATCH] Error:', error)
+      logger.error('api.clubs.member_update_fail', error, { clubId: club.id, targetUserId })
       return NextResponse.json({ error: '更新失敗' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('[Club Member PATCH] Unexpected error:', error)
+    logger.error('api.clubs.member_update_unexpected', error)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }

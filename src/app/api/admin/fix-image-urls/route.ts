@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/admin/auth'
 import { ArticleImage } from '@/types/article'
 import { getErrorMessage } from '@/lib/utils/error'
+import { logger } from '@/lib/logger'
 
 /**
  * 修復資料庫中包含 HTML 實體編碼的圖片 URL
@@ -133,7 +134,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Fix image URLs error:', getErrorMessage(error))
+    logger.error('api.admin.fix_image_urls_fail', error, { message: getErrorMessage(error) })
     return NextResponse.json(
       {
         success: false,

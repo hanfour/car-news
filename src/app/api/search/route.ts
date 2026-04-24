@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { rateLimit } from '@/lib/rate-limit'
+import { logger } from '@/lib/logger'
 
 /**
  * Full-text search API using PostgreSQL tsvector
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
       })
 
     if (error) {
-      console.error('Search error:', error)
+      logger.error('api.search.rpc_fail', error, { query })
       // Fallback to simple ILIKE if function doesn't exist
       return await fallbackSearch(supabase, query)
     }
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
       { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' } }
     )
   } catch (error) {
-    console.error('Search error:', error)
+    logger.error('api.search.unexpected', error, { query })
     return NextResponse.json({ articles: [] })
   }
 }
@@ -75,7 +76,7 @@ async function fallbackSearch(supabase: SupabaseClient, query: string) {
     .limit(30)
 
   if (error) {
-    console.error('Fallback search error:', error)
+    logger.error('api.search.fallback_fail', error, { query })
     return NextResponse.json({ articles: [] })
   }
 

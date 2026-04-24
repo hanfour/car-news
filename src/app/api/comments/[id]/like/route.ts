@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { getErrorMessage } from '@/lib/utils/error'
+import { logger } from '@/lib/logger'
 
 // POST: Toggle like on a comment
 export async function POST(
@@ -29,7 +30,7 @@ export async function POST(
       .maybeSingle()
 
     if (checkError) {
-      console.error('[Like API] Error checking existing like:', checkError)
+      logger.error('api.comments.like_check_fail', checkError, { commentId, userId })
       return NextResponse.json(
         { error: '查詢失敗' },
         { status: 500 }
@@ -45,7 +46,7 @@ export async function POST(
         .eq('user_id', userId)
 
       if (deleteError) {
-        console.error('[Like API] Error removing like:', deleteError)
+        logger.error('api.comments.like_remove_fail', deleteError, { commentId, userId })
         return NextResponse.json(
           { error: '取消按讚失敗' },
           { status: 500 }
@@ -74,7 +75,7 @@ export async function POST(
         })
 
       if (insertError) {
-        console.error('[Like API] Error adding like:', insertError)
+        logger.error('api.comments.like_add_fail', insertError, { commentId, userId })
         return NextResponse.json(
           { error: '按讚失敗' },
           { status: 500 }
@@ -95,7 +96,7 @@ export async function POST(
       })
     }
   } catch (error) {
-    console.error('[Like API] Unexpected error:', getErrorMessage(error))
+    logger.error('api.comments.like_toggle_fail', error, { message: getErrorMessage(error) })
     return NextResponse.json(
       { error: '系統錯誤' },
       { status: 500 }
@@ -140,7 +141,7 @@ export async function GET(
       isLiked
     })
   } catch (error) {
-    console.error('[Like API GET] Unexpected error:', getErrorMessage(error))
+    logger.error('api.comments.like_get_fail', error, { message: getErrorMessage(error) })
     return NextResponse.json(
       { error: '系統錯誤' },
       { status: 500 }

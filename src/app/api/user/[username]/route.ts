@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 
 // GET: 公開個人檔案
 export async function GET(
@@ -43,7 +44,7 @@ export async function GET(
       },
     })
   } catch (error) {
-    console.error('[User Profile GET] Error:', error)
+    logger.error('api.user.profile_get_fail', error)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { moderateComment } from '@/lib/ai/claude'
 import { rateLimit } from '@/lib/rate-limit'
+import { logger } from '@/lib/logger'
 
 // GET: 貼文列表
 export async function GET(request: NextRequest) {
@@ -59,7 +60,7 @@ export async function GET(request: NextRequest) {
     const { data: posts, count, error } = await query.range(offset, offset + limit - 1)
 
     if (error) {
-      console.error('[Forum Posts GET] Error:', error)
+      logger.error('api.forum.posts_list_fail', error)
       return NextResponse.json({ error: '查詢失敗' }, { status: 500 })
     }
 
@@ -98,7 +99,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ posts: [], total: 0, page: 1, totalPages: 0 })
   } catch (error) {
-    console.error('[Forum Posts GET] Unexpected error:', error)
+    logger.error('api.forum.posts_list_unexpected', error)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }
@@ -152,13 +153,13 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('[Forum Posts POST] Error:', error)
+      logger.error('api.forum.posts_create_fail', error, { userId, categoryId: category_id })
       return NextResponse.json({ error: '發布失敗' }, { status: 500 })
     }
 
     return NextResponse.json({ post: data })
   } catch (error) {
-    console.error('[Forum Posts POST] Unexpected error:', error)
+    logger.error('api.forum.posts_create_unexpected', error)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }

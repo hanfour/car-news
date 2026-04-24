@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/admin/auth'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300 // 5 minutes
@@ -26,12 +27,12 @@ export async function POST(request: NextRequest) {
       }
     }).then(response => {
       if (response.ok) {
-        console.log('✅ Generator triggered successfully')
+        logger.info('api.admin.trigger_generator_ok')
       } else {
-        console.error('❌ Generator trigger failed:', response.status)
+        logger.error('api.admin.trigger_generator_fail', null, { status: response.status })
       }
     }).catch(error => {
-      console.error('❌ Generator trigger error:', error)
+      logger.error('api.admin.trigger_generator_error', error)
     })
 
     // 立即返回成功響應
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
       note: 'The generation process is running. Check logs for progress.'
     })
   } catch (error) {
-    console.error('Trigger generator error:', error)
+    logger.error('api.admin.trigger_generator_unexpected', error)
     return NextResponse.json(
       {
         success: false,

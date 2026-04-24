@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { getErrorMessage } from '@/lib/utils/error'
+import { logger } from '@/lib/logger'
 
 export async function POST(
   request: NextRequest,
@@ -47,7 +48,7 @@ export async function POST(
       if (insertError.code === '23505') {
         return NextResponse.json({ error: '您已經檢舉過此貼文' }, { status: 400 })
       }
-      console.error('Failed to create forum post report:', insertError)
+      logger.error('api.forum.post_report_fail', insertError, { postId, userId })
       return NextResponse.json({ error: '檢舉失敗' }, { status: 500 })
     }
 
@@ -56,7 +57,7 @@ export async function POST(
       message: '檢舉已提交，我們會盡快處理',
     })
   } catch (error) {
-    console.error('Forum post report error:', getErrorMessage(error))
+    logger.error('api.forum.post_report_unexpected', error, { message: getErrorMessage(error) })
     return NextResponse.json(
       { error: getErrorMessage(error) || '檢舉失敗' },
       { status: 500 }

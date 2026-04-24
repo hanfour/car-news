@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { rateLimit } from '@/lib/rate-limit'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { logger } from '@/lib/logger'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -130,13 +131,13 @@ export async function POST(
       .single()
 
     if (error) {
-      console.error('[Messages POST] Error:', error)
+      logger.error('api.messages.send_fail', error, { conversationId: id, userId })
       return NextResponse.json({ error: '發送失敗' }, { status: 500 })
     }
 
     return NextResponse.json({ message })
   } catch (err) {
-    console.error('[Messages POST]:', err)
+    logger.error('api.messages.send_unexpected', err)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }
@@ -181,7 +182,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (err) {
-    console.error('[Messages DELETE]:', err)
+    logger.error('api.messages.delete_unexpected', err)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }

@@ -4,6 +4,7 @@ import { createAuthenticatedClient } from '@/lib/auth'
 import { moderateComment } from '@/lib/ai/claude'
 import { getErrorMessage } from '@/lib/utils/error'
 import { rateLimit } from '@/lib/rate-limit'
+import { logger } from '@/lib/logger'
 
 // GET: 获取文章评论列表
 export async function GET(request: NextRequest) {
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('[Comments GET] Failed to fetch comments:', error)
+      logger.error('api.comments.list_fail', error, { articleId })
       return NextResponse.json(
         { error: 'Failed to fetch comments', details: error.message },
         { status: 500 }
@@ -59,7 +60,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ comments: commentsWithProfiles })
   } catch (error) {
-    console.error('Unexpected error:', error)
+    logger.error('api.comments.list_unexpected', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -130,7 +131,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Failed to save comment:', error)
+      logger.error('api.comments.create_fail', error, { articleId: article_id, userId })
       return NextResponse.json(
         { error: '保存失敗，請稍後再試' },
         { status: 500 }
@@ -142,7 +143,7 @@ export async function POST(request: NextRequest) {
       comment: data
     })
   } catch (error) {
-    console.error('Unexpected error:', getErrorMessage(error))
+    logger.error('api.comments.create_unexpected', error, { message: getErrorMessage(error) })
     return NextResponse.json(
       { error: '系統錯誤，請稍後再試' },
       { status: 500 }

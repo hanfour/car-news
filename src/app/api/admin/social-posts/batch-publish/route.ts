@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { publishSocialPost } from '@/lib/social/auto-publisher'
 import { verifyAdminAuth } from '@/lib/admin/auth'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
       results
     })
   } catch (error) {
-    console.error('[Batch Publish] Error:', error)
+    logger.error('api.admin.social_batch_publish_fail', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

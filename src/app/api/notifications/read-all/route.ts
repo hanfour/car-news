@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 
 // PATCH: 全部已讀
 export async function PATCH(request: NextRequest) {
@@ -17,7 +18,7 @@ export async function PATCH(request: NextRequest) {
       .eq('is_read', false)
 
     if (error) {
-      console.error('[Read All] Error:', error)
+      logger.error('api.notifications.read_all_fail', error, { userId })
       return NextResponse.json({ error: '操作失敗' }, { status: 500 })
     }
 

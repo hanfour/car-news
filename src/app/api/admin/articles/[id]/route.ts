@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { verifyAdminAuth } from '@/lib/admin/auth'
+import { logger } from '@/lib/logger'
 
 // 共用 verifyAdminAuth（lib/admin/auth.ts）：timing-safe Bearer 比對 + cookie session，
 // 取代原本這檔自刻的 verifyAuth + module-level throw 驗證，後者會在 next build
@@ -116,13 +117,13 @@ export async function DELETE(
       .eq('id', id)
 
     if (error) {
-      console.error('Delete article error:', error)
+      logger.error('api.admin.article_delete_fail', error, { articleId: id })
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, deleted: id })
   } catch (err) {
-    console.error('DELETE endpoint error:', err)
+    logger.error('api.admin.article_delete_unexpected', err)
     return NextResponse.json({
       error: err instanceof Error ? err.message : 'Unknown error'
     }, { status: 500 })

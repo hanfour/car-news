@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { rateLimit } from '@/lib/rate-limit'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { logger } from '@/lib/logger'
 
 async function resolveTargetId(supabase: SupabaseClient, username: string, userId: string) {
   const { data: profile } = await supabase
@@ -51,13 +52,13 @@ export async function POST(
       if (error.code === '23505') {
         return NextResponse.json({ isBlocked: true })
       }
-      console.error('[Block POST] Error:', error)
+      logger.error('api.user.block_fail', error, { userId, targetId })
       return NextResponse.json({ error: '操作失敗' }, { status: 500 })
     }
 
     return NextResponse.json({ isBlocked: true })
   } catch (error) {
-    console.error('[Block POST] Unexpected error:', error)
+    logger.error('api.user.block_unexpected', error)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }
@@ -93,7 +94,7 @@ export async function DELETE(
 
     return NextResponse.json({ isBlocked: false })
   } catch (error) {
-    console.error('[Block DELETE] Unexpected error:', error)
+    logger.error('api.user.unblock_unexpected', error)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }

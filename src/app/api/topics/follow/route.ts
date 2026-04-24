@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 
 // POST: 追蹤主題
 export async function POST(request: NextRequest) {
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ isFollowing: true })
     }
   } catch (error) {
-    console.error('[Topic Follow] Error:', error)
+    logger.error('api.topics.follow_toggle_fail', error)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }

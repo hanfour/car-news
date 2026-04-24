@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { moderateComment } from '@/lib/ai/claude'
+import { logger } from '@/lib/logger'
 
 // GET: 單篇貼文
 export async function GET(
@@ -26,7 +27,7 @@ export async function GET(
     // 增加瀏覽數（SECURITY DEFINER function，不受 RLS 限制）
     const { error: rpcError } = await supabase.rpc('increment_view_count', { post_id: id })
     if (rpcError) {
-      console.error('[Forum Post GET] View count increment failed:', rpcError)
+      logger.error('api.forum.post_view_increment_fail', rpcError, { postId: id })
     }
 
     // 作者 profile
@@ -72,7 +73,7 @@ export async function GET(
       replies: repliesWithAuthors,
     })
   } catch (error) {
-    console.error('[Forum Post GET] Error:', error)
+    logger.error('api.forum.post_get_fail', error)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }

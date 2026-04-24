@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { uploadToR2 } from '@/lib/storage/r2-client'
+import { logger } from '@/lib/logger'
 
 export const maxDuration = 300
 
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'No articles to migrate', migrated: 0 })
     }
 
-    console.log(`[Migration] Found ${articles.length} articles with Supabase Storage URLs`)
+    logger.info('api.admin.migrate_r2_found', { total: articles.length })
 
     let migratedCount = 0
     let errorCount = 0
@@ -44,7 +45,10 @@ export async function POST(request: NextRequest) {
     // 分批處理
     for (let i = 0; i < articles.length; i += BATCH_SIZE) {
       const batch = articles.slice(i, i + BATCH_SIZE)
-      console.log(`[Migration] Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(articles.length / BATCH_SIZE)}`)
+      logger.info('api.admin.migrate_r2_batch', {
+        batch: Math.floor(i / BATCH_SIZE) + 1,
+        total: Math.ceil(articles.length / BATCH_SIZE),
+      })
 
       for (const article of batch) {
         try {
@@ -94,17 +98,17 @@ export async function POST(request: NextRequest) {
               .eq('id', article.id)
 
             if (updateError) {
-              console.error(`[Migration] Failed to update article ${article.id}:`, updateError.message)
+              logger.error('api.admin.migrate_r2_update_fail', updateError, { articleId: article.id })
               errors.push(`Article ${article.id}: ${updateError.message}`)
               errorCount++
             } else {
               migratedCount++
-              console.log(`[Migration] ✓ Article ${article.id} migrated`)
+              logger.info('api.admin.migrate_r2_item_done', { articleId: article.id })
             }
           }
         } catch (err) {
           const msg = err instanceof Error ? err.message : 'Unknown error'
-          console.error(`[Migration] Error processing article ${article.id}:`, msg)
+          logger.error('api.admin.migrate_r2_item_fail', err, { articleId: article.id })
           errors.push(`Article ${article.id}: ${msg}`)
           errorCount++
         }
@@ -120,7 +124,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('[Migration] Fatal error:', error)
+    logger.error('api.admin.migrate_r2_fatal', error)
     return NextResponse.json({
       error: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
@@ -132,14 +136,14 @@ export async function POST(request: NextRequest) {
  */
 async function migrateImageUrl(oldUrl: string): Promise<string | null> {
   try {
-    console.log(`[Migration] Downloading: ${oldUrl.slice(0, 80)}...`)
+    logger.info('api.admin.migrate_r2_download_start', { urlPrefix: oldUrl.slice(0, 80) })
 
     const response = await fetch(oldUrl, {
       signal: AbortSignal.timeout(30000),
     })
 
     if (!response.ok) {
-      console.error(`[Migration] Download failed: ${response.status}`)
+      logger.warn('api.admin.migrate_r2_download_fail', { status: response.status, urlPrefix: oldUrl.slice(0, 80) })
       return null
     }
 
@@ -153,11 +157,11 @@ async function migrateImageUrl(oldUrl: string): Promise<string | null> {
     const key = parts[parts.length - 1] || `migrated-${Date.now()}.webp`
 
     const newUrl = await uploadToR2(key, buffer, contentType)
-    console.log(`[Migration] ✓ Uploaded to R2: ${newUrl.slice(0, 80)}...`)
+    logger.info('api.admin.migrate_r2_upload_done', { newUrlPrefix: newUrl.slice(0, 80) })
 
     return newUrl
   } catch (error) {
-    console.error(`[Migration] Failed to migrate: ${oldUrl}`, error)
+    logger.error('api.admin.migrate_r2_image_fail', error, { urlPrefix: oldUrl.slice(0, 80) })
     return null
   }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 
 // GET: 取得當前用戶的封鎖名單
 export async function GET(request: NextRequest) {
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('[Blocks GET] Error:', error)
+      logger.error('api.user.blocks_list_fail', error, { userId })
       return NextResponse.json({ error: '載入封鎖名單失敗' }, { status: 500 })
     }
 
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ blocks: result })
   } catch (error) {
-    console.error('[Blocks GET] Unexpected error:', error)
+    logger.error('api.user.blocks_list_unexpected', error)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }

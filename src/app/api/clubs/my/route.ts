@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
       .eq('status', 'active')
 
     if (memberError) {
-      console.error('[Clubs My GET] Member query error:', memberError)
+      logger.error('api.clubs.my_member_fail', memberError, { userId })
       return NextResponse.json({ error: '查詢失敗' }, { status: 500 })
     }
 
@@ -49,13 +50,13 @@ export async function GET(request: NextRequest) {
       .order('name')
 
     if (clubError) {
-      console.error('[Clubs My GET] Club query error:', clubError)
+      logger.error('api.clubs.my_list_fail', clubError, { userId })
       return NextResponse.json({ error: '查詢失敗' }, { status: 500 })
     }
 
     return NextResponse.json({ clubs: clubs || [] })
   } catch (error) {
-    console.error('[Clubs My GET] Unexpected error:', error)
+    logger.error('api.clubs.my_unexpected', error)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { rateLimit } from '@/lib/rate-limit'
+import { logger } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
   try {
@@ -55,13 +56,13 @@ export async function POST(request: NextRequest) {
       if (error.code === '23505') {
         return NextResponse.json({ error: '你已經檢舉過此內容' }, { status: 409 })
       }
-      console.error('[Reports POST] Error:', error)
+      logger.error('api.reports.create_fail', error, { userId, targetType: target_type, targetId: target_id })
       return NextResponse.json({ error: '檢舉失敗' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, message: '檢舉已送出，我們會儘快處理' })
   } catch (error) {
-    console.error('[Reports POST] Unexpected error:', error)
+    logger.error('api.reports.create_unexpected', error)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { getErrorMessage } from '@/lib/utils/error'
+import { logger } from '@/lib/logger'
 
 // POST: Toggle favorite on an article
 export async function POST(
@@ -28,7 +29,7 @@ export async function POST(
       .maybeSingle()
 
     if (checkError) {
-      console.error('[Favorite API] Error checking existing favorite:', checkError)
+      logger.error('api.articles.favorite_check_fail', checkError, { articleId, userId })
       return NextResponse.json(
         { error: '查詢失敗' },
         { status: 500 }
@@ -44,7 +45,7 @@ export async function POST(
         .eq('user_id', userId)
 
       if (deleteError) {
-        console.error('[Favorite API] Error removing favorite:', deleteError)
+        logger.error('api.articles.favorite_remove_fail', deleteError, { articleId, userId })
         return NextResponse.json(
           { error: '取消收藏失敗' },
           { status: 500 }
@@ -65,7 +66,7 @@ export async function POST(
         })
 
       if (insertError) {
-        console.error('[Favorite API] Error adding favorite:', insertError)
+        logger.error('api.articles.favorite_add_fail', insertError, { articleId, userId })
         return NextResponse.json(
           { error: '收藏失敗' },
           { status: 500 }
@@ -78,7 +79,7 @@ export async function POST(
       })
     }
   } catch (error) {
-    console.error('[Favorite API] Unexpected error:', getErrorMessage(error))
+    logger.error('api.articles.favorite_toggle_fail', error, { message: getErrorMessage(error) })
     return NextResponse.json(
       { error: '系統錯誤' },
       { status: 500 }
@@ -110,7 +111,7 @@ export async function GET(
 
     return NextResponse.json({ isFavorited })
   } catch (error) {
-    console.error('[Favorite API GET] Unexpected error:', getErrorMessage(error))
+    logger.error('api.articles.favorite_get_fail', error, { message: getErrorMessage(error) })
     return NextResponse.json(
       { error: '系統錯誤' },
       { status: 500 }

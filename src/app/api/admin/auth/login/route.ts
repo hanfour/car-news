@@ -5,6 +5,7 @@ import { createAdminSession } from '@/lib/admin/session'
 import { logAdminAction } from '@/lib/admin/audit'
 import { checkLoginRateLimit, recordLoginAttempt } from '@/lib/admin/rate-limit'
 import { getClientIp, getUserAgent } from '@/lib/admin/utils'
+import { logger } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
   const ipAddress = getClientIp(request)
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
       expiresAt: session.expiresAt,
     })
   } catch (error) {
-    console.error('[Admin Login] Error:', error)
+    logger.error('api.admin.login_fail', error, { ipAddress })
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 
 // PATCH: 更新自己的個人檔案
 export async function PATCH(request: NextRequest) {
@@ -81,7 +82,7 @@ export async function PATCH(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('[Profile PATCH] Error:', error)
+      logger.error('api.user.profile_update_fail', error, { userId })
       if (error.code === '23514') {
         return NextResponse.json({ error: '用戶名稱格式不正確' }, { status: 400 })
       }
@@ -90,7 +91,7 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({ profile: data })
   } catch (error) {
-    console.error('[Profile PATCH] Unexpected error:', error)
+    logger.error('api.user.profile_update_unexpected', error)
     return NextResponse.json({ error: '系統錯誤' }, { status: 500 })
   }
 }

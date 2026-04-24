@@ -4,6 +4,7 @@ import { revokeSession, verifySessionToken } from '@/lib/admin/session'
 import { logAdminAction } from '@/lib/admin/audit'
 import { getClientIp, getUserAgent } from '@/lib/admin/utils'
 import { createServiceClient } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
   const ipAddress = getClientIp(request)
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('[Admin Logout] Error:', error)
+    logger.error('api.admin.logout_fail', error, { ipAddress })
     return NextResponse.json({ error: 'Logout failed' }, { status: 500 })
   }
 }

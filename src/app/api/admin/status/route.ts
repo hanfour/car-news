@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { getErrorMessage } from '@/lib/utils/error'
+import { logger } from '@/lib/logger'
 
 export async function GET(request: NextRequest) {
   // 驗證 Admin API Key
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Status check error:', error)
+    logger.error('api.admin.status_fail', error)
     return NextResponse.json(
       { error: getErrorMessage(error) },
       { status: 500 }

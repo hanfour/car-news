@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase'
 import { getErrorMessage } from '@/lib/utils/error'
 
 import { verifyBearerSecret, unauthorized } from '@/lib/cron/auth'
+import { logger } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    console.log('[Migration] Starting comment_likes migration...')
+    logger.info('api.admin.migrate_comment_likes_start')
 
     // Execute migration SQL statements one by one
     const migrations = [
@@ -115,20 +116,20 @@ export async function POST(request: NextRequest) {
       const sql = migrations[i].trim()
       if (!sql) continue
 
-      console.log(`[Migration ${i + 1}/${migrations.length}] Executing...`)
+      logger.info('api.admin.migrate_comment_likes_step', { step: i + 1, total: migrations.length })
 
       try {
         const { error } = await supabase.rpc('exec_sql', { sql })
 
         if (error) {
-          console.error(`[Migration ${i + 1}] Error:`, error)
+          logger.error('api.admin.migrate_comment_likes_step_fail', error, { step: i + 1 })
           results.push({ step: i + 1, error: error.message })
         } else {
-          console.log(`[Migration ${i + 1}] Success`)
+          logger.info('api.admin.migrate_comment_likes_step_ok', { step: i + 1 })
           results.push({ step: i + 1, success: true })
         }
       } catch (err) {
-        console.error(`[Migration ${i + 1}] Exception:`, err)
+        logger.error('api.admin.migrate_comment_likes_step_exception', err, { step: i + 1 })
         results.push({ step: i + 1, error: getErrorMessage(err) })
       }
     }
@@ -136,8 +137,9 @@ export async function POST(request: NextRequest) {
     const hasErrors = results.some(r => r.error)
 
     if (hasErrors) {
-      console.log('\n⚠️  Some migration steps failed. You may need to run the SQL manually.')
-      console.log('SQL file: supabase/migrations/20251118_add_comment_likes.sql')
+      logger.warn('api.admin.migrate_comment_likes_partial', {
+        sqlFile: 'supabase/migrations/20251118_add_comment_likes.sql',
+      })
 
       return NextResponse.json({
         message: 'Migration partially applied - some steps failed',
@@ -145,14 +147,14 @@ export async function POST(request: NextRequest) {
       }, { status: 207 })
     }
 
-    console.log('\n✅ Migration applied successfully!')
+    logger.info('api.admin.migrate_comment_likes_done')
 
     return NextResponse.json({
       message: 'Migration applied successfully',
       results
     })
   } catch (error) {
-    console.error('[Migration] Unexpected error:', getErrorMessage(error))
+    logger.error('api.admin.migrate_comment_likes_unexpected', error, { message: getErrorMessage(error) })
     return NextResponse.json(
       { error: 'Migration failed', details: getErrorMessage(error) },
       { status: 500 }

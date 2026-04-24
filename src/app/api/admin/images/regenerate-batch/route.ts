@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase'
 import { verifySessionToken } from '@/lib/admin/session'
 import { generateCoverImage, generateAndSaveCoverImage } from '@/lib/ai/image-generation'
 import { scoreImage } from '@/lib/experiments/scorer'
+import { logger } from '@/lib/logger'
 
 export const maxDuration = 300 // 5 分鐘
 
@@ -105,7 +106,10 @@ export async function POST(request: NextRequest) {
   }
 
   // Actual regeneration
-  console.log(`→ Starting batch regeneration: ${auditRecords.length} articles below ${threshold}`)
+  logger.info('api.admin.image_regenerate_start', {
+    count: auditRecords.length,
+    threshold,
+  })
 
   const details: Array<{
     article_id: string
@@ -128,7 +132,12 @@ export async function POST(request: NextRequest) {
     const scoreBefore = Number(record.composite_score)
     totalScoreBefore += scoreBefore
 
-    console.log(`  [${i + 1}/${auditRecords.length}] Regenerating: ${article.title_zh.slice(0, 40)}... (score: ${scoreBefore})`)
+    logger.info('api.admin.image_regenerate_item', {
+      index: i + 1,
+      total: auditRecords.length,
+      articleId: article.id,
+      scoreBefore,
+    })
 
     try {
       const brands = article.brands as string[] || (article.primary_brand ? [article.primary_brand] : undefined)
@@ -206,7 +215,12 @@ export async function POST(request: NextRequest) {
         improved,
       })
 
-      console.log(`    ✓ ${scoreAfter !== null ? `Score: ${scoreBefore} → ${scoreAfter} (${improved ? '↑' : '↓'})` : 'Regenerated (no re-score)'}`)
+      logger.info('api.admin.image_regenerate_item_done', {
+        articleId: article.id,
+        scoreBefore,
+        scoreAfter,
+        improved,
+      })
     } catch (error) {
       details.push({
         article_id: article.id,
@@ -216,7 +230,7 @@ export async function POST(request: NextRequest) {
         improved: false,
         error: error instanceof Error ? error.message : 'Unknown error',
       })
-      console.error(`    ✗ Failed:`, error instanceof Error ? error.message : error)
+      logger.error('api.admin.image_regenerate_item_fail', error, { articleId: article.id })
     }
 
     // Rate limit between regenerations
@@ -229,7 +243,10 @@ export async function POST(request: NextRequest) {
   const avgScoreBefore = Math.round(totalScoreBefore / details.length * 100) / 100
   const avgScoreAfter = scoredCount > 0 ? Math.round(totalScoreAfter / scoredCount * 100) / 100 : null
 
-  console.log(`✓ Batch regeneration complete: ${details.length} processed, ${improvedCount} improved`)
+  logger.info('api.admin.image_regenerate_complete', {
+    processed: details.length,
+    improved: improvedCount,
+  })
 
   return NextResponse.json({
     regenerated: details.length,

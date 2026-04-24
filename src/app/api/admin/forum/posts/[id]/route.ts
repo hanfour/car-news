@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/admin/auth'
 import { createServiceClient } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -40,7 +41,7 @@ export async function PATCH(
     .single()
 
   if (error) {
-    console.error('[Admin Forum PATCH] Error:', error)
+    logger.error('api.admin.forum_post_update_fail', error, { postId: id })
     return NextResponse.json({ error: '更新失敗' }, { status: 500 })
   }
 
@@ -70,7 +71,7 @@ export async function DELETE(
     .eq('id', id)
 
   if (error) {
-    console.error('[Admin Forum DELETE] Error:', error)
+    logger.error('api.admin.forum_post_delete_fail', error, { postId: id })
     return NextResponse.json({ error: '刪除失敗' }, { status: 500 })
   }
 

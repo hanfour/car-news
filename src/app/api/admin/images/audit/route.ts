@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase'
 import { verifySessionToken } from '@/lib/admin/session'
 import { scoreImage } from '@/lib/experiments/scorer'
 import { ImageScoreDimensions } from '@/lib/experiments/types'
+import { logger } from '@/lib/logger'
 
 export const maxDuration = 300 // 5 分鐘
 
@@ -93,14 +94,18 @@ export async function POST(request: NextRequest) {
   const results: Array<{ article_id: string; composite_score: number; weakest: string }> = []
   let errorCount = 0
 
-  console.log(`→ Starting image audit batch: ${batch}`)
-  console.log(`  Total: ${toAudit.length} articles to audit`)
+  logger.info('api.admin.image_audit_start', { batch, total: toAudit.length })
 
   for (let i = 0; i < toAudit.length; i++) {
     const article = toAudit[i]
 
     try {
-      console.log(`  [${i + 1}/${toAudit.length}] Scoring: ${article.title_zh.slice(0, 40)}...`)
+      logger.info('api.admin.image_audit_score', {
+        batch,
+        index: i + 1,
+        total: toAudit.length,
+        articleId: article.id,
+      })
 
       const score = await scoreImage(
         article.cover_image!,
@@ -129,10 +134,14 @@ export async function POST(request: NextRequest) {
         weakest,
       })
 
-      console.log(`    ✓ Score: ${score.composite} (weakest: ${weakest})`)
+      logger.info('api.admin.image_audit_scored', {
+        articleId: article.id,
+        composite: score.composite,
+        weakest,
+      })
     } catch (error) {
       errorCount++
-      console.error(`    ✗ Failed:`, error instanceof Error ? error.message : error)
+      logger.error('api.admin.image_audit_item_fail', error, { articleId: article.id })
     }
 
     // Rate limit: pause every 3 images
@@ -157,7 +166,12 @@ export async function POST(request: NextRequest) {
     .slice(0, 3)
     .map(([dim, count]) => ({ dimension: dim, count }))
 
-  console.log(`✓ Audit complete: ${results.length} scored, ${errorCount} errors, avg: ${avgScore}`)
+  logger.info('api.admin.image_audit_complete', {
+    batch,
+    scored: results.length,
+    errors: errorCount,
+    avgScore,
+  })
 
   return NextResponse.json({
     batch,

@@ -21,10 +21,10 @@ interface UserMenuProps {
   onClose: () => void
   onSignOut: () => void | Promise<void>
   /**
-   * Ref used by parent click-outside detection. NOTE: preserved 1:1 from the
-   * original StickyHeader – in the expanded variant the same ref is assigned
-   * both to the wrapper and to the dropdown panel. Do not change this without
-   * auditing click-outside behavior.
+   * Ref 指向 outer wrapper（包含 button + dropdown），供 parent 做 click-outside。
+   * 原本 StickyHeader expanded 變體會把同一 ref 重複指派給內層 dropdown，
+   * 造成 open 後 ref.current 指向 dropdown、使點按鈕被判為「outside」→
+   * onToggle(open) 與 click-outside(close) 互相取消；已於此修掉。
    */
   wrapperRef: RefObject<HTMLDivElement | null>
 }
@@ -68,12 +68,9 @@ export function UserMenu({
         )}
       </button>
 
-      {/* 用戶下拉選單 */}
+      {/* 用戶下拉選單（不帶 ref，靠 outer wrapper 的 ref 給 click-outside 用） */}
       {isOpen && (
         <div
-          // Preserve original behavior: the expanded variant double-assigns
-          // `wrapperRef` to both the outer wrapper and the dropdown panel.
-          ref={isExpanded ? wrapperRef : undefined}
           className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border py-1"
           style={{ borderColor: '#cdcdcd', zIndex: 9999 }}
         >

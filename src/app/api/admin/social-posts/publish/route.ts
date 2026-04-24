@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { publishSocialPost } from '@/lib/social/auto-publisher'
 import { verifyAdminAuth } from '@/lib/admin/auth'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
       )
     }
   } catch (error) {
-    console.error('[Social Post Publish] Error:', error)
+    logger.error('api.admin.social_publish_fail', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
