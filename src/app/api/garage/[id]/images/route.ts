@@ -161,28 +161,45 @@ export async function DELETE(
       return NextResponse.json({ error: '此圖片不屬於該車輛' }, { status: 403 })
     }
 
-    // 從 R2 刪除 — 從 URL 提取 key（R2_PUBLIC_URL 後面的部分）
-    const r2PublicUrl = (process.env.R2_PUBLIC_URL || '').replace(/\/+$/, '')
-    if (r2PublicUrl && url.startsWith(r2PublicUrl)) {
-      const key = url.slice(r2PublicUrl.length + 1)
-      await deleteFromR2(key)
-    }
-
-    // 更新資料庫
+    // 順序刻意：先 DB 後 R2。
+    // - 若 DB update 失敗：什麼都沒動，前端可重試。
+    // - 若 DB update 成功但 R2 delete 失敗：產生 R2 孤兒檔案但 UI 不會破（DB 沒引用這 URL）。
+    //   孤兒檔靠 logger 記下，後續排程清理。
+    // 反過來（先 R2 後 DB）若 R2 成功 DB 失敗，UI 會看到圖片但 R2 已無 → 破圖。
+    let dbError: { message: string } | null = null
     if (type === 'cover') {
-      await supabase
+      const { error } = await supabase
         .from('user_cars')
         .update({ cover_image: null, updated_at: new Date().toISOString() })
         .eq('id', carId)
         .eq('user_id', userId)
+      dbError = error
     } else {
       const currentImages: string[] = car.images || []
       const newImages = currentImages.filter(img => img !== url)
-      await supabase
+      const { error } = await supabase
         .from('user_cars')
         .update({ images: newImages, updated_at: new Date().toISOString() })
         .eq('id', carId)
         .eq('user_id', userId)
+      dbError = error
+    }
+
+    if (dbError) {
+      logger.error('api.garage.image_db_update_fail', dbError, { carId, userId, type })
+      return NextResponse.json({ error: '刪除失敗' }, { status: 500 })
+    }
+
+    // DB 已成功移除引用；嘗試刪 R2。失敗只記 log，不讓使用者重試（避免重試造成 DB 已成功但提示失敗的混亂）
+    const r2PublicUrl = (process.env.R2_PUBLIC_URL || '').replace(/\/+$/, '')
+    if (r2PublicUrl && url.startsWith(r2PublicUrl)) {
+      const key = url.slice(r2PublicUrl.length + 1)
+      try {
+        await deleteFromR2(key)
+      } catch (r2Err) {
+        // 孤兒 R2 物件 — 記下 key 供後續清理排程使用
+        logger.error('api.garage.image_r2_orphan', r2Err, { carId, userId, type, key })
+      }
     }
 
     return NextResponse.json({ success: true })
