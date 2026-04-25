@@ -35,11 +35,25 @@ export async function PATCH(request: NextRequest) {
           )
         }
 
-        // 檢查唯一性
+        // 保留字檢查 — 防止使用者佔用會與路由 / API / 系統概念衝突的名稱
+        // 比較時統一轉小寫，因 username 規則允許混合大小寫但語意應視為相同
+        const RESERVED_USERNAMES = new Set([
+          'admin', 'administrator', 'root', 'system', 'support', 'staff',
+          'api', 'auth', 'login', 'logout', 'signup', 'register',
+          'settings', 'profile', 'user', 'users', 'me', 'self',
+          'about', 'help', 'contact', 'privacy', 'terms', 'dmca', 'copyright',
+          'home', 'index', 'null', 'undefined', 'true', 'false',
+          'wantcar', 'wantcar.autos', 'official',
+        ])
+        if (RESERVED_USERNAMES.has(updates.username.toLowerCase())) {
+          return NextResponse.json({ error: '此用戶名稱為保留字，請選用其他名稱' }, { status: 409 })
+        }
+
+        // 檢查唯一性（大小寫不敏感比對）
         const { data: existing } = await supabase
           .from('profiles')
           .select('id')
-          .eq('username', updates.username)
+          .ilike('username', updates.username)
           .neq('id', userId)
           .maybeSingle()
 
