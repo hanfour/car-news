@@ -18,9 +18,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '請選擇檔案' }, { status: 400 })
     }
 
-    // 驗證檔案類型
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
-    if (!allowedTypes.includes(file.type)) {
+    // 驗證檔案類型 — 用 MIME → ext 對應表，不信任 file.name 副檔名
+    const MIME_TO_EXT: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+    }
+    const ext = MIME_TO_EXT[file.type]
+    if (!ext) {
       return NextResponse.json({ error: '僅支援 JPG、PNG、WebP 格式' }, { status: 400 })
     }
 
@@ -29,8 +34,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '檔案大小不能超過 5MB' }, { status: 400 })
     }
 
-    // 上傳到 Supabase Storage
-    const ext = file.name.split('.').pop() || 'jpg'
+    // 上傳到 Supabase Storage（檔名用 user UUID + 驗證過的 MIME 對應 ext）
     const filePath = `${userId}/avatar.${ext}`
 
     const { error: uploadError } = await supabase.storage

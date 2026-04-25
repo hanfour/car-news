@@ -9,15 +9,19 @@ async function resolveTargetId(supabase: SupabaseClient, username: string, userI
     .from('profiles')
     .select('id')
     .eq('username', username)
-    .single()
+    .maybeSingle()
 
-  const targetId = profile?.id || username
+  // Bug 修復：原本若 profile 不存在會把 username 字串當作 UUID 使用（profile?.id || username），
+  // 後續寫入 user_blocks.blocked_id（UUID 類型）會 cast error 並回 500。應該明確回 404。
+  if (!profile) {
+    return { error: '找不到此使用者', targetId: null }
+  }
 
-  if (targetId === userId) {
+  if (profile.id === userId) {
     return { error: '無法封鎖自己', targetId: null }
   }
 
-  return { error: null, targetId }
+  return { error: null, targetId: profile.id }
 }
 
 // POST: 封鎖用戶
@@ -40,7 +44,8 @@ export async function POST(
 
     const { error: resolveError, targetId } = await resolveTargetId(supabase, username, userId)
     if (resolveError || !targetId) {
-      return NextResponse.json({ error: resolveError || '找不到用戶' }, { status: 400 })
+      const status = resolveError === '找不到此使用者' ? 404 : 400
+      return NextResponse.json({ error: resolveError || '找不到用戶' }, { status })
     }
 
     const { error } = await supabase
@@ -83,7 +88,8 @@ export async function DELETE(
 
     const { error: resolveError, targetId } = await resolveTargetId(supabase, username, userId)
     if (resolveError || !targetId) {
-      return NextResponse.json({ error: resolveError || '找不到用戶' }, { status: 400 })
+      const status = resolveError === '找不到此使用者' ? 404 : 400
+      return NextResponse.json({ error: resolveError || '找不到用戶' }, { status })
     }
 
     await supabase
