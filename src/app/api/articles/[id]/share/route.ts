@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
+import { rateLimit } from '@/lib/rate-limit'
 import { getErrorMessage } from '@/lib/utils/error'
 import { logger } from '@/lib/logger'
+
+function getClientIp(request: NextRequest): string {
+  const forwarded = request.headers.get('x-forwarded-for')
+  if (forwarded) return forwarded.split(',')[0].trim()
+  return request.headers.get('x-real-ip') || 'unknown'
+}
 
 // POST: Record a share event
 export async function POST(
@@ -25,6 +32,18 @@ export async function POST(
     // Auth is optional for shares
     const auth = await createAuthenticatedClient(request)
     const userId = auth?.userId || null
+
+    // Rate limit：avoid bots/scripts pumping share_count
+    // - Authed: 30 shares / min / user
+    // - Anon: 10 shares / min / IP（用 IP 作 key，配上 articleId 不夠細，但避免同 IP 對單篇瘋狂呼叫）
+    const rlKey = userId ? `share:user:${userId}` : `share:ip:${getClientIp(request)}`
+    const rl = rateLimit(rlKey, {
+      maxRequests: userId ? 30 : 10,
+      windowMs: 60_000,
+    })
+    if (!rl.allowed) {
+      return NextResponse.json({ error: '操作過於頻繁，請稍後再試' }, { status: 429 })
+    }
 
     // Use auth client if available, otherwise anon
     const supabase = auth?.supabase || createClient()

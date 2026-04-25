@@ -23,15 +23,19 @@ export async function POST(
     }
     const { supabase, userId } = auth
 
-    // Check if comment exists
+    // Check if comment exists and is not soft-deleted
     const { data: comment, error: commentError } = await supabase
       .from('comments')
-      .select('id')
+      .select('id, is_deleted')
       .eq('id', commentId)
-      .single()
+      .maybeSingle()
 
     if (commentError || !comment) {
       return NextResponse.json({ error: '留言不存在' }, { status: 404 })
+    }
+    if (comment.is_deleted) {
+      // 已刪除的留言不接受新檢舉，避免管理員審核佇列被噪音佔據
+      return NextResponse.json({ error: '此留言已被刪除' }, { status: 410 })
     }
 
     // Check if user already reported this comment

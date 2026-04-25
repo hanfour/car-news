@@ -1,6 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
+import { createAuthenticatedClient } from '@/lib/auth'
 import { logger } from '@/lib/logger'
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+/**
+ * 取得 viewer 與其他人之間的雙向 block 關係（viewer 封鎖的人 + 封鎖 viewer 的人）。
+ * 用於 followers / following 列表過濾，避免被封鎖者透過第三方路徑曝光。
+ */
+async function getBlockedIdsFor(
+  supabase: SupabaseClient,
+  viewerId: string
+): Promise<Set<string>> {
+  const { data } = await supabase
+    .from('user_blocks')
+    .select('blocker_id, blocked_id')
+    .or(`blocker_id.eq.${viewerId},blocked_id.eq.${viewerId}`)
+
+  const set = new Set<string>()
+  for (const b of data || []) {
+    if (b.blocker_id === viewerId) set.add(b.blocked_id)
+    if (b.blocked_id === viewerId) set.add(b.blocker_id)
+  }
+  return set
+}
 
 // GET: 粉絲列表
 export async function GET(
@@ -10,6 +33,10 @@ export async function GET(
   try {
     const { username } = await params
     const supabase = createClient()
+
+    // 嘗試取得當前 viewer，用來過濾 block 關係（未登入則不過濾）
+    const auth = await createAuthenticatedClient(request).catch(() => null)
+    const viewerId = auth?.userId
 
     const searchParams = request.nextUrl.searchParams
     const page = parseInt(searchParams.get('page') || '1')
@@ -44,16 +71,22 @@ export async function GET(
 
     // 查詢 profiles
     if (follows && follows.length > 0) {
-      const ids = follows.map(f => f.follower_id)
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, username, display_name, avatar_url, bio')
-        .in('id', ids)
+      // 過濾 viewer 與其他人雙向 block 關係（已登入才過濾，匿名瀏覽不過濾）
+      const blockedIds = viewerId ? await getBlockedIdsFor(supabase, viewerId) : new Set<string>()
+      const visibleFollows = follows.filter(f => !blockedIds.has(f.follower_id))
+
+      const ids = visibleFollows.map(f => f.follower_id)
+      const { data: profiles } = ids.length > 0
+        ? await supabase
+            .from('profiles')
+            .select('id, username, display_name, avatar_url, bio')
+            .in('id', ids)
+        : { data: [] as Array<{ id: string; username: string | null; display_name: string | null; avatar_url: string | null; bio: string | null }> }
 
       const profilesMap = new Map(profiles?.map(p => [p.id, p]) || [])
 
       return NextResponse.json({
-        users: follows.map(f => ({
+        users: visibleFollows.map(f => ({
           ...profilesMap.get(f.follower_id),
           followed_at: f.created_at,
         })),

@@ -25,6 +25,29 @@ export async function PATCH(
       return NextResponse.json({ error: '無效的操作' }, { status: 400 })
     }
 
+    // 先取出邀請，明確檢查 expires_at（migration 有 expires_at 但原本 update 沒驗證，過期邀請也能 accept）
+    const { data: existing } = await supabase
+      .from('club_invitations')
+      .select('id, status, expires_at')
+      .eq('id', id)
+      .eq('invitee_id', userId)
+      .maybeSingle()
+
+    if (!existing) {
+      return NextResponse.json({ error: '找不到邀請' }, { status: 404 })
+    }
+    if (existing.status !== 'pending') {
+      return NextResponse.json({ error: '此邀請已處理' }, { status: 410 })
+    }
+    if (existing.expires_at && new Date(existing.expires_at) <= new Date()) {
+      // 順手把過期 invitation 標 expired，避免下次再來
+      await supabase
+        .from('club_invitations')
+        .update({ status: 'expired', responded_at: new Date().toISOString() })
+        .eq('id', id)
+      return NextResponse.json({ error: '邀請已過期' }, { status: 410 })
+    }
+
     const newStatus = action === 'accept' ? 'accepted' : 'declined'
 
     // RLS 會確保只有 invitee 可以更新 pending 邀請
