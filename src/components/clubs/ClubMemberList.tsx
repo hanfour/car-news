@@ -70,6 +70,39 @@ export function ClubMemberList({ slug, isOwner, isAdmin: isAdminProp }: ClubMemb
     } catch (err) { console.error('[ClubMemberList] handleKick:', err) }
   }
 
+  const handleTransferOwnership = async (newOwnerId: string, displayName: string) => {
+    if (!session?.access_token) return
+    // 雙重確認：第一段先警告後果，第二段要使用者輸入接管人名以避免誤觸
+    if (!confirm(
+      `確定要將社團轉讓給「${displayName}」？\n\n` +
+      `轉讓後：\n` +
+      `• 你會被自動降為管理員（admin）\n` +
+      `• 接管人成為新創辦人，擁有解散與轉讓權限\n` +
+      `• 此操作無法在前端撤銷（需新 owner 再次轉讓回來）\n\n` +
+      `確定繼續？`
+    )) return
+    const confirmInput = prompt(`再次確認：請輸入接管人名稱「${displayName}」`)
+    if (confirmInput?.trim() !== displayName) {
+      alert('接管人名稱不符，已取消轉讓')
+      return
+    }
+    try {
+      const res = await fetch(`/api/clubs/${slug}/transfer-ownership`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ newOwnerId }),
+      })
+      if (res.ok) {
+        alert('已轉讓社團，重新整理後生效')
+        // 刷新狀態 — 原 owner 已降為 admin
+        fetchMembers()
+      } else {
+        const data = await res.json().catch(() => ({}))
+        alert(data.error || '轉讓失敗')
+      }
+    } catch (err) { console.error('[ClubMemberList] handleTransferOwnership:', err) }
+  }
+
   if (loading) return <LoadingCenter />
 
   // Group by role
@@ -115,13 +148,26 @@ export function ClubMemberList({ slug, isOwner, isAdmin: isAdminProp }: ClubMemb
                     </button>
                   )}
                   {isOwner && member.role === 'admin' && (
-                    <button
-                      onClick={() => handleRoleChange(member.user_id, 'member')}
-                      className="text-xs px-2 py-1 rounded hover:bg-gray-100 transition-colors"
-                      style={{ color: 'var(--text-secondary)' }}
-                    >
-                      取消管理員
-                    </button>
+                    <>
+                      <button
+                        onClick={() => handleRoleChange(member.user_id, 'member')}
+                        className="text-xs px-2 py-1 rounded hover:bg-gray-100 transition-colors"
+                        style={{ color: 'var(--text-secondary)' }}
+                      >
+                        取消管理員
+                      </button>
+                      <button
+                        onClick={() => handleTransferOwnership(
+                          member.user_id,
+                          member.profile?.display_name || member.profile?.username || '匿名'
+                        )}
+                        className="text-xs px-2 py-1 rounded hover:bg-amber-50 transition-colors"
+                        style={{ color: 'var(--text-secondary)' }}
+                        title="將整個社團轉讓給此管理員"
+                      >
+                        轉讓社團
+                      </button>
+                    </>
                   )}
                   <button
                     onClick={() => handleKick(member.user_id)}
