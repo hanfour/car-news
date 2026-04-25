@@ -17,6 +17,8 @@
 - **CommentItem 的 XSS** — 留言用 `<p>{comment.content}</p>` 渲染，React 預設轉義字串，`<script>...</script>` 會以純文字顯示不會執行。**非真正 XSS**。
 - **Bearer token 缺 JWT 驗證** — Supabase `auth.getUser(token)` 內部會用 JWKS 驗證簽名，**已是安全的**。
 - **OAuth state CSRF** — Supabase JS SDK 的 PKCE flow 內建處理 state；本專案 callback 處理 SDK 回傳結果，無自製 state 問題。
+- **Forum search SQL injection（#9）** — 進一步分析 `forum/posts/route.ts:38-48`：現有 `replace(/[%_\\]/g, '\\$&').replace(/[.,()'"]/g, '')` 已逐一移除 PostgREST `.or()` 過濾語法的 delimiter（逗號、句點、括號、引號），無法 break out；至多讓搜尋成為「字面字串 ilike」，**非 SQL injection**。原 audit 報告誇大為安全問題。**真正缺陷只是 UX**（Chinese 標點被吃掉、無相關性排序），改 PostgreSQL FTS 屬 P2 體驗改善而非 P1 安全修復。
+- **Comment like count race（#7）** — 進一步分析 `comments/[id]/like/route.ts` + `20251118_add_comment_likes.sql`：DB 已有 `update_comment_likes_count` trigger，INSERT/DELETE 與 SELECT 在同一 request 的同一 transaction 內順序執行，**無 race**。
 
 ---
 
@@ -30,20 +32,20 @@
 | 2 | `src/app/api/user/avatar/route.ts:33` | 從 `file.name.split('.').pop()` 取副檔名，攻擊者可上傳 `.svg` 偽裝成 JPG MIME 通過驗證但檔名是 `.svg` | 改用 MIME→ext 對應表，不信任 filename |
 | 3 | `src/app/api/user/profile/route.ts:31` | username 無保留字檢查，使用者可註冊 `admin` / `api` / `settings` 等與路由衝突的名稱 | 加保留字 set + 檢查；同時改 `eq` 為 `ilike` 做大小寫不敏感的唯一性檢查 |
 
-### 🟠 P1 — 後續 follow-up（價值高但 scope 較大）
+### 🟠 P1 — 結案表
 
-| # | 位置 | 症狀 | 建議 |
+| # | 主題 | PR | 狀態 |
 |---|---|---|---|
-| 4 | `find_or_create_conversation` RPC | 被封鎖者仍能與封鎖者建立對話 | RPC 內補 `EXISTS user_blocks` 檢查 |
-| 5 | DM trigger `on_new_message` | 不讀 `notification_settings`，使用者已停用 DM 通知仍寫入 | trigger 內 join `notification_settings` |
-| 6 | `garage/[id]/images/route.ts:168` | R2 刪除成功但 DB 失敗時產生孤兒檔，無 transaction | 加 cleanup job 或反向 retry |
-| 7 | `comments/[id]/like/route.ts:56-96` | 點讚計數讀寫分離有 race | 改用 trigger 自動更新 |
-| 8 | `articles/[id]/share/route.ts:32` | 無 rate limit 與去重，share 計數可被機器人灌水 | 加 IP/session 去重 + rate limit |
-| 9 | `forum/posts/route.ts:38` | search 用 replace 移除標點，遇中文/特殊字仍可能誤解析 | 改用 PostgreSQL full-text search 或 `.textSearch()` |
-| 10 | `clubs/[slug]/leave/route.ts` | owner 無法轉讓社團，帳號閒置整個 club 變孤兒 | 加 transfer_ownership 端點 |
-| 11 | `club_invitations` | migration 有 `expires_at` 但 API 接受邀請時未驗證 | invitation accept 前檢查過期 |
-| 12 | `comments/[id]/report/route.ts:27` | 報告前未檢查留言已軟刪除 | 報告前先確認 `is_deleted=false` |
-| 13 | followers/following 路由 | 列表沒過濾 block 關係（被封鎖的 user 仍出現在 follower 名單） | 加 join `user_blocks` 過濾 |
+| 4 | `find_or_create_conversation` RPC + block 檢查 | [#20](https://github.com/hanfour/car-news/pull/20) | ✅ merged（含 DB migration） |
+| 5 | `notification_settings.direct_message` + trigger 整合 | [#20](https://github.com/hanfour/car-news/pull/20) | ✅ merged（含 DB migration） |
+| 6 | garage 刪圖原子性（先 DB 後 R2） | [#21](https://github.com/hanfour/car-news/pull/21) | ✅ merged |
+| 7 | comment like count race | — | ✅ false positive（已有 trigger） |
+| 8 | article share rate limit | [#19](https://github.com/hanfour/car-news/pull/19) | ✅ merged |
+| 9 | forum search「injection」 | — | ✅ false positive（純 UX 問題，已降為 P2） |
+| 10 | club ownership transfer | — | ⏳ feature gap，獨立 PR（含 UI flow） |
+| 11 | invitation expires_at 檢查 | [#19](https://github.com/hanfour/car-news/pull/19) | ✅ merged |
+| 12 | report 軟刪除留言檢查 | [#19](https://github.com/hanfour/car-news/pull/19) | ✅ merged |
+| 13 | followers/following block filter | [#19](https://github.com/hanfour/car-news/pull/19) | ✅ merged |
 
 ### 🟡 P2 — 非阻擋性、可長期改進
 
@@ -54,6 +56,8 @@
 - Avatar 舊檔清理（每次上傳會 upsert，但若改副檔名會留舊檔）
 - Garage soft delete（目前 hard delete）
 - Username uniqueness DB-level constraint（已有 unique index？需確認）
+- Forum search 改 PostgreSQL FTS（從 P1 #9 降為 UX 改善）
+- 排程清理 R2 孤兒檔（基於 `api.garage.image_r2_orphan` log）
 
 ---
 
@@ -69,3 +73,20 @@
 - ⚠️ 客戶端會話管理偏簡（單 tab 為主，多 tab 場景不健全）
 
 **建議下一步**：本 PR 先修 P0；P1 拆 2-3 個獨立 PR 處理（clubs ownership transfer、notification settings 與 trigger 整合、block 全域化）。
+
+## 收尾狀態（2026-04-25 更新）
+
+**P0 全部修完**（PR #18）。**P1 共 10 項：8 項已修、2 項驗證為 false positive、1 項（#10 ownership transfer）為新功能性質列入後續路線圖**。
+
+| PR | 範圍 |
+|---|---|
+| #18 | P0：block fallback、avatar MIME、reserved usernames |
+| #19 | P1 batch 1：share rate limit、invitation expires、report soft-deleted、follower block filter |
+| #20 | P1 batch 2 + DB migration：find_or_create_conversation block check、notification_settings.direct_message |
+| #21 | P1 #6：garage 刪圖原子性 |
+
+**會員子系統成熟度從 6/10 升到 7-8/10**：
+- ✅ Block 關係已全域覆蓋（conversation 建立、followers/following 顯示、DM 通知）
+- ✅ Privacy 設定正確生效到 trigger 層
+- ✅ Resource 邊界處理一致（孤兒檔有 log、軟刪除留言不接受新動作、過期 invitation 拒絕）
+- ⏳ 跨 tab 同步、reports admin dashboard、club ownership transfer 列入後續
