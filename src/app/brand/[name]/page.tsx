@@ -8,6 +8,11 @@ import { ArticleListSidebar } from '@/components/ArticleListSidebar'
 
 export const revalidate = 60
 
+// Next 16 / Turbopack：動態路由需要顯式 generateStaticParams 才會啟用 ISR
+export async function generateStaticParams() {
+  return []
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ name: string }> }): Promise<Metadata> {
   const { name } = await params
   const brandName = decodeURIComponent(name)
