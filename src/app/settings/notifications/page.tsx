@@ -11,6 +11,7 @@ interface NotificationSettingsData {
   followed_activity: boolean
   forum_reply: boolean
   car_club_post: boolean
+  direct_message: boolean
 }
 
 const settingLabels: Record<keyof NotificationSettingsData, { label: string; description: string }> = {
@@ -20,6 +21,7 @@ const settingLabels: Record<keyof NotificationSettingsData, { label: string; des
   followed_activity: { label: '追蹤動態', description: '你追蹤的人有新活動時通知' },
   forum_reply: { label: '論壇回覆', description: '有人回覆你的論壇貼文時通知' },
   car_club_post: { label: '車友會貼文', description: '你的車友會有新貼文時通知' },
+  direct_message: { label: '私訊', description: '收到新私訊時通知' },
 }
 
 export default function NotificationSettingsPage() {

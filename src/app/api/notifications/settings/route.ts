@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
         followed_activity: true,
         forum_reply: true,
         car_club_post: true,
+        direct_message: true,
       },
     })
   } catch {
@@ -48,7 +49,7 @@ export async function PATCH(request: NextRequest) {
     const { supabase, userId } = auth
 
     const body = await request.json()
-    const allowedFields = ['comment_reply', 'comment_like', 'new_follower', 'followed_activity', 'forum_reply', 'car_club_post']
+    const allowedFields = ['comment_reply', 'comment_like', 'new_follower', 'followed_activity', 'forum_reply', 'car_club_post', 'direct_message']
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
 
     for (const field of allowedFields) {
