@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase'
 import { notFound } from 'next/navigation'
-import { unstable_noStore as noStore } from 'next/cache'
 import { Metadata } from 'next'
 import { StickyHeader } from '@/components/StickyHeader'
 import { POPULAR_BRANDS, BRANDS_BY_COUNTRY } from '@/config/brands'
@@ -61,8 +60,6 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
 
   // 验证分类是否合法
   if (!isValidCategory(category)) {
-    // 不要把 404 render 緩存進 ISR — 否則 Vercel 會把它當成 200 持續服務，傷 SEO
-    noStore()
     notFound()
   }
 
