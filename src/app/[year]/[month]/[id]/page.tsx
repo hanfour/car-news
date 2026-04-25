@@ -23,6 +23,13 @@ import { SourceBanner } from '@/components/SourceBanner'
 // 文章詳情發布後極少變動，設 1 小時 ISR 即可兼顧新鮮度與 CDN 命中
 export const revalidate = 3600
 
+// Next 16 / Turbopack：動態路由需要顯式 generateStaticParams（即使回空陣列）
+// 才會啟用 ISR 快取；否則每個 request 都會被當成 force-dynamic 不快取。
+// 回 [] = 不在 build 時預渲染任何路徑，但 runtime 第一次請求後依 revalidate 快取
+export async function generateStaticParams() {
+  return []
+}
+
 interface PageProps {
   params: Promise<{
     year: string

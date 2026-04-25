@@ -9,6 +9,11 @@ import { CATEGORIES, getCategoryBySlug, isValidCategory } from '@/config/categor
 
 export const revalidate = 60
 
+// Next 16 / Turbopack：動態路由需要顯式 generateStaticParams 才會啟用 ISR
+export async function generateStaticParams() {
+  return []
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
   const category = decodeURIComponent(slug)
