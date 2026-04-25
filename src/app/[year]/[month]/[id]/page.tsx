@@ -6,7 +6,6 @@ import { WantCarLogo } from '@/components/WantCarLogo'
 import { CommentForm } from '@/components/CommentForm'
 import { CommentsList } from '@/components/CommentsList'
 import { notFound } from 'next/navigation'
-import { unstable_noStore as noStore } from 'next/cache'
 import Image from 'next/image'
 import { Metadata } from 'next'
 import { StickyHeader } from '@/components/StickyHeader'
@@ -234,8 +233,6 @@ export default async function ArticlePage({ params }: PageProps) {
   const article = await getArticle(id)
 
   if (!article) {
-    // 不要把 404 render 緩存進 ISR — 否則 Vercel 會把它當成 200 持續服務，傷 SEO
-    noStore()
     notFound()
   }
 
