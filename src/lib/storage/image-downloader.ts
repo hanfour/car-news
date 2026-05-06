@@ -3,6 +3,18 @@ import { getErrorMessage } from '@/lib/utils/error'
 import { isLegalImageSource, getImageSourceCredit } from '@/config/image-sources'
 import { uploadToR2 } from './r2-client'
 import { logger } from '@/lib/logger'
+import { withTimeout, TimeoutError } from '@/lib/utils/with-timeout'
+
+// 整支 download + upload 的時間上限。fetch() 本身有 30s 起點 timeout，
+// 但 body stream 與 R2 upload 沒有，遇到慢來源會無上限拖。
+// 60s 給足壓縮重試（最多遞迴一次）+ 兩段 I/O 的合理空間。
+const PER_IMAGE_TIMEOUT_MS = 60_000
+
+// 整批多圖下載的總時間預算。Generator cron 一篇文章只給圖片下載 ~90s，
+// 超過就停止剩餘 chunks，回傳已成功的部分。
+const DEFAULT_BATCH_BUDGET_MS = 90_000
+
+const CHUNK_SIZE = 3
 
 /**
  * 圖片下載和存儲服務
@@ -86,8 +98,31 @@ function tryCompressUrl(url: string): string {
  * 下載圖片並存儲到 Cloudflare R2
  *
  * ⚠️ 法律合規版本：只處理合法來源的圖片
+ *
+ * 整支函數有 PER_IMAGE_TIMEOUT_MS 上限（fetch + body stream + R2 upload 全包）。
+ * 超時 → 回傳 null（與其他失敗一致），呼叫端原本就只拿 fulfilled 結果，無需改動。
  */
 export async function downloadAndStoreImage(
+  imageUrl: string,
+  articleId: string,
+  credit: string = 'Unknown'
+): Promise<StoredImage | null> {
+  try {
+    return await withTimeout(
+      downloadAndStoreImageInternal(imageUrl, articleId, credit),
+      PER_IMAGE_TIMEOUT_MS,
+      `image-download:${imageUrl.slice(0, 80)}`
+    )
+  } catch (error) {
+    if (error instanceof TimeoutError) {
+      logger.warn('storage.image.timeout', { url: imageUrl, ms: PER_IMAGE_TIMEOUT_MS })
+      return null
+    }
+    throw error
+  }
+}
+
+async function downloadAndStoreImageInternal(
   imageUrl: string,
   articleId: string,
   credit: string = 'Unknown'
@@ -153,7 +188,9 @@ export async function downloadAndStoreImage(
       const compressedUrl = tryCompressUrl(imageUrl)
       if (compressedUrl !== imageUrl) {
         logger.info('storage.image.retry_compressed', { compressedUrl })
-        return downloadAndStoreImage(compressedUrl, articleId, credit)
+        // 走 internal 而非 public：共享 parent 的 withTimeout budget，
+        // 不要再開一個 60s 鐘
+        return downloadAndStoreImageInternal(compressedUrl, articleId, credit)
       }
 
       logger.error('storage.image.too_large_after_compress', null, { size, url: imageUrl })
@@ -180,19 +217,37 @@ export async function downloadAndStoreImage(
 }
 
 /**
- * 批量下載和存儲圖片
+ * 批量下載和存儲圖片。
+ *
+ * - CHUNK_SIZE = 3 限制並發（避免一次開 N 個連線拖死 R2）
+ * - 整批有 budgetMs 上限（預設 90s），超過就放棄剩餘 chunks 回傳已成功的部分
+ * - 個別圖片失敗或超時不影響其他圖片（Promise.allSettled）
  */
 export async function downloadAndStoreImages(
   images: Array<{ url: string; credit: string; caption?: string }>,
-  articleId: string
+  articleId: string,
+  options: { budgetMs?: number } = {}
 ): Promise<Array<{ url: string; credit: string; caption?: string }>> {
+  const budgetMs = options.budgetMs ?? DEFAULT_BATCH_BUDGET_MS
+  const startTime = Date.now()
   const results: Array<{ url: string; credit: string; caption?: string }> = []
-  const CHUNK_SIZE = 3
 
   for (let i = 0; i < images.length; i += CHUNK_SIZE) {
+    const elapsed = Date.now() - startTime
+    if (elapsed >= budgetMs) {
+      logger.warn('storage.image.batch_budget_exceeded', {
+        articleId,
+        elapsed,
+        budgetMs,
+        processed: i,
+        skipped: images.length - i,
+      })
+      break
+    }
+
     const chunk = images.slice(i, i + CHUNK_SIZE)
     const chunkResults = await Promise.allSettled(
-      chunk.map(image => downloadAndStoreImage(image.url, articleId, image.credit))
+      chunk.map((image) => downloadAndStoreImage(image.url, articleId, image.credit))
     )
 
     for (let j = 0; j < chunkResults.length; j++) {
