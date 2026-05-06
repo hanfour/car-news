@@ -68,13 +68,17 @@ ${input.styleGuide}
 
 ### 來源文章
 
-${input.sources.map((s, i) => `
+${input.sources
+  .map(
+    (s, i) => `
 **來源 ${i + 1}**
 標題：${s.title}
 URL：${s.url}
 內容：
 ${s.content.slice(0, 2000)}...
-`).join('\n---\n')}
+`
+  )
+  .join('\n---\n')}
 
 ---
 
@@ -135,8 +139,8 @@ ${s.content.slice(0, 2000)}...
         // Gemini 2.5 Flash 支持最高 65536 output tokens
         // 中文文章 + JSON 結構 + metadata 需要較大空間，設為 16384 確保不被截斷
         maxOutputTokens: 16384,
-        responseMimeType: 'application/json'
-      }
+        responseMimeType: 'application/json',
+      },
     })
 
     logger.info('ai.gemini.generate_start', { model })
@@ -162,7 +166,6 @@ ${s.content.slice(0, 2000)}...
 
     logger.info('ai.gemini.generate_ok', { model })
     return parsedResult
-
   } catch (error) {
     logger.error('ai.gemini.generate_fail', error)
     throw error
@@ -171,7 +174,9 @@ ${s.content.slice(0, 2000)}...
 
 /**
  * 使用 Gemini 進行評論審核
- * 使用 Flash 模型以節省成本
+ * 使用 Flash 模型以節省成本。
+ *
+ * 失敗時 throw — 由 provider.moderateContent() 負責 fallback 與安全預設值。
  */
 export async function moderateCommentWithGemini(content: string): Promise<{
   passed: boolean
@@ -203,35 +208,29 @@ ${content}
 只有在confidence > 95 且有明確違規內容時，才設置passed為false。
 `
 
+  const gemini = getGemini()
+  const model = gemini.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    generationConfig: {
+      temperature: 0,
+      maxOutputTokens: 256,
+      responseMimeType: 'application/json',
+    },
+  })
+
+  const result = await model.generateContent(prompt)
+  const text = result.response.text()
+
+  const jsonText = text
+    .replace(/```json\n?/g, '')
+    .replace(/```\n?/g, '')
+    .trim()
+
   try {
-    const gemini = getGemini()
-    const model = gemini.getGenerativeModel({
-      model: 'gemini-2.5-flash',  // 使用 Gemini 2.5 Flash
-      generationConfig: {
-        temperature: 0,
-        maxOutputTokens: 256,
-        responseMimeType: 'application/json'
-      }
-    })
-
-    const result = await model.generateContent(prompt)
-    const response = result.response
-    const text = response.text()
-
-    const jsonText = text
-      .replace(/```json\n?/g, '')
-      .replace(/```\n?/g, '')
-      .trim()
-
     return JSON.parse(jsonText)
-  } catch (error) {
-    logger.error('ai.gemini.moderate_fail', error)
-    // 預設通過，避免 false positive
-    return {
-      passed: true,
-      confidence: 0,
-      flags: []
-    }
+  } catch (parseError) {
+    logger.error('ai.gemini.moderate_parse_fail', parseError, { snippet: jsonText.slice(0, 200) })
+    throw new Error(`Invalid JSON from Gemini moderation: ${(parseError as Error).message}`)
   }
 }
 
@@ -248,16 +247,17 @@ export async function generateTextWithGemini(
 ): Promise<string> {
   try {
     const gemini = getGemini()
-    const modelName = (options?.model === 'pro')
-      ? 'gemini-2.5-pro'  // 使用 Gemini 2.5 Pro
-      : 'gemini-2.5-flash'  // 使用 Gemini 2.5 Flash
+    const modelName =
+      options?.model === 'pro'
+        ? 'gemini-2.5-pro' // 使用 Gemini 2.5 Pro
+        : 'gemini-2.5-flash' // 使用 Gemini 2.5 Flash
 
     const model = gemini.getGenerativeModel({
       model: modelName,
       generationConfig: {
         temperature: options?.temperature || 0.7,
-        maxOutputTokens: options?.maxTokens || 1024
-      }
+        maxOutputTokens: options?.maxTokens || 1024,
+      },
     })
 
     const result = await model.generateContent(prompt)

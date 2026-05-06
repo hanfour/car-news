@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
-import { moderateComment } from '@/lib/ai/claude'
+import { moderateContent } from '@/lib/ai/provider'
 import { logger } from '@/lib/logger'
 
 // GET: 單篇貼文
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
     const supabase = createClient()
@@ -55,14 +52,14 @@ export async function GET(
     // 回覆作者 profiles
     let repliesWithAuthors = replies || []
     if (replies && replies.length > 0) {
-      const replyUserIds = [...new Set(replies.map(r => r.user_id))]
+      const replyUserIds = [...new Set(replies.map((r) => r.user_id))]
       const { data: replyProfiles } = await supabase
         .from('profiles')
         .select('id, username, display_name, avatar_url')
         .in('id', replyUserIds)
 
-      const profilesMap = new Map(replyProfiles?.map(p => [p.id, p]) || [])
-      repliesWithAuthors = replies.map(r => ({
+      const profilesMap = new Map(replyProfiles?.map((p) => [p.id, p]) || [])
+      repliesWithAuthors = replies.map((r) => ({
         ...r,
         author: profilesMap.get(r.user_id) || null,
       }))
@@ -79,10 +76,7 @@ export async function GET(
 }
 
 // PATCH: 更新貼文
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
     const auth = await createAuthenticatedClient(request)
@@ -104,7 +98,7 @@ export async function PATCH(
     // 內容有修改時重新執行 AI 審核
     if (title || content) {
       const moderationText = [title, content].filter(Boolean).join('\n')
-      const moderation = await moderateComment(moderationText)
+      const moderation = await moderateContent(moderationText)
       if (moderation.confidence > 95 && moderation.flags.length > 0) {
         return NextResponse.json({ error: '內容包含不當內容，無法更新' }, { status: 400 })
       }
@@ -141,11 +135,7 @@ export async function DELETE(
     }
     const { supabase, userId } = auth
 
-    const { error } = await supabase
-      .from('forum_posts')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', userId)
+    const { error } = await supabase.from('forum_posts').delete().eq('id', id).eq('user_id', userId)
 
     if (error) {
       return NextResponse.json({ error: '刪除失敗' }, { status: 500 })

@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
-import { moderateComment } from '@/lib/ai/claude'
+import { moderateContent } from '@/lib/ai/provider'
 import { getErrorMessage } from '@/lib/utils/error'
 import { rateLimit } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
 
 // PATCH: 編輯評論（僅作者可操作）
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
     const auth = await createAuthenticatedClient(request)
@@ -34,8 +31,8 @@ export async function PATCH(
       return NextResponse.json({ error: '評論過長（最多2000字）' }, { status: 400 })
     }
 
-    // AI 審核
-    const moderation = await moderateComment(content.trim())
+    // AI 審核（Gemini 為主、Claude 為備援，由 provider 自動 fallback）
+    const moderation = await moderateContent(content.trim())
     if (moderation.confidence > 95 && moderation.flags.length > 0) {
       return NextResponse.json({ error: '您的評論包含不當內容，無法發布' }, { status: 400 })
     }

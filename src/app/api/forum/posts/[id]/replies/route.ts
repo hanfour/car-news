@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
-import { moderateComment } from '@/lib/ai/claude'
+import { moderateContent } from '@/lib/ai/provider'
 import { rateLimit } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
 
 // POST: 新增回覆
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: postId } = await params
 
@@ -33,8 +30,8 @@ export async function POST(
       return NextResponse.json({ error: '回覆過長（最多5000字）' }, { status: 400 })
     }
 
-    // AI 審核
-    const moderation = await moderateComment(content)
+    // AI 審核（Gemini 為主、Claude 為備援）
+    const moderation = await moderateContent(content)
     if (moderation.confidence > 95 && moderation.flags.length > 0) {
       return NextResponse.json({ error: '回覆包含不當內容' }, { status: 400 })
     }

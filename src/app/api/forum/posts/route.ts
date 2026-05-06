@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
-import { moderateComment } from '@/lib/ai/claude'
+import { moderateContent } from '@/lib/ai/provider'
 import { rateLimit } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
 
@@ -17,10 +17,7 @@ export async function GET(request: NextRequest) {
     const sort = searchParams.get('sort') || 'latest'
     const search = searchParams.get('search')
 
-    let query = supabase
-      .from('forum_posts')
-      .select('*', { count: 'exact' })
-      .eq('is_approved', true)
+    let query = supabase.from('forum_posts').select('*', { count: 'exact' }).eq('is_approved', true)
 
     if (category) {
       // 用 slug 找 category_id
@@ -40,9 +37,7 @@ export async function GET(request: NextRequest) {
       const trimmed = search.trim().slice(0, 100)
       if (trimmed.length >= 2) {
         // 移除 PostgREST filter 語法中的危險字元，保留中日韓文字和字母數字
-        const sanitized = trimmed
-          .replace(/[%_\\]/g, '\\$&')
-          .replace(/[.,()'"]/g, '')
+        const sanitized = trimmed.replace(/[%_\\]/g, '\\$&').replace(/[.,()'"]/g, '')
         query = query.or(`title.ilike.%${sanitized}%,content.ilike.%${sanitized}%`)
       }
     }
@@ -53,7 +48,8 @@ export async function GET(request: NextRequest) {
     } else if (sort === 'active') {
       query = query.order('last_reply_at', { ascending: false, nullsFirst: false })
     } else {
-      query = query.order('is_pinned', { ascending: false })
+      query = query
+        .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false })
     }
 
@@ -66,24 +62,24 @@ export async function GET(request: NextRequest) {
 
     // 查詢作者 profiles
     if (posts && posts.length > 0) {
-      const userIds = [...new Set(posts.map(p => p.user_id))]
+      const userIds = [...new Set(posts.map((p) => p.user_id))]
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, username, display_name, avatar_url')
         .in('id', userIds)
 
-      const profilesMap = new Map(profiles?.map(p => [p.id, p]) || [])
+      const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || [])
 
       // 查詢分類資訊
-      const categoryIds = [...new Set(posts.map(p => p.category_id))]
+      const categoryIds = [...new Set(posts.map((p) => p.category_id))]
       const { data: categories } = await supabase
         .from('forum_categories')
         .select('id, name, slug, icon')
         .in('id', categoryIds)
 
-      const categoriesMap = new Map(categories?.map(c => [c.id, c]) || [])
+      const categoriesMap = new Map(categories?.map((c) => [c.id, c]) || [])
 
-      const postsWithDetails = posts.map(post => ({
+      const postsWithDetails = posts.map((post) => ({
         ...post,
         author: profilesMap.get(post.user_id) || null,
         category: categoriesMap.get(post.category_id) || null,
@@ -132,8 +128,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '內容過長（最多10000字）' }, { status: 400 })
     }
 
-    // AI 審核（複用 moderateComment）
-    const moderation = await moderateComment(title + '\n' + content)
+    // AI 審核（Gemini 為主、Claude 為備援）
+    const moderation = await moderateContent(title + '\n' + content)
     if (moderation.confidence > 95 && moderation.flags.length > 0) {
       return NextResponse.json({ error: '內容包含不當內容，無法發布' }, { status: 400 })
     }
