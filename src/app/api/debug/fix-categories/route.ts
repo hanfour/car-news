@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
 import { verifyDebugAccess } from '@/lib/admin/auth'
-import Anthropic from '@anthropic-ai/sdk'
+import { generateText } from '@/lib/ai/provider'
 import { getErrorMessage } from '@/lib/utils/error'
+import { logger } from '@/lib/logger'
 
 const CATEGORY_RULES = `
 請根據以下標準重新判斷文章分類（選擇1-2個最符合的）：
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
   }
 
   // 找出可能分類錯誤的文章
-  const suspiciousArticles = articles.filter(article => {
+  const suspiciousArticles = articles.filter((article) => {
     const title = article.title_zh.toLowerCase()
     const categories = article.categories || []
 
@@ -82,19 +83,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       total: articles.length,
       suspicious: suspiciousArticles.length,
-      articles: suspiciousArticles.map(a => ({
+      articles: suspiciousArticles.map((a) => ({
         id: a.id,
         title: a.title_zh,
-        currentCategories: a.categories
-      }))
+        currentCategories: a.categories,
+      })),
     })
   }
 
   // action === 'fix'
-  const anthropic = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY!
-  })
-
+  // 走 provider.generateText（Gemini Flash 為主、Claude Haiku 為備援）
   const fixed = []
   const failed = []
 
@@ -111,16 +109,30 @@ ${CATEGORY_RULES}
 請重新判斷正確的分類：
 `
 
-      const message = await anthropic.messages.create({
-        model: 'claude-3-5-haiku-20241022',
-        max_tokens: 256,
+      const responseText = await generateText(prompt, {
+        maxTokens: 256,
         temperature: 0,
-        messages: [{ role: 'user', content: prompt }]
       })
+      const jsonText = responseText
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .trim()
 
-      const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
-      const jsonText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-      const result = JSON.parse(jsonText)
+      let result: { categories: string[]; reasoning?: string }
+      try {
+        result = JSON.parse(jsonText)
+      } catch (parseError) {
+        logger.error('debug.fix_categories.parse_fail', parseError, {
+          articleId: article.id,
+          snippet: jsonText.slice(0, 200),
+        })
+        failed.push({
+          id: article.id,
+          title: article.title_zh,
+          error: `Invalid JSON from AI: ${(parseError as Error).message}`,
+        })
+        continue
+      }
 
       // 更新文章分類
       const { error: updateError } = await supabase
@@ -132,7 +144,7 @@ ${CATEGORY_RULES}
         failed.push({
           id: article.id,
           title: article.title_zh,
-          error: updateError.message
+          error: updateError.message,
         })
       } else {
         fixed.push({
@@ -140,17 +152,17 @@ ${CATEGORY_RULES}
           title: article.title_zh,
           oldCategories: article.categories,
           newCategories: result.categories,
-          reasoning: result.reasoning
+          reasoning: result.reasoning,
         })
       }
 
       // 避免 API rate limit
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await new Promise((resolve) => setTimeout(resolve, 1000))
     } catch (error) {
       failed.push({
         id: article.id,
         title: article.title_zh,
-        error: getErrorMessage(error)
+        error: getErrorMessage(error),
       })
     }
   }
@@ -158,6 +170,6 @@ ${CATEGORY_RULES}
   return NextResponse.json({
     fixed: fixed.length,
     failed: failed.length,
-    details: { fixed, failed }
+    details: { fixed, failed },
   })
 }
