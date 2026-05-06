@@ -11,6 +11,7 @@ import {
   moderateCommentWithGemini,
   generateTextWithGemini,
 } from './gemini'
+import { preFilterContent } from './pre-filter'
 import { logger } from '@/lib/logger'
 import { getErrorMessage } from '@/lib/utils/error'
 
@@ -153,6 +154,7 @@ const SAFE_DEFAULT_MODERATION: ModerationResult = {
 
 /**
  * 審核內容並自動切換 provider。
+ * - **本地 pre-filter** 命中明顯通過 / 明顯擋下 → 直接決定，連 LLM 都不打
  * - 主 provider 失敗 → 切到 fallback
  * - 兩端都失敗 → 回傳 SAFE_DEFAULT_MODERATION（passed: true）並 log error
  *
@@ -162,6 +164,22 @@ export async function moderateContent(
   content: string,
   options?: { primary?: ContentModerator; fallback?: ContentModerator }
 ): Promise<ModerationResult> {
+  // 本地 regex 預判：明顯垃圾或無攻擊面，直接決定不打 LLM。
+  // 規則設計上偏保守，不確定時 defer 給 LLM。
+  const preFilter = preFilterContent(content)
+  if (preFilter.decision === 'pass') {
+    logger.info('ai.moderate.pre_filter_pass', { reason: preFilter.reason })
+    return { passed: true, confidence: 100, flags: [] }
+  }
+  if (preFilter.decision === 'block') {
+    logger.info('ai.moderate.pre_filter_block', { reason: preFilter.reason })
+    return {
+      passed: false,
+      confidence: 100,
+      flags: [`pre-filter:${preFilter.reason ?? 'unknown'}`],
+    }
+  }
+
   const { primary, fallback } =
     options?.primary && options.fallback
       ? { primary: options.primary, fallback: options.fallback }

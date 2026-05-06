@@ -155,6 +155,35 @@ describe('moderateContent', () => {
     const res = await moderateContent('test', { primary, fallback })
     expect(res).toEqual({ passed: true, confidence: 0, flags: [] })
   })
+
+  // ---- pre-filter 整合 ----
+  it('SKIPS LLM call when pre-filter decides "pass" (e.g. trivial short)', async () => {
+    const primary = fakeModerator('gemini', 'ok', blockResult)
+    const fallback = fakeModerator('claude', 'ok')
+    const res = await moderateContent('好', { primary, fallback })
+    expect(res).toEqual({ passed: true, confidence: 100, flags: [] })
+    expect(primary.moderate).not.toHaveBeenCalled()
+    expect(fallback.moderate).not.toHaveBeenCalled()
+  })
+
+  it('SKIPS LLM call when pre-filter decides "block" (e.g. LINE solicit)', async () => {
+    const primary = fakeModerator('gemini', 'ok', passResult)
+    const fallback = fakeModerator('claude', 'ok')
+    const res = await moderateContent('快加 LINE: deal_2026 賺爆', { primary, fallback })
+    expect(res.passed).toBe(false)
+    expect(res.confidence).toBe(100)
+    expect(res.flags[0]).toMatch(/^pre-filter:/)
+    expect(primary.moderate).not.toHaveBeenCalled()
+    expect(fallback.moderate).not.toHaveBeenCalled()
+  })
+
+  it('CALLS LLM when pre-filter defers (normal car comment)', async () => {
+    const primary = fakeModerator('gemini', 'ok', passResult)
+    const fallback = fakeModerator('claude', 'ok')
+    const res = await moderateContent('這台 Tesla 真的超讚', { primary, fallback })
+    expect(res).toEqual(passResult)
+    expect(primary.moderate).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('makeTextGenerator', () => {
