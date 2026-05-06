@@ -32,7 +32,7 @@ After running the SQL, test with:
 
 ```bash
 curl -s -X PATCH \
-  -H "Authorization: Bearer Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=" \
+  -H "Authorization: Bearer YOUR_ADMIN_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"human_rating": 5}' \
   "http://localhost:3000/api/admin/articles/xjBZdZD" \

@@ -51,7 +51,7 @@
 **1. 查看所有已發布文章（前 10 篇）**
 
 ```bash
-curl -H "Authorization: Bearer Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=" \
+curl -H "Authorization: Bearer YOUR_ADMIN_API_KEY" \
   "http://localhost:3000/api/admin/articles?published=true&limit=10"
 ```
 
@@ -59,7 +59,7 @@ curl -H "Authorization: Bearer Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=" \
 
 ```bash
 curl -X PATCH \
-  -H "Authorization: Bearer Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=" \
+  -H "Authorization: Bearer YOUR_ADMIN_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"human_rating": 5}' \
   "http://localhost:3000/api/admin/articles/ARTICLE_ID"
@@ -69,7 +69,7 @@ curl -X PATCH \
 
 ```bash
 curl -X PATCH \
-  -H "Authorization: Bearer Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=" \
+  -H "Authorization: Bearer YOUR_ADMIN_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"published": false}' \
   "http://localhost:3000/api/admin/articles/ARTICLE_ID"
@@ -79,7 +79,7 @@ curl -X PATCH \
 
 ```bash
 curl -X PATCH \
-  -H "Authorization: Bearer Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=" \
+  -H "Authorization: Bearer YOUR_ADMIN_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"published": false, "human_rating": 2}' \
   "http://localhost:3000/api/admin/articles/ARTICLE_ID"
@@ -88,7 +88,7 @@ curl -X PATCH \
 **5. 篩選特定品牌（Tesla）**
 
 ```bash
-curl -H "Authorization: Bearer Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=" \
+curl -H "Authorization: Bearer YOUR_ADMIN_API_KEY" \
   "http://localhost:3000/api/admin/articles?published=true&brand=Tesla&limit=20"
 ```
 
@@ -96,7 +96,7 @@ curl -H "Authorization: Bearer Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=" \
 
 ```bash
 curl -X DELETE \
-  -H "Authorization: Bearer Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=" \
+  -H "Authorization: Bearer YOUR_ADMIN_API_KEY" \
   "http://localhost:3000/api/admin/articles/ARTICLE_ID"
 ```
 
@@ -104,11 +104,11 @@ curl -X DELETE \
 
 ```bash
 # 總文章數
-curl -s -H "Authorization: Bearer Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=" \
+curl -s -H "Authorization: Bearer YOUR_ADMIN_API_KEY" \
   "http://localhost:3000/api/admin/articles?limit=1" | python3 -m json.tool | grep total
 
 # 已發布數
-curl -s -H "Authorization: Bearer Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=" \
+curl -s -H "Authorization: Bearer YOUR_ADMIN_API_KEY" \
   "http://localhost:3000/api/admin/articles?published=true&limit=1" | python3 -m json.tool | grep total
 ```
 
@@ -130,7 +130,7 @@ curl -s -H "Authorization: Bearer Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=" 
 
 ```bash
 # 步驟 1: 找出低品質文章（confidence < 70）
-curl -s -H "Authorization: Bearer Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=" \
+curl -s -H "Authorization: Bearer YOUR_ADMIN_API_KEY" \
   "http://localhost:3000/api/admin/articles?published=true&limit=100" \
   | python3 -c "import sys,json; [print(f\"ID: {a['id']:10} | Conf: {a['confidence']:2} | {a['title_zh'][:50]}\") for a in json.load(sys.stdin)['articles'] if a['confidence'] < 70]"
 
@@ -139,7 +139,7 @@ curl -s -H "Authorization: Bearer Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=" 
 
 # 步驟 3: 下架差文章
 curl -X PATCH \
-  -H "Authorization: Bearer Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=" \
+  -H "Authorization: Bearer YOUR_ADMIN_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"published": false, "human_rating": 2}' \
   "http://localhost:3000/api/admin/articles/BAD_ARTICLE_ID"
@@ -149,13 +149,13 @@ curl -X PATCH \
 
 ```bash
 # 步驟 1: 找出高 confidence 文章
-curl -s -H "Authorization: Bearer Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=" \
+curl -s -H "Authorization: Bearer YOUR_ADMIN_API_KEY" \
   "http://localhost:3000/api/admin/articles?published=true&limit=50" \
   | python3 -c "import sys,json; [print(f\"ID: {a['id']:10} | Conf: {a['confidence']:2} | {a['title_zh'][:50]}\") for a in json.load(sys.stdin)['articles'] if a['confidence'] >= 85]"
 
 # 步驟 2: 人工確認後評 5 分
 curl -X PATCH \
-  -H "Authorization: Bearer Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=" \
+  -H "Authorization: Bearer YOUR_ADMIN_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"human_rating": 5}' \
   "http://localhost:3000/api/admin/articles/GOOD_ARTICLE_ID"

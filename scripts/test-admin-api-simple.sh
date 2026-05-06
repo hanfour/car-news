@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Admin API 簡易測試腳本
-API_KEY="Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4="
+API_KEY="YOUR_ADMIN_API_KEY"
 BASE_URL="http://localhost:3000"
 
 echo "=========================================="
