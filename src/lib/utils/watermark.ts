@@ -1,3 +1,4 @@
+import 'server-only'
 /**
  * 圖片浮水印工具
  * 為 AI 生成的圖片添加「AI 生成模擬」浮水印
@@ -9,7 +10,7 @@ import { logger } from '@/lib/logger'
 
 interface WatermarkOptions {
   text?: string
-  subText?: string | null  // 副標題，設為 null 則不顯示
+  subText?: string | null // 副標題，設為 null 則不顯示
   position?: 'bottom-right' | 'bottom-left' | 'center' | 'top-right'
   opacity?: number
   fontSize?: number
@@ -23,11 +24,11 @@ export async function addWatermark(
   options: WatermarkOptions = {}
 ): Promise<Buffer> {
   const {
-    text = 'AI Generated',  // 使用英文避免 Vercel 無中文字體問題
+    text = 'AI Generated', // 使用英文避免 Vercel 無中文字體問題
     subText = 'For illustration only',
     position = 'bottom-right',
     opacity = 0.6,
-    fontSize = 40
+    fontSize = 40,
   } = options
 
   try {
@@ -53,15 +54,14 @@ export async function addWatermark(
       .composite([
         {
           input: Buffer.from(watermarkSvg),
-          gravity: getGravity(position)
-        }
+          gravity: getGravity(position),
+        },
       ])
       .png() // 輸出為 PNG 以保持質量
       .toBuffer()
 
     logger.info('watermark.add_success', { text })
     return watermarkedBuffer
-
   } catch (error) {
     logger.error('watermark.add_fail', error, { text, reason: getErrorMessage(error) })
     // 如果浮水印失敗，返回原圖
@@ -168,7 +168,9 @@ function createWatermarkSvg(
         filter="url(#shadow)"
       >${safeText}</text>
 
-      ${safeSubText ? `
+      ${
+        safeSubText
+          ? `
       <!-- 小字說明 -->
       <text
         x="${x}"
@@ -179,7 +181,9 @@ function createWatermarkSvg(
         opacity="${opacity * 0.8}"
         text-anchor="${textAnchor}"
       >${safeSubText}</text>
-      ` : ''}
+      `
+          : ''
+      }
     </svg>
   `
 }

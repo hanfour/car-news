@@ -1,3 +1,4 @@
+import 'server-only'
 /**
  * Lexus / Toyota Pressroom 爬蟲
  *
@@ -42,12 +43,14 @@ export class LexusToyotaScraper extends BasePressroomScraper {
 
     // 方法 2: 從文章連結中提取（備用）
     if (urls.length === 0) {
-      $('a[href*="pressroom.lexus.com/"], a[href*="pressroom.toyota.com/"]').each((_: number, el: Element) => {
-        const href = $(el).attr('href')
-        if (href && this.isValidArticleUrl(href)) {
-          urls.push(href)
+      $('a[href*="pressroom.lexus.com/"], a[href*="pressroom.toyota.com/"]').each(
+        (_: number, el: Element) => {
+          const href = $(el).attr('href')
+          if (href && this.isValidArticleUrl(href)) {
+            urls.push(href)
+          }
         }
-      })
+      )
     }
 
     // 方法 3: 從 read-more-link 提取
@@ -84,7 +87,7 @@ export class LexusToyotaScraper extends BasePressroomScraper {
       '/newsroom-connection/',
       '/media-events/',
       '/concept/',
-      '/corporate/',  // 排除分類頁，但文章 slug 不在 /corporate/ 下
+      '/corporate/', // 排除分類頁，但文章 slug 不在 /corporate/ 下
       '/motorsports/',
       '/product/',
       '/wp-json/',
@@ -121,9 +124,10 @@ export class LexusToyotaScraper extends BasePressroomScraper {
     const $ = this.parseHtml(html)
 
     // 1. 提取標題
-    const title = $('meta[property="og:title"]').attr('content') ||
-                  $('h1.entry-title, h1.post-title').first().text() ||
-                  $('title').text()
+    const title =
+      $('meta[property="og:title"]').attr('content') ||
+      $('h1.entry-title, h1.post-title').first().text() ||
+      $('title').text()
 
     if (!title) {
       logger.warn('scraper.pressroom.no_title', { brand: this.config.brand, url })
@@ -135,7 +139,9 @@ export class LexusToyotaScraper extends BasePressroomScraper {
     const publishedAt = publishedTimeStr ? new Date(publishedTimeStr) : new Date()
 
     // 3. 提取內容
-    const contentEl = $('.entry-content, .post-content, .article-content, .single-post--content, .story-page--article-content').first()
+    const contentEl = $(
+      '.entry-content, .post-content, .article-content, .single-post--content, .story-page--article-content'
+    ).first()
     const content = contentEl.length > 0 ? htmlToText(contentEl.html() || '') : ''
 
     if (!content) {
@@ -144,9 +150,10 @@ export class LexusToyotaScraper extends BasePressroomScraper {
     }
 
     // 4. 提取摘要
-    const summary = $('meta[property="og:description"]').attr('content') ||
-                   $('meta[name="description"]').attr('content') ||
-                   content.slice(0, 300)
+    const summary =
+      $('meta[property="og:description"]').attr('content') ||
+      $('meta[name="description"]').attr('content') ||
+      content.slice(0, 300)
 
     // 5. 提取圖片
     const images = this.extractImages($, url)
@@ -220,26 +227,28 @@ export class LexusToyotaScraper extends BasePressroomScraper {
     }
 
     // 3. 從內容區域提取其他圖片
-    $('.entry-content img, .post-content img, .article-content img').each((_: number, el: Element) => {
-      const src = $(el).attr('src') || $(el).attr('data-src')
-      if (!src || seenUrls.has(src)) return
+    $('.entry-content img, .post-content img, .article-content img').each(
+      (_: number, el: Element) => {
+        const src = $(el).attr('src') || $(el).attr('data-src')
+        if (!src || seenUrls.has(src)) return
 
-      // 只提取官方 S3 或本站圖片
-      if (!src.includes('s3.') && !src.includes(this.config.baseUrl)) {
-        return
+        // 只提取官方 S3 或本站圖片
+        if (!src.includes('s3.') && !src.includes(this.config.baseUrl)) {
+          return
+        }
+
+        seenUrls.add(src)
+        const alt = $(el).attr('alt') || ''
+        const highResUrl = this.extractHighResImageUrl(src)
+
+        images.push({
+          url: this.resolveUrl(src),
+          highResUrl: highResUrl !== src ? this.resolveUrl(highResUrl) : undefined,
+          caption: cleanText(alt),
+          credit: this.createImageCredit(),
+        })
       }
-
-      seenUrls.add(src)
-      const alt = $(el).attr('alt') || ''
-      const highResUrl = this.extractHighResImageUrl(src)
-
-      images.push({
-        url: this.resolveUrl(src),
-        highResUrl: highResUrl !== src ? this.resolveUrl(highResUrl) : undefined,
-        caption: cleanText(alt),
-        credit: this.createImageCredit(),
-      })
-    })
+    )
 
     // 4. 從圖片廊提取
     $('.gallery-item img, .wp-block-gallery img').each((_: number, el: Element) => {
@@ -269,18 +278,44 @@ export class LexusToyotaScraper extends BasePressroomScraper {
 
     // Lexus 車款
     const lexusModels = [
-      'ES', 'IS', 'LS', 'LC', 'RC', 'RC F',
-      'UX', 'NX', 'RX', 'GX', 'TX', 'LX', 'RZ',
-      'LFA', 'LF-Z',
+      'ES',
+      'IS',
+      'LS',
+      'LC',
+      'RC',
+      'RC F',
+      'UX',
+      'NX',
+      'RX',
+      'GX',
+      'TX',
+      'LX',
+      'RZ',
+      'LFA',
+      'LF-Z',
     ]
 
     // Toyota 車款
     const toyotaModels = [
-      'Camry', 'Corolla', 'Crown', 'Prius', 'Mirai',
-      'RAV4', 'Highlander', 'Venza', 'Grand Highlander', '4Runner', 'Sequoia', 'Land Cruiser',
-      'Tacoma', 'Tundra',
-      'Supra', 'GR86', 'GR Corolla',
-      'Sienna', 'bZ4X',
+      'Camry',
+      'Corolla',
+      'Crown',
+      'Prius',
+      'Mirai',
+      'RAV4',
+      'Highlander',
+      'Venza',
+      'Grand Highlander',
+      '4Runner',
+      'Sequoia',
+      'Land Cruiser',
+      'Tacoma',
+      'Tundra',
+      'Supra',
+      'GR86',
+      'GR Corolla',
+      'Sienna',
+      'bZ4X',
     ]
 
     const allModels = this.config.brand === 'Lexus' ? lexusModels : toyotaModels

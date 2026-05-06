@@ -1,3 +1,4 @@
+import 'server-only'
 /**
  * AI 圖片變體生成工具
  * 基於參考圖片生成變體，保持車輛外觀一致性
@@ -14,7 +15,7 @@ let openai: OpenAI | null = null
 function getOpenAI(): OpenAI {
   if (!openai) {
     openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
+      apiKey: process.env.OPENAI_API_KEY,
     })
   }
   return openai
@@ -53,7 +54,7 @@ async function downloadAndConvertToPNG(imageUrl: string): Promise<Buffer | null>
     const pngBuffer = await sharp(buffer)
       .resize(1024, 1024, {
         fit: 'cover',
-        position: 'center'
+        position: 'center',
       })
       .png()
       .toBuffer()
@@ -69,7 +70,7 @@ async function downloadAndConvertToPNG(imageUrl: string): Promise<Buffer | null>
       const compressed = await sharp(pngBuffer)
         .resize(800, 800, {
           fit: 'cover',
-          position: 'center'
+          position: 'center',
         })
         .png({ quality: 80 })
         .toBuffer()
@@ -81,7 +82,6 @@ async function downloadAndConvertToPNG(imageUrl: string): Promise<Buffer | null>
     }
 
     return pngBuffer
-
   } catch (error) {
     logger.error('ai.variation.process_fail', error)
     return null
@@ -133,16 +133,15 @@ export async function generateImageVariation(
     logger.info('ai.variation.dalle2_ok', { urlPrefix: imageUrl.slice(0, 60) })
 
     return {
-      url: imageUrl
+      url: imageUrl,
     }
-
   } catch (error) {
     logger.error('ai.variation.generate_fail', error)
 
     // 如果是 quota exceeded 或其他 OpenAI 錯誤，返回錯誤信息
     return {
       url: '',
-      error: getErrorMessage(error)
+      error: getErrorMessage(error),
     }
   }
 }
@@ -164,7 +163,7 @@ export async function generateCoverFromBestReference(
   }
 
   // 過濾掉明顯不是車輛照片的圖片（但保留較大的圖片）
-  const validImages = images.filter(img => {
+  const validImages = images.filter((img) => {
     const caption = (img.caption || '').toLowerCase()
     const size = img.size || 0
 
@@ -174,11 +173,13 @@ export async function generateCoverFromBestReference(
     }
 
     // 排除小尺寸的價格表、圖表等
-    if (caption.includes('pricing') ||
-        caption.includes('compared') ||
-        caption.includes('chart') ||
-        caption.includes('graph') ||
-        caption.includes('table')) {
+    if (
+      caption.includes('pricing') ||
+      caption.includes('compared') ||
+      caption.includes('chart') ||
+      caption.includes('graph') ||
+      caption.includes('table')
+    ) {
       return false
     }
 
@@ -220,13 +221,13 @@ export async function generateCoverFromBestReference(
     logger.warn('ai.variation.upload_fail_temp_url')
     return {
       url: variation.url,
-      credit: 'AI Generated Variation (DALL-E 2) - Temporary URL'
+      credit: 'AI Generated Variation (DALL-E 2) - Temporary URL',
     }
   }
 
   logger.info('ai.variation.upload_ok')
   return {
     url: permanentUrl,
-    credit: 'AI Generated Variation (DALL-E 2)'
+    credit: 'AI Generated Variation (DALL-E 2)',
   }
 }

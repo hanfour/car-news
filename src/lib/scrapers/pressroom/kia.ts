@@ -1,3 +1,4 @@
+import 'server-only'
 /**
  * Kia Media 爬蟲
  *
@@ -34,9 +35,7 @@ export class KiaScraper extends BasePressroomScraper {
     $('a[href*="/media/pressreleases/"]').each((_: number, el: Element) => {
       const href = $(el).attr('href')
       if (href && this.isValidArticleUrl(href)) {
-        const fullUrl = href.startsWith('http')
-          ? href
-          : `${this.config.baseUrl}${href}`
+        const fullUrl = href.startsWith('http') ? href : `${this.config.baseUrl}${href}`
         urls.push(fullUrl)
       }
     })
@@ -65,9 +64,10 @@ export class KiaScraper extends BasePressroomScraper {
     const $ = this.parseHtml(html)
 
     // 1. 提取標題
-    const title = $('h1').first().text().trim() ||
-                  $('meta[property="og:title"]').attr('content') ||
-                  $('title').text()
+    const title =
+      $('h1').first().text().trim() ||
+      $('meta[property="og:title"]').attr('content') ||
+      $('title').text()
 
     if (!title) {
       logger.warn('scraper.pressroom.no_title', { brand: 'Kia', url })
@@ -83,8 +83,12 @@ export class KiaScraper extends BasePressroomScraper {
     const publishedAt = this.parseDate(dateText)
 
     // 4. 提取內容
-    const contentEl = $('article, .article-content, .press-release-content, .release-content, main').first()
-    contentEl.find('nav, .related, .share-buttons, .breadcrumb, header, footer, .download-section').remove()
+    const contentEl = $(
+      'article, .article-content, .press-release-content, .release-content, main'
+    ).first()
+    contentEl
+      .find('nav, .related, .share-buttons, .breadcrumb, header, footer, .download-section')
+      .remove()
     const content = contentEl.length > 0 ? htmlToText(contentEl.html() || '') : ''
 
     if (!content) {
@@ -104,7 +108,9 @@ export class KiaScraper extends BasePressroomScraper {
       brand: 'Kia',
       url,
       title: cleanText(title),
-      summary: cleanText($('meta[property="og:description"]').attr('content') || content.slice(0, 300)),
+      summary: cleanText(
+        $('meta[property="og:description"]').attr('content') || content.slice(0, 300)
+      ),
       content: cleanText(content),
       publishedAt,
       images,
@@ -120,13 +126,7 @@ export class KiaScraper extends BasePressroomScraper {
    */
   private findDateText($: ReturnType<typeof cheerio.load>, html: string): string {
     // 嘗試多種選擇器
-    const selectors = [
-      '.date',
-      '.article-date',
-      '.release-date',
-      'time',
-      '[datetime]',
-    ]
+    const selectors = ['.date', '.article-date', '.release-date', 'time', '[datetime]']
 
     for (const selector of selectors) {
       const el = $(selector).first()
@@ -174,7 +174,10 @@ export class KiaScraper extends BasePressroomScraper {
   /**
    * 提取文章中的圖片
    */
-  private extractImages($: ReturnType<typeof cheerio.load>, articleId: string | null): PressroomImage[] {
+  private extractImages(
+    $: ReturnType<typeof cheerio.load>,
+    articleId: string | null
+  ): PressroomImage[] {
     const images: PressroomImage[] = []
     const seenUrls = new Set<string>()
 
@@ -196,9 +199,7 @@ export class KiaScraper extends BasePressroomScraper {
       seenUrls.add(src)
       const alt = $(el).attr('alt') || ''
 
-      const fullUrl = src.startsWith('http')
-        ? src
-        : `${this.config.baseUrl}${src}`
+      const fullUrl = src.startsWith('http') ? src : `${this.config.baseUrl}${src}`
 
       images.push({
         url: fullUrl,
@@ -230,9 +231,7 @@ export class KiaScraper extends BasePressroomScraper {
       seenUrls.add(src)
       const alt = $(el).attr('alt') || ''
 
-      const fullUrl = src.startsWith('http')
-        ? src
-        : `${this.config.baseUrl}${src}`
+      const fullUrl = src.startsWith('http') ? src : `${this.config.baseUrl}${src}`
 
       images.push({
         url: fullUrl,
@@ -267,11 +266,23 @@ export class KiaScraper extends BasePressroomScraper {
     // Kia 車款
     const kiaModels = [
       // SUV
-      'Telluride', 'Sorento', 'Sportage', 'Seltos', 'Niro', 'Soul',
+      'Telluride',
+      'Sorento',
+      'Sportage',
+      'Seltos',
+      'Niro',
+      'Soul',
       // 轎車
-      'K5', 'Forte', 'Rio', 'Stinger',
+      'K5',
+      'Forte',
+      'Rio',
+      'Stinger',
       // 電動車
-      'EV6', 'EV9', 'EV5', 'EV3', 'Niro EV',
+      'EV6',
+      'EV9',
+      'EV5',
+      'EV3',
+      'Niro EV',
       // MPV
       'Carnival',
       // 皮卡
