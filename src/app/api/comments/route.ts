@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
-import { moderateComment } from '@/lib/ai/claude'
+import { moderateContent } from '@/lib/ai/provider'
 import { getErrorMessage } from '@/lib/utils/error'
 import { rateLimit } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
@@ -12,10 +12,7 @@ export async function GET(request: NextRequest) {
   const articleId = searchParams.get('article_id')
 
   if (!articleId) {
-    return NextResponse.json(
-      { error: 'Missing article_id' },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: 'Missing article_id' }, { status: 400 })
   }
 
   try {
@@ -44,27 +41,24 @@ export async function GET(request: NextRequest) {
     }
 
     // 2. 批量查詢所有用戶的 profiles
-    const userIds = [...new Set(comments.map(c => c.user_id))]
+    const userIds = [...new Set(comments.map((c) => c.user_id))]
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, display_name, avatar_url')
       .in('id', userIds)
 
     // 3. 手動組合資料
-    const profilesMap = new Map(profiles?.map(p => [p.id, p]) || [])
+    const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || [])
 
-    const commentsWithProfiles = comments.map(comment => ({
+    const commentsWithProfiles = comments.map((comment) => ({
       ...comment,
-      profiles: profilesMap.get(comment.user_id) || null
+      profiles: profilesMap.get(comment.user_id) || null,
     }))
 
     return NextResponse.json({ comments: commentsWithProfiles })
   } catch (error) {
     logger.error('api.comments.list_unexpected', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
@@ -76,25 +70,16 @@ export async function POST(request: NextRequest) {
 
     // 驗證輸入
     if (!article_id || !content) {
-      return NextResponse.json(
-        { error: '請填寫所有必填欄位' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: '請填寫所有必填欄位' }, { status: 400 })
     }
 
     if (content.length > 2000) {
-      return NextResponse.json(
-        { error: '評論過長（最多2000字）' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: '評論過長（最多2000字）' }, { status: 400 })
     }
 
     const auth = await createAuthenticatedClient(request)
     if (!auth) {
-      return NextResponse.json(
-        { error: '請先登入' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: '請先登入' }, { status: 401 })
     }
     const { supabase, userId } = auth
 
@@ -103,15 +88,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '操作過於頻繁，請稍後再試' }, { status: 429 })
     }
 
-    // AI 審核
-    const moderation = await moderateComment(content)
+    // AI 審核（Gemini 為主、Claude 為備援，由 provider 自動 fallback）
+    const moderation = await moderateContent(content)
 
     // 如果 confidence > 95 且有明確違規，拒絕
     if (moderation.confidence > 95 && moderation.flags.length > 0) {
-      return NextResponse.json(
-        { error: '您的評論包含不當內容，無法發布' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: '您的評論包含不當內容，無法發布' }, { status: 400 })
     }
 
     const { data, error } = await supabase
@@ -123,30 +105,24 @@ export async function POST(request: NextRequest) {
         moderation_result: {
           passed: moderation.passed,
           confidence: moderation.confidence,
-          flags: moderation.flags
+          flags: moderation.flags,
         },
-        is_approved: true  // 默認通過
+        is_approved: true, // 默認通過
       })
       .select()
       .single()
 
     if (error) {
       logger.error('api.comments.create_fail', error, { articleId: article_id, userId })
-      return NextResponse.json(
-        { error: '保存失敗，請稍後再試' },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: '保存失敗，請稍後再試' }, { status: 500 })
     }
 
     return NextResponse.json({
       success: true,
-      comment: data
+      comment: data,
     })
   } catch (error) {
     logger.error('api.comments.create_unexpected', error, { message: getErrorMessage(error) })
-    return NextResponse.json(
-      { error: '系統錯誤，請稍後再試' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: '系統錯誤，請稍後再試' }, { status: 500 })
   }
 }

@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
 import { createAuthenticatedClient } from '@/lib/auth'
-import { moderateComment } from '@/lib/ai/claude'
+import { moderateContent } from '@/lib/ai/provider'
 import { rateLimit } from '@/lib/rate-limit'
 
 // GET: 車友會貼文
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await params
     // 有 auth 時用 RLS client（可看到私人 club 的貼文），否則用 anon（只看公開 club）
@@ -25,7 +22,11 @@ export async function GET(
       return NextResponse.json({ error: '找不到此車友會' }, { status: 404 })
     }
 
-    const { data: posts, count, error } = await supabase
+    const {
+      data: posts,
+      count,
+      error,
+    } = await supabase
       .from('car_club_posts')
       .select('*', { count: 'exact' })
       .eq('club_id', club.id)
@@ -38,16 +39,16 @@ export async function GET(
 
     // 作者 profiles
     if (posts && posts.length > 0) {
-      const userIds = [...new Set(posts.map(p => p.user_id))]
+      const userIds = [...new Set(posts.map((p) => p.user_id))]
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, username, display_name, avatar_url')
         .in('id', userIds)
 
-      const profilesMap = new Map(profiles?.map(p => [p.id, p]) || [])
+      const profilesMap = new Map(profiles?.map((p) => [p.id, p]) || [])
 
       return NextResponse.json({
-        posts: posts.map(p => ({ ...p, author: profilesMap.get(p.user_id) || null })),
+        posts: posts.map((p) => ({ ...p, author: profilesMap.get(p.user_id) || null })),
         total: count || 0,
         page,
         totalPages: Math.ceil((count || 0) / limit),
@@ -106,8 +107,8 @@ export async function POST(
       return NextResponse.json({ error: '內容過長（最多5000字）' }, { status: 400 })
     }
 
-    // AI 內容審核
-    const moderation = await moderateComment(content)
+    // AI 內容審核（Gemini 為主、Claude 為備援）
+    const moderation = await moderateContent(content)
     if (moderation.confidence > 95 && moderation.flags.length > 0) {
       return NextResponse.json({ error: '內容包含不當內容，無法發布' }, { status: 400 })
     }
