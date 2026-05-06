@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
 import { verifyDebugAccess } from '@/lib/admin/auth'
 import { generateText } from '@/lib/ai/provider'
+import { stripJSONCodeBlock } from '@/lib/ai/article-output-schema'
 import { getErrorMessage } from '@/lib/utils/error'
 import { logger } from '@/lib/logger'
 
@@ -113,10 +114,7 @@ ${CATEGORY_RULES}
         maxTokens: 256,
         temperature: 0,
       })
-      const jsonText = responseText
-        .replace(/```json\n?/g, '')
-        .replace(/```\n?/g, '')
-        .trim()
+      const jsonText = stripJSONCodeBlock(responseText)
 
       let result: { categories: string[]; reasoning?: string }
       try {
