@@ -33,15 +33,17 @@ scripts/apply-migration.ts                    # Migration helper
 The `human_rating` column needs to be added to your database:
 
 **Go to Supabase Dashboard:**
+
 - URL: https://supabase.com/dashboard/project/daubcanyykdfyptntfco
 - Click "SQL Editor" → "New Query"
 - Copy/paste SQL from `supabase/migrations/20251112_add_human_rating.sql`
 - Click "Run"
 
 **Quick verification:**
+
 ```bash
 curl -s -X PATCH \
-  -H "Authorization: Bearer Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=" \
+  -H "Authorization: Bearer YOUR_ADMIN_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"human_rating": 5}' \
   "http://localhost:3000/api/admin/articles/xjBZdZD" \
@@ -56,19 +58,19 @@ Try these commands to familiarize yourself with the API:
 
 ```bash
 # List top articles
-curl -s -H "Authorization: Bearer Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=" \
+curl -s -H "Authorization: Bearer YOUR_ADMIN_API_KEY" \
   "http://localhost:3000/api/admin/articles?published=true&limit=5" \
   | python3 -m json.tool
 
 # Find low-confidence articles (need review)
-curl -s -H "Authorization: Bearer Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=" \
+curl -s -H "Authorization: Bearer YOUR_ADMIN_API_KEY" \
   "http://localhost:3000/api/admin/articles?published=true&limit=100" \
   | python3 -m json.tool \
   | grep -B2 -A2 '"confidence": [0-6][0-9]'
 
 # Rate an article as excellent
 curl -s -X PATCH \
-  -H "Authorization: Bearer Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=" \
+  -H "Authorization: Bearer YOUR_ADMIN_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"human_rating": 5}' \
   "http://localhost:3000/api/admin/articles/ARTICLE_ID"
@@ -88,6 +90,7 @@ See `docs/DEPLOYMENT.md` for full instructions. Summary:
 ### Phase 1: Data Collection (Current)
 
 Use the `human_rating` field to mark articles:
+
 - **5 (優秀)**: Perfect examples for future AI training
 - **4 (良好)**: Good quality, minor issues
 - **3 (普通)**: Acceptable but could improve
@@ -110,17 +113,20 @@ Full documentation: `/docs/admin-api-usage.md`
 ### Quick Reference
 
 **List articles:**
+
 ```
 GET /api/admin/articles?published=true&brand=Tesla&limit=50&offset=0
 ```
 
 **Update article:**
+
 ```
 PATCH /api/admin/articles/{id}
 Body: {"published": false, "human_rating": 2}
 ```
 
 **Delete article:**
+
 ```
 DELETE /api/admin/articles/{id}
 ```
@@ -152,7 +158,7 @@ If you find yourself using the API frequently and want a web UI, see `/docs/admi
 #!/bin/bash
 # Save as scripts/weekly-review.sh
 
-API_KEY="Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4="
+API_KEY="YOUR_ADMIN_API_KEY"
 BASE_URL="http://localhost:3000"
 
 echo "📊 This Week's Articles"

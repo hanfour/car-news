@@ -7,6 +7,7 @@ The Admin API requires a new `human_rating` column in the database. This migrati
 ### Step 1: Apply Database Migration
 
 Go to your Supabase Dashboard:
+
 1. Navigate to https://supabase.com/dashboard/project/daubcanyykdfyptntfco
 2. Click "SQL Editor" in the left sidebar
 3. Click "New Query"
@@ -34,7 +35,7 @@ COMMENT ON COLUMN generated_articles.human_rating IS '人工評分 (1-5): 1=極�
 Test that the migration worked:
 
 ```bash
-curl -H "Authorization: Bearer Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=" \
+curl -H "Authorization: Bearer YOUR_ADMIN_API_KEY" \
   -X PATCH \
   -H "Content-Type: application/json" \
   -d '{"human_rating": 5}' \
@@ -50,12 +51,13 @@ You should see the article data with `"human_rating": 5` instead of an error.
 In your Vercel project settings, add:
 
 ```
-ADMIN_API_KEY=Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=
+ADMIN_API_KEY=YOUR_ADMIN_API_KEY
 ```
 
 **IMPORTANT**: Use a different, even stronger API key for production!
 
 Generate a new one with:
+
 ```bash
 openssl rand -base64 32
 ```
@@ -103,6 +105,7 @@ curl -H "Authorization: Bearer YOUR_PRODUCTION_API_KEY" \
 ### Error: "Unauthorized" (401)
 
 **Solution**: Check that:
+
 1. You're using the correct API key
 2. The header format is exactly: `Authorization: Bearer YOUR_API_KEY`
 3. The `ADMIN_API_KEY` environment variable is set in Vercel

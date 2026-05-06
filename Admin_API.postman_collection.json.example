@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Car News AI - Admin API",
-    "description": "管理文章和評分的 Admin API\n\n## 使用說明\n1. API Key 已預設在 Collection 層級\n2. 直接點選請求並按 Send 即可使用\n3. 需要修改文章 ID 時，點擊 URL 中的 :articleId 進行編輯",
+    "description": "管理文章和評分的 Admin API\n\n## 使用說明\n1. API Key 請替換 Collection 變數 {{ADMIN_API_KEY}}（複製本檔為 Admin_API.postman_collection.json 後填入您的金鑰）\n2. 直接點選請求並按 Send 即可使用\n3. 需要修改文章 ID 時，點擊 URL 中的 :articleId 進行編輯",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -9,7 +9,7 @@
     "bearer": [
       {
         "key": "token",
-        "value": "Cjz5hMqUj0PeTyVP8jammO0lPRYMMUfB+5UBs8C7qv4=",
+        "value": "{{ADMIN_API_KEY}}",
         "type": "string"
       }
     ]
@@ -26,9 +26,15 @@
             "url": {
               "raw": "http://localhost:3000/api/admin/articles?published=true&limit=20",
               "protocol": "http",
-              "host": ["localhost"],
+              "host": [
+                "localhost"
+              ],
               "port": "3000",
-              "path": ["api", "admin", "articles"],
+              "path": [
+                "api",
+                "admin",
+                "articles"
+              ],
               "query": [
                 {
                   "key": "published",
@@ -53,9 +59,15 @@
             "url": {
               "raw": "http://localhost:3000/api/admin/articles?published=false&limit=20",
               "protocol": "http",
-              "host": ["localhost"],
+              "host": [
+                "localhost"
+              ],
               "port": "3000",
-              "path": ["api", "admin", "articles"],
+              "path": [
+                "api",
+                "admin",
+                "articles"
+              ],
               "query": [
                 {
                   "key": "published",
@@ -78,9 +90,15 @@
             "url": {
               "raw": "http://localhost:3000/api/admin/articles?published=true&brand=Tesla&limit=20",
               "protocol": "http",
-              "host": ["localhost"],
+              "host": [
+                "localhost"
+              ],
               "port": "3000",
-              "path": ["api", "admin", "articles"],
+              "path": [
+                "api",
+                "admin",
+                "articles"
+              ],
               "query": [
                 {
                   "key": "published",
@@ -108,9 +126,15 @@
             "url": {
               "raw": "http://localhost:3000/api/admin/articles?published=true&limit=20&offset=20",
               "protocol": "http",
-              "host": ["localhost"],
+              "host": [
+                "localhost"
+              ],
               "port": "3000",
-              "path": ["api", "admin", "articles"],
+              "path": [
+                "api",
+                "admin",
+                "articles"
+              ],
               "query": [
                 {
                   "key": "published",
@@ -157,9 +181,16 @@
             "url": {
               "raw": "http://localhost:3000/api/admin/articles/:articleId",
               "protocol": "http",
-              "host": ["localhost"],
+              "host": [
+                "localhost"
+              ],
               "port": "3000",
-              "path": ["api", "admin", "articles", ":articleId"],
+              "path": [
+                "api",
+                "admin",
+                "articles",
+                ":articleId"
+              ],
               "variable": [
                 {
                   "key": "articleId",
@@ -193,9 +224,16 @@
             "url": {
               "raw": "http://localhost:3000/api/admin/articles/:articleId",
               "protocol": "http",
-              "host": ["localhost"],
+              "host": [
+                "localhost"
+              ],
               "port": "3000",
-              "path": ["api", "admin", "articles", ":articleId"],
+              "path": [
+                "api",
+                "admin",
+                "articles",
+                ":articleId"
+              ],
               "variable": [
                 {
                   "key": "articleId",
@@ -229,9 +267,16 @@
             "url": {
               "raw": "http://localhost:3000/api/admin/articles/:articleId",
               "protocol": "http",
-              "host": ["localhost"],
+              "host": [
+                "localhost"
+              ],
               "port": "3000",
-              "path": ["api", "admin", "articles", ":articleId"],
+              "path": [
+                "api",
+                "admin",
+                "articles",
+                ":articleId"
+              ],
               "variable": [
                 {
                   "key": "articleId",
@@ -265,9 +310,16 @@
             "url": {
               "raw": "http://localhost:3000/api/admin/articles/:articleId",
               "protocol": "http",
-              "host": ["localhost"],
+              "host": [
+                "localhost"
+              ],
               "port": "3000",
-              "path": ["api", "admin", "articles", ":articleId"],
+              "path": [
+                "api",
+                "admin",
+                "articles",
+                ":articleId"
+              ],
               "variable": [
                 {
                   "key": "articleId",
@@ -301,9 +353,16 @@
             "url": {
               "raw": "http://localhost:3000/api/admin/articles/:articleId",
               "protocol": "http",
-              "host": ["localhost"],
+              "host": [
+                "localhost"
+              ],
               "port": "3000",
-              "path": ["api", "admin", "articles", ":articleId"],
+              "path": [
+                "api",
+                "admin",
+                "articles",
+                ":articleId"
+              ],
               "variable": [
                 {
                   "key": "articleId",
@@ -342,9 +401,16 @@
             "url": {
               "raw": "http://localhost:3000/api/admin/articles/:articleId",
               "protocol": "http",
-              "host": ["localhost"],
+              "host": [
+                "localhost"
+              ],
               "port": "3000",
-              "path": ["api", "admin", "articles", ":articleId"],
+              "path": [
+                "api",
+                "admin",
+                "articles",
+                ":articleId"
+              ],
               "variable": [
                 {
                   "key": "articleId",
@@ -378,9 +444,16 @@
             "url": {
               "raw": "http://localhost:3000/api/admin/articles/:articleId",
               "protocol": "http",
-              "host": ["localhost"],
+              "host": [
+                "localhost"
+              ],
               "port": "3000",
-              "path": ["api", "admin", "articles", ":articleId"],
+              "path": [
+                "api",
+                "admin",
+                "articles",
+                ":articleId"
+              ],
               "variable": [
                 {
                   "key": "articleId",
@@ -414,9 +487,16 @@
             "url": {
               "raw": "http://localhost:3000/api/admin/articles/:articleId",
               "protocol": "http",
-              "host": ["localhost"],
+              "host": [
+                "localhost"
+              ],
               "port": "3000",
-              "path": ["api", "admin", "articles", ":articleId"],
+              "path": [
+                "api",
+                "admin",
+                "articles",
+                ":articleId"
+              ],
               "variable": [
                 {
                   "key": "articleId",
@@ -450,9 +530,16 @@
             "url": {
               "raw": "http://localhost:3000/api/admin/articles/:articleId",
               "protocol": "http",
-              "host": ["localhost"],
+              "host": [
+                "localhost"
+              ],
               "port": "3000",
-              "path": ["api", "admin", "articles", ":articleId"],
+              "path": [
+                "api",
+                "admin",
+                "articles",
+                ":articleId"
+              ],
               "variable": [
                 {
                   "key": "articleId",
@@ -486,9 +573,16 @@
             "url": {
               "raw": "http://localhost:3000/api/admin/articles/:articleId",
               "protocol": "http",
-              "host": ["localhost"],
+              "host": [
+                "localhost"
+              ],
               "port": "3000",
-              "path": ["api", "admin", "articles", ":articleId"],
+              "path": [
+                "api",
+                "admin",
+                "articles",
+                ":articleId"
+              ],
               "variable": [
                 {
                   "key": "articleId",
@@ -513,9 +607,16 @@
             "url": {
               "raw": "http://localhost:3000/api/admin/articles/:articleId",
               "protocol": "http",
-              "host": ["localhost"],
+              "host": [
+                "localhost"
+              ],
               "port": "3000",
-              "path": ["api", "admin", "articles", ":articleId"],
+              "path": [
+                "api",
+                "admin",
+                "articles",
+                ":articleId"
+              ],
               "variable": [
                 {
                   "key": "articleId",
@@ -540,9 +641,15 @@
             "url": {
               "raw": "http://localhost:3000/api/admin/articles?limit=1",
               "protocol": "http",
-              "host": ["localhost"],
+              "host": [
+                "localhost"
+              ],
               "port": "3000",
-              "path": ["api", "admin", "articles"],
+              "path": [
+                "api",
+                "admin",
+                "articles"
+              ],
               "query": [
                 {
                   "key": "limit",
@@ -562,9 +669,15 @@
             "url": {
               "raw": "http://localhost:3000/api/admin/articles?published=true&limit=1",
               "protocol": "http",
-              "host": ["localhost"],
+              "host": [
+                "localhost"
+              ],
               "port": "3000",
-              "path": ["api", "admin", "articles"],
+              "path": [
+                "api",
+                "admin",
+                "articles"
+              ],
               "query": [
                 {
                   "key": "published",
@@ -587,9 +700,15 @@
             "url": {
               "raw": "http://localhost:3000/api/admin/articles?published=false&limit=1",
               "protocol": "http",
-              "host": ["localhost"],
+              "host": [
+                "localhost"
+              ],
               "port": "3000",
-              "path": ["api", "admin", "articles"],
+              "path": [
+                "api",
+                "admin",
+                "articles"
+              ],
               "query": [
                 {
                   "key": "published",
@@ -605,6 +724,13 @@
           "response": []
         }
       ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "ADMIN_API_KEY",
+      "value": "your-admin-api-key-here",
+      "type": "string"
     }
   ]
 }
