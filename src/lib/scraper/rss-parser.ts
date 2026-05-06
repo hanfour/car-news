@@ -1,3 +1,4 @@
+import 'server-only'
 import Parser from 'rss-parser'
 import { NewsSource } from '@/types/database'
 import { logger } from '@/lib/logger'
@@ -5,8 +6,8 @@ import { logger } from '@/lib/logger'
 const parser = new Parser({
   timeout: 30000,
   headers: {
-    'User-Agent': 'Mozilla/5.0 (compatible; CarNewsAI/1.0)'
-  }
+    'User-Agent': 'Mozilla/5.0 (compatible; CarNewsAI/1.0)',
+  },
 })
 
 export interface ScrapedArticle {
@@ -97,7 +98,7 @@ export async function parseRSSFeed(source: NewsSource): Promise<ScrapedArticle[]
         content: content.slice(0, 5000), // 限制长度
         publishedAt,
         source: source.name,
-        imageUrl
+        imageUrl,
       })
     }
 
@@ -120,7 +121,7 @@ async function fetchOgImage(articleUrl: string): Promise<string | undefined> {
     const response = await fetch(articleUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; CarNewsAI/1.0)',
-        'Accept': 'text/html',
+        Accept: 'text/html',
       },
       signal: controller.signal,
       redirect: 'follow',
@@ -143,18 +144,18 @@ async function fetchOgImage(articleUrl: string): Promise<string | undefined> {
     }
     reader.cancel()
 
-    const html = new TextDecoder().decode(
-      chunks.length === 1 ? chunks[0] : Buffer.concat(chunks)
-    )
+    const html = new TextDecoder().decode(chunks.length === 1 ? chunks[0] : Buffer.concat(chunks))
 
     // 提取 og:image
-    const ogMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/)
-      || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/)
+    const ogMatch =
+      html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/)
     if (ogMatch?.[1]) return ogMatch[1]
 
     // 提取 twitter:image
-    const twMatch = html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/)
-      || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/)
+    const twMatch =
+      html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/)
     if (twMatch?.[1]) return twMatch[1]
 
     return undefined

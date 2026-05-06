@@ -1,3 +1,4 @@
+import 'server-only'
 /**
  * Pressroom 爬蟲基礎類別
  */
@@ -9,7 +10,7 @@ import type {
   PressroomArticle,
   PressroomImage,
   PressroomScraperConfig,
-  ScraperResult
+  ScraperResult,
 } from './types'
 
 /**
@@ -39,21 +40,27 @@ export abstract class BasePressroomScraper {
       success: false,
       articles: [],
       errors: [],
-      stats: { total: 0, new: 0, skipped: 0, failed: 0 }
+      stats: { total: 0, new: 0, skipped: 0, failed: 0 },
     }
 
     try {
-      logger.info('scraper.pressroom.start', { brand: this.config.brand, url: this.config.newsListUrl })
+      logger.info('scraper.pressroom.start', {
+        brand: this.config.brand,
+        url: this.config.newsListUrl,
+      })
 
       // 1. 獲取文章列表
       const listHtml = await this.fetchPage(this.config.newsListUrl)
       const articleUrls = await this.parseArticleList(listHtml)
 
-      logger.info('scraper.pressroom.list_found', { brand: this.config.brand, count: articleUrls.length })
+      logger.info('scraper.pressroom.list_found', {
+        brand: this.config.brand,
+        count: articleUrls.length,
+      })
       result.stats.total = articleUrls.length
 
       // 2. 過濾已存在的文章
-      const newUrls = articleUrls.filter(url => !this.existingUrls.has(url))
+      const newUrls = articleUrls.filter((url) => !this.existingUrls.has(url))
       result.stats.skipped = articleUrls.length - newUrls.length
 
       if (newUrls.length === 0) {
@@ -62,7 +69,10 @@ export abstract class BasePressroomScraper {
         return result
       }
 
-      logger.info('scraper.pressroom.to_process', { brand: this.config.brand, count: newUrls.length })
+      logger.info('scraper.pressroom.to_process', {
+        brand: this.config.brand,
+        count: newUrls.length,
+      })
 
       // 3. 限制數量
       const urlsToProcess = newUrls.slice(0, this.config.maxArticles || 20)
@@ -83,7 +93,10 @@ export abstract class BasePressroomScraper {
             if (this.isWithinDateRange(article.publishedAt)) {
               result.articles.push(article)
               result.stats.new++
-              logger.debug('scraper.pressroom.article_ok', { brand: this.config.brand, title: article.title.slice(0, 100) })
+              logger.debug('scraper.pressroom.article_ok', {
+                brand: this.config.brand,
+                title: article.title.slice(0, 100),
+              })
             } else {
               result.stats.skipped++
             }
@@ -95,8 +108,10 @@ export abstract class BasePressroomScraper {
       }
 
       result.success = true
-      logger.info('scraper.pressroom.done', { brand: this.config.brand, newCount: result.stats.new })
-
+      logger.info('scraper.pressroom.done', {
+        brand: this.config.brand,
+        newCount: result.stats.new,
+      })
     } catch (error) {
       result.errors.push(getErrorMessage(error))
       logger.error('scraper.pressroom.run_fail', error, { brand: this.config.brand })
@@ -111,9 +126,10 @@ export abstract class BasePressroomScraper {
   protected async fetchPage(url: string): Promise<string> {
     const response = await fetch(url, {
       headers: {
-        'User-Agent': this.config.userAgent ||
+        'User-Agent':
+          this.config.userAgent ||
           'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
       },
       signal: AbortSignal.timeout(30000),
@@ -154,7 +170,7 @@ export abstract class BasePressroomScraper {
    * 延遲函數
    */
   protected delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms))
+    return new Promise((resolve) => setTimeout(resolve, ms))
   }
 
   /**
@@ -180,8 +196,8 @@ export abstract class BasePressroomScraper {
   protected extractHighResImageUrl(url: string): string {
     // 移除常見的縮圖後綴
     return url
-      .replace(/-\d+x\d+\./, '.')  // WordPress 風格：image-800x600.jpg -> image.jpg
-      .replace(/\?.*$/, '')        // 移除 query string
+      .replace(/-\d+x\d+\./, '.') // WordPress 風格：image-800x600.jpg -> image.jpg
+      .replace(/\?.*$/, '') // 移除 query string
   }
 
   /**
@@ -196,10 +212,7 @@ export abstract class BasePressroomScraper {
  * 工具函數：清理文字內容
  */
 export function cleanText(text: string): string {
-  return text
-    .replace(/\s+/g, ' ')
-    .replace(/\n+/g, '\n')
-    .trim()
+  return text.replace(/\s+/g, ' ').replace(/\n+/g, '\n').trim()
 }
 
 /**

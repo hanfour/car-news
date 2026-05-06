@@ -1,3 +1,4 @@
+import 'server-only'
 /**
  * Volkswagen Newsroom 爬蟲
  *
@@ -34,9 +35,7 @@ export class VolkswagenScraper extends BasePressroomScraper {
     $('a[href*="/en/press-releases/"]').each((_: number, el: Element) => {
       const href = $(el).attr('href')
       if (href && this.isValidArticleUrl(href)) {
-        const fullUrl = href.startsWith('http')
-          ? href
-          : `${this.config.baseUrl}${href}`
+        const fullUrl = href.startsWith('http') ? href : `${this.config.baseUrl}${href}`
         urls.push(fullUrl)
       }
     })
@@ -62,9 +61,10 @@ export class VolkswagenScraper extends BasePressroomScraper {
     const $ = this.parseHtml(html)
 
     // 1. 提取標題
-    const title = $('h1').first().text().trim() ||
-                  $('meta[property="og:title"]').attr('content') ||
-                  $('title').text()
+    const title =
+      $('h1').first().text().trim() ||
+      $('meta[property="og:title"]').attr('content') ||
+      $('title').text()
 
     if (!title) {
       logger.warn('scraper.pressroom.no_title', { brand: 'Volkswagen', url })
@@ -104,7 +104,9 @@ export class VolkswagenScraper extends BasePressroomScraper {
       brand: 'Volkswagen',
       url,
       title: cleanText(title),
-      summary: cleanText($('meta[property="og:description"]').attr('content') || content.slice(0, 300)),
+      summary: cleanText(
+        $('meta[property="og:description"]').attr('content') || content.slice(0, 300)
+      ),
       content: cleanText(content),
       publishedAt,
       images,
@@ -120,13 +122,7 @@ export class VolkswagenScraper extends BasePressroomScraper {
    */
   private findDateText($: ReturnType<typeof cheerio.load>): string {
     // 嘗試多種選擇器
-    const selectors = [
-      '.date',
-      '.article-date',
-      'time',
-      '[datetime]',
-      '.press-release-date',
-    ]
+    const selectors = ['.date', '.article-date', 'time', '[datetime]', '.press-release-date']
 
     for (const selector of selectors) {
       const el = $(selector).first()
@@ -240,9 +236,7 @@ export class VolkswagenScraper extends BasePressroomScraper {
       seenUrls.add(src)
       const alt = $(el).attr('alt') || ''
 
-      const fullUrl = src.startsWith('http')
-        ? src
-        : `${this.config.baseUrl}${src}`
+      const fullUrl = src.startsWith('http') ? src : `${this.config.baseUrl}${src}`
 
       images.push({
         url: fullUrl,
@@ -262,9 +256,7 @@ export class VolkswagenScraper extends BasePressroomScraper {
     if (!url.includes('vw-mms.de')) return undefined
 
     // VW 圖片通常有 _web_1600 後綴，嘗試獲取更大版本
-    const highRes = url
-      .replace(/_web_\d+/, '_web_2400')
-      .replace(/\?\d+$/, '')  // 移除時間戳
+    const highRes = url.replace(/_web_\d+/, '_web_2400').replace(/\?\d+$/, '') // 移除時間戳
 
     return highRes !== url ? highRes : undefined
   }
@@ -278,15 +270,29 @@ export class VolkswagenScraper extends BasePressroomScraper {
     // Volkswagen 車款
     const vwModels = [
       // 轎車
-      'Jetta', 'Passat', 'Arteon',
+      'Jetta',
+      'Passat',
+      'Arteon',
       // SUV
-      'Tiguan', 'Atlas', 'Atlas Cross Sport', 'Taos', 'ID.4', 'ID.Buzz', 'ID.7',
+      'Tiguan',
+      'Atlas',
+      'Atlas Cross Sport',
+      'Taos',
+      'ID.4',
+      'ID.Buzz',
+      'ID.7',
       // 跑車
-      'Golf', 'Golf GTI', 'Golf R',
+      'Golf',
+      'Golf GTI',
+      'Golf R',
       // 電動車
-      'ID.3', 'ID.5', 'ID.6',
+      'ID.3',
+      'ID.5',
+      'ID.6',
       // 經典
-      'Beetle', 'Bus', 'Microbus',
+      'Beetle',
+      'Bus',
+      'Microbus',
     ]
 
     for (const model of vwModels) {

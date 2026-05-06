@@ -1,3 +1,4 @@
+import 'server-only'
 import Parser from 'rss-parser'
 import { fetchTranscript } from 'youtube-transcript'
 import { NewsSource } from '@/types/database'
@@ -7,8 +8,8 @@ import { logger } from '@/lib/logger'
 const parser = new Parser({
   timeout: 30000,
   headers: {
-    'User-Agent': 'Mozilla/5.0 (compatible; CarNewsAI/1.0)'
-  }
+    'User-Agent': 'Mozilla/5.0 (compatible; CarNewsAI/1.0)',
+  },
 })
 
 const CONCURRENCY_LIMIT = 5
@@ -58,13 +59,16 @@ async function mapWithConcurrency<T, R>(
   const executing = new Set<Promise<void>>()
 
   for (const item of items) {
-    const p = fn(item).then((result) => {
-      results.push(result)
-    }).catch(() => {
-      // 個別項目失敗不影響其他
-    }).finally(() => {
-      executing.delete(p)
-    })
+    const p = fn(item)
+      .then((result) => {
+        results.push(result)
+      })
+      .catch(() => {
+        // 個別項目失敗不影響其他
+      })
+      .finally(() => {
+        executing.delete(p)
+      })
     executing.add(p)
 
     if (executing.size >= concurrency) {
@@ -117,7 +121,7 @@ export async function scrapeYouTubeChannel(source: NewsSource): Promise<ScrapedA
           content: transcript.slice(0, MAX_CONTENT_LENGTH),
           publishedAt,
           source: source.name,
-          imageUrl: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`
+          imageUrl: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
         })
       },
       CONCURRENCY_LIMIT

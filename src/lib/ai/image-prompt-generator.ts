@@ -1,3 +1,4 @@
+import 'server-only'
 /**
  * 用 Gemini 智能分析文章，生成精准的图片描述
  * 确保 AI 生成的封面图与文章内容匹配
@@ -57,7 +58,7 @@ export async function generateImagePromptFromArticle(
       responseMimeType: 'application/json',
       // @ts-expect-error -- thinkingConfig 尚未在型別中定義，但 gemini-2.5-flash 需要關閉 thinking 才能正確輸出 JSON
       thinkingConfig: { thinkingBudget: 0 },
-    }
+    },
   })
 
   // 從標題提取車款資訊，提供給 Gemini 作為參考
@@ -141,7 +142,7 @@ Respond with valid JSON only, no markdown.`
           setting: 'professional setting',
           keyElements: ['modern design'],
           mood: 'professional',
-          fullPrompt: fullPromptMatch[1].replace(/\\"/g, '"')
+          fullPrompt: fullPromptMatch[1].replace(/\\"/g, '"'),
         }
       }
 
@@ -155,7 +156,6 @@ Respond with valid JSON only, no markdown.`
     })
 
     return parsed
-
   } catch (error) {
     logger.error('ai.prompt.generate_fail', error)
 
@@ -172,18 +172,66 @@ function extractVehicleType(title: string, content: string): string {
 
   // 中文关键词映射
   const vehicleTypes: Array<{ keywords: string[]; type: string; description: string }> = [
-    { keywords: ['皮卡', 'pickup', 'truck'], type: 'pickup truck', description: 'rugged pickup truck with cargo bed' },
-    { keywords: ['休旅', 'suv', 'crossover'], type: 'SUV', description: 'sporty utility vehicle with elevated stance' },
-    { keywords: ['電動休旅', 'electric suv', 'ev suv'], type: 'electric SUV', description: 'modern electric SUV with aerodynamic design' },
-    { keywords: ['轎車', 'sedan', '房車'], type: 'sedan', description: 'sleek sedan with elegant profile' },
-    { keywords: ['跑車', 'sports car', '超跑', 'supercar'], type: 'sports car', description: 'aggressive sports car with low stance' },
-    { keywords: ['掀背', 'hatchback', '兩廂'], type: 'hatchback', description: 'compact hatchback with practical design' },
-    { keywords: ['旅行車', 'wagon', 'estate'], type: 'wagon', description: 'practical station wagon' },
-    { keywords: ['敞篷', 'convertible', 'roadster'], type: 'convertible', description: 'open-top convertible' },
-    { keywords: ['越野', 'off-road', '4x4'], type: 'off-road vehicle', description: 'rugged off-road capable vehicle' },
-    { keywords: ['小型車', 'compact', 'city car'], type: 'compact car', description: 'urban-friendly compact vehicle' },
-    { keywords: ['電動', 'ev', 'electric', '純電'], type: 'electric vehicle', description: 'modern electric vehicle' },
-    { keywords: ['混動', 'hybrid', '油電'], type: 'hybrid', description: 'efficient hybrid vehicle' },
+    {
+      keywords: ['皮卡', 'pickup', 'truck'],
+      type: 'pickup truck',
+      description: 'rugged pickup truck with cargo bed',
+    },
+    {
+      keywords: ['休旅', 'suv', 'crossover'],
+      type: 'SUV',
+      description: 'sporty utility vehicle with elevated stance',
+    },
+    {
+      keywords: ['電動休旅', 'electric suv', 'ev suv'],
+      type: 'electric SUV',
+      description: 'modern electric SUV with aerodynamic design',
+    },
+    {
+      keywords: ['轎車', 'sedan', '房車'],
+      type: 'sedan',
+      description: 'sleek sedan with elegant profile',
+    },
+    {
+      keywords: ['跑車', 'sports car', '超跑', 'supercar'],
+      type: 'sports car',
+      description: 'aggressive sports car with low stance',
+    },
+    {
+      keywords: ['掀背', 'hatchback', '兩廂'],
+      type: 'hatchback',
+      description: 'compact hatchback with practical design',
+    },
+    {
+      keywords: ['旅行車', 'wagon', 'estate'],
+      type: 'wagon',
+      description: 'practical station wagon',
+    },
+    {
+      keywords: ['敞篷', 'convertible', 'roadster'],
+      type: 'convertible',
+      description: 'open-top convertible',
+    },
+    {
+      keywords: ['越野', 'off-road', '4x4'],
+      type: 'off-road vehicle',
+      description: 'rugged off-road capable vehicle',
+    },
+    {
+      keywords: ['小型車', 'compact', 'city car'],
+      type: 'compact car',
+      description: 'urban-friendly compact vehicle',
+    },
+    {
+      keywords: ['電動', 'ev', 'electric', '純電'],
+      type: 'electric vehicle',
+      description: 'modern electric vehicle',
+    },
+    {
+      keywords: ['混動', 'hybrid', '油電'],
+      type: 'hybrid',
+      description: 'efficient hybrid vehicle',
+    },
   ]
 
   for (const { keywords, type, description } of vehicleTypes) {
@@ -200,10 +248,12 @@ function extractVehicleType(title: string, content: string): string {
 /**
  * 创建 fallback prompt（当 Gemini 分析失败时）
  */
-function createFallbackPrompt(title: string, brands?: string[], content?: string): ImagePromptResult {
-  const brandStyle = brands?.[0]
-    ? getBrandStyleDescription(brands[0])
-    : 'modern automotive design'
+function createFallbackPrompt(
+  title: string,
+  brands?: string[],
+  content?: string
+): ImagePromptResult {
+  const brandStyle = brands?.[0] ? getBrandStyleDescription(brands[0]) : 'modern automotive design'
 
   // 从标题提取车辆类型
   const vehicleDescription = extractVehicleType(title, content || '')
@@ -223,7 +273,7 @@ function createFallbackPrompt(title: string, brands?: string[], content?: string
     setting: 'professional studio or showroom',
     keyElements: ['clean lines', 'modern design', 'professional lighting'],
     mood: 'professional and sophisticated',
-    fullPrompt: `Professional automotive photography. ${vehicleDetail}, displayed in a clean, professional studio setting. Clean composition with balanced lighting, emphasizing the vehicle's design language. Sharp focus, editorial quality, no text or watermarks.`
+    fullPrompt: `Professional automotive photography. ${vehicleDetail}, displayed in a clean, professional studio setting. Clean composition with balanced lighting, emphasizing the vehicle's design language. Sharp focus, editorial quality, no text or watermarks.`,
   }
 }
 
@@ -233,60 +283,60 @@ function createFallbackPrompt(title: string, brands?: string[], content?: string
 function getBrandStyleDescription(brand: string): string {
   const styleMap: Record<string, string> = {
     // 美系
-    'Tesla': 'minimalist Scandinavian-inspired electric vehicle with smooth surfaces',
-    'Ford': 'bold American muscle-inspired design with strong presence',
-    'Chevrolet': 'confident American design with sporty proportions',
-    'GM': 'contemporary American automotive design',
-    'Rivian': 'rugged adventure-ready electric vehicle',
-    'Lucid': 'futuristic luxury electric sedan',
+    Tesla: 'minimalist Scandinavian-inspired electric vehicle with smooth surfaces',
+    Ford: 'bold American muscle-inspired design with strong presence',
+    Chevrolet: 'confident American design with sporty proportions',
+    GM: 'contemporary American automotive design',
+    Rivian: 'rugged adventure-ready electric vehicle',
+    Lucid: 'futuristic luxury electric sedan',
 
     // 德系
-    'BMW': 'German luxury sports design with dynamic kidney grille',
+    BMW: 'German luxury sports design with dynamic kidney grille',
     'Mercedes-Benz': 'elegant German luxury with flowing lines',
-    'Audi': 'understated German precision with clean surfaces',
-    'Volkswagen': 'approachable German engineering design',
-    'Porsche': 'iconic German sports car silhouette',
+    Audi: 'understated German precision with clean surfaces',
+    Volkswagen: 'approachable German engineering design',
+    Porsche: 'iconic German sports car silhouette',
 
     // 日系
-    'Toyota': 'reliable Japanese design with practical elegance',
-    'Honda': 'sporty Japanese engineering with refined details',
-    'Nissan': 'bold Japanese design with distinctive character',
-    'Mazda': 'flowing Japanese artistry in motion',
-    'Lexus': 'Japanese luxury with bold spindle design',
-    'Subaru': 'rugged Japanese all-wheel-drive capability',
+    Toyota: 'reliable Japanese design with practical elegance',
+    Honda: 'sporty Japanese engineering with refined details',
+    Nissan: 'bold Japanese design with distinctive character',
+    Mazda: 'flowing Japanese artistry in motion',
+    Lexus: 'Japanese luxury with bold spindle design',
+    Subaru: 'rugged Japanese all-wheel-drive capability',
 
     // 韩系
-    'Hyundai': 'modern Korean design with fluid sculpture',
-    'Kia': 'bold Korean design with tiger nose styling',
-    'Genesis': 'refined Korean luxury with athletic proportions',
+    Hyundai: 'modern Korean design with fluid sculpture',
+    Kia: 'bold Korean design with tiger nose styling',
+    Genesis: 'refined Korean luxury with athletic proportions',
 
     // 中国品牌
-    'BYD': 'modern Chinese electric vehicle design',
-    'NIO': 'premium Chinese electric luxury',
-    'XPeng': 'tech-forward Chinese electric design',
+    BYD: 'modern Chinese electric vehicle design',
+    NIO: 'premium Chinese electric luxury',
+    XPeng: 'tech-forward Chinese electric design',
     'Li Auto': 'family-oriented Chinese electric SUV',
 
     // 欧洲其他
-    'Volvo': 'Scandinavian safety-focused minimalist design',
-    'Polestar': 'Swedish performance electric design',
-    'Ferrari': 'Italian supercar passion and performance',
-    'Lamborghini': 'aggressive Italian exotic design',
-    'Maserati': 'Italian grand touring elegance',
+    Volvo: 'Scandinavian safety-focused minimalist design',
+    Polestar: 'Swedish performance electric design',
+    Ferrari: 'Italian supercar passion and performance',
+    Lamborghini: 'aggressive Italian exotic design',
+    Maserati: 'Italian grand touring elegance',
     'Alfa Romeo': 'passionate Italian sports design',
-    'Fiat': 'charming Italian compact design',
-    'Renault': 'French automotive innovation',
-    'Peugeot': 'bold French design language',
-    'Citroën': 'creative French comfort design',
+    Fiat: 'charming Italian compact design',
+    Renault: 'French automotive innovation',
+    Peugeot: 'bold French design language',
+    Citroën: 'creative French comfort design',
 
     // 英系
-    'Jaguar': 'British sporting luxury',
+    Jaguar: 'British sporting luxury',
     'Land Rover': 'British all-terrain capability',
-    'Bentley': 'handcrafted British luxury',
+    Bentley: 'handcrafted British luxury',
     'Rolls-Royce': 'pinnacle British luxury craftsmanship',
     'Aston Martin': 'British grand touring elegance',
-    'McLaren': 'British supercar engineering',
-    'Lotus': 'lightweight British sports car',
-    'MINI': 'iconic British compact fun',
+    McLaren: 'British supercar engineering',
+    Lotus: 'lightweight British sports car',
+    MINI: 'iconic British compact fun',
   }
 
   return styleMap[brand] || 'contemporary automotive design'
@@ -311,7 +361,7 @@ export async function analyzeMultipleImagesWithGemini(
         maxOutputTokens: 256,
         // @ts-expect-error -- thinkingConfig 尚未在型別中定義
         thinkingConfig: { thinkingBudget: 0 },
-      }
+      },
     })
 
     // 下載最多 3 張圖片轉 base64
@@ -355,7 +405,7 @@ export async function analyzeMultipleImagesWithGemini(
           inlineData: {
             mimeType: contentType.split(';')[0],
             data: base64,
-          }
+          },
         })
       } catch {
         logger.warn('ai.prompt.vision_download_fail', { urlPrefix: url.slice(0, 60) })
@@ -374,8 +424,8 @@ export async function analyzeMultipleImagesWithGemini(
       {
         text: `Article: "${articleTitle}"
 
-Describe this vehicle's unique exterior design features visible across these images: body color, accent lines, headlight/taillight design, wheel style, aerodynamic elements. 30-50 words in English. Focus only on visual appearance, not specs or performance.`
-      }
+Describe this vehicle's unique exterior design features visible across these images: body color, accent lines, headlight/taillight design, wheel style, aerodynamic elements. 30-50 words in English. Focus only on visual appearance, not specs or performance.`,
+      },
     ])
 
     const description = result.response.text().trim()
@@ -383,7 +433,6 @@ Describe this vehicle's unique exterior design features visible across these ima
       descriptionPrefix: description.slice(0, 80),
     })
     return description
-
   } catch (error) {
     logger.warn('ai.prompt.vision_analyze_fail', { error: getErrorMessage(error) })
     return null

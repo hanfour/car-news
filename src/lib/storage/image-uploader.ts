@@ -1,3 +1,4 @@
+import 'server-only'
 /**
  * 圖片上傳工具
  * 將遠端圖片下載並上傳到 Cloudflare R2
@@ -35,7 +36,9 @@ export async function uploadImageFromUrl(
 
     // 浮水印功能已停用
     if (addWatermark) {
-      logger.info('storage.image.watermark_skipped', { reason: 'no font support on Vercel serverless' })
+      logger.info('storage.image.watermark_skipped', {
+        reason: 'no font support on Vercel serverless',
+      })
     }
 
     // 2. 優化和轉換圖片為 WebP 格式
@@ -44,11 +47,11 @@ export async function uploadImageFromUrl(
     buffer = await sharp(buffer)
       .resize(1792, 1024, {
         fit: 'inside',
-        withoutEnlargement: true
+        withoutEnlargement: true,
       })
       .webp({
         quality: 85,
-        effort: 6
+        effort: 6,
       })
       .toBuffer()
 
@@ -56,18 +59,18 @@ export async function uploadImageFromUrl(
 
     // 3. 生成唯一文件名
     const hash = crypto.createHash('md5').update(buffer).digest('hex')
-    const finalFileName = fileName
-      ? `${fileName}.webp`
-      : `${Date.now()}-${hash.slice(0, 8)}.webp`
+    const finalFileName = fileName ? `${fileName}.webp` : `${Date.now()}-${hash.slice(0, 8)}.webp`
 
     // 4. 上傳到 R2
     logger.info('storage.image.upload_start', { fileName: finalFileName })
     const publicUrl = await uploadToR2(finalFileName, buffer, 'image/webp')
 
-    logger.info('storage.image.upload_success', { fileName: finalFileName, urlPreview: publicUrl.slice(0, 120) })
+    logger.info('storage.image.upload_success', {
+      fileName: finalFileName,
+      urlPreview: publicUrl.slice(0, 120),
+    })
 
     return publicUrl
-
   } catch (error) {
     logger.error('storage.image.upload_fail', error, { reason: getErrorMessage(error) })
     return null
@@ -86,7 +89,7 @@ export async function uploadMultipleImages(
     const uploadedUrl = await uploadImageFromUrl(url)
     results.push({
       original: url,
-      uploaded: uploadedUrl
+      uploaded: uploadedUrl,
     })
   }
 
@@ -103,9 +106,7 @@ export async function deleteOldImages(olderThanDays: number = 30): Promise<numbe
     const cutoffDate = new Date()
     cutoffDate.setDate(cutoffDate.getDate() - olderThanDays)
 
-    const toDelete = objects.filter(obj =>
-      obj.lastModified && obj.lastModified < cutoffDate
-    )
+    const toDelete = objects.filter((obj) => obj.lastModified && obj.lastModified < cutoffDate)
 
     if (toDelete.length === 0) {
       logger.info('storage.image.cleanup_none')
@@ -118,7 +119,6 @@ export async function deleteOldImages(olderThanDays: number = 30): Promise<numbe
 
     logger.info('storage.image.cleanup_done', { deleted: toDelete.length })
     return toDelete.length
-
   } catch (error) {
     logger.error('storage.image.cleanup_fail', error, { reason: getErrorMessage(error) })
     return 0

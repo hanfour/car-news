@@ -1,3 +1,4 @@
+import 'server-only'
 /**
  * Porsche Newsroom 爬蟲
  *
@@ -34,9 +35,7 @@ export class PorscheScraper extends BasePressroomScraper {
     $('a[href*="/en/20"]').each((_, el) => {
       const href = $(el).attr('href')
       if (href && this.isValidArticleUrl(href)) {
-        const fullUrl = href.startsWith('http')
-          ? href
-          : `${this.config.baseUrl}${href}`
+        const fullUrl = href.startsWith('http') ? href : `${this.config.baseUrl}${href}`
         urls.push(fullUrl)
       }
     })
@@ -61,9 +60,10 @@ export class PorscheScraper extends BasePressroomScraper {
     const $ = this.parseHtml(html)
 
     // 1. 提取標題
-    const title = $('h1').first().text().trim() ||
-                  $('meta[property="og:title"]').attr('content') ||
-                  $('title').text()
+    const title =
+      $('h1').first().text().trim() ||
+      $('meta[property="og:title"]').attr('content') ||
+      $('title').text()
 
     if (!title) {
       logger.warn('scraper.pressroom.no_title', { brand: 'Porsche', url })
@@ -100,7 +100,9 @@ export class PorscheScraper extends BasePressroomScraper {
       brand: 'Porsche',
       url,
       title: cleanText(title),
-      summary: cleanText($('meta[property="og:description"]').attr('content') || content.slice(0, 300)),
+      summary: cleanText(
+        $('meta[property="og:description"]').attr('content') || content.slice(0, 300)
+      ),
       content: cleanText(content),
       publishedAt,
       images,
@@ -116,12 +118,7 @@ export class PorscheScraper extends BasePressroomScraper {
    */
   private findDateText($: ReturnType<typeof cheerio.load>): string {
     // 嘗試多種選擇器
-    const selectors = [
-      '.date',
-      '.article-date',
-      'time',
-      '[datetime]',
-    ]
+    const selectors = ['.date', '.article-date', 'time', '[datetime]']
 
     for (const selector of selectors) {
       const text = $(selector).first().text().trim()
@@ -196,20 +193,22 @@ export class PorscheScraper extends BasePressroomScraper {
     }
 
     // 2. 從 flowcenter.de 連結提取
-    $('img[src*="flowcenter.de"], img[data-src*="flowcenter.de"]').each((_: number, el: Element) => {
-      const src = $(el).attr('src') || $(el).attr('data-src')
-      if (!src || seenUrls.has(src)) return
+    $('img[src*="flowcenter.de"], img[data-src*="flowcenter.de"]').each(
+      (_: number, el: Element) => {
+        const src = $(el).attr('src') || $(el).attr('data-src')
+        if (!src || seenUrls.has(src)) return
 
-      seenUrls.add(src)
-      const alt = $(el).attr('alt') || ''
+        seenUrls.add(src)
+        const alt = $(el).attr('alt') || ''
 
-      images.push({
-        url: src,
-        highResUrl: this.getHighResUrl(src),
-        caption: cleanText(alt),
-        credit: this.createImageCredit(),
-      })
-    })
+        images.push({
+          url: src,
+          highResUrl: this.getHighResUrl(src),
+          caption: cleanText(alt),
+          credit: this.createImageCredit(),
+        })
+      }
+    )
 
     // 3. 從 DAM 連結提取
     $('img[src*="/dam/"], img[data-src*="/dam/"]').each((_: number, el: Element) => {
@@ -219,9 +218,7 @@ export class PorscheScraper extends BasePressroomScraper {
       seenUrls.add(src)
       const alt = $(el).attr('alt') || ''
 
-      const fullUrl = src.startsWith('http')
-        ? src
-        : `${this.config.baseUrl}${src}`
+      const fullUrl = src.startsWith('http') ? src : `${this.config.baseUrl}${src}`
 
       images.push({
         url: fullUrl,
@@ -243,9 +240,7 @@ export class PorscheScraper extends BasePressroomScraper {
       seenUrls.add(src)
       const alt = $(el).attr('alt') || ''
 
-      const fullUrl = src.startsWith('http')
-        ? src
-        : `${this.config.baseUrl}${src}`
+      const fullUrl = src.startsWith('http') ? src : `${this.config.baseUrl}${src}`
 
       images.push({
         url: fullUrl,
@@ -267,9 +262,7 @@ export class PorscheScraper extends BasePressroomScraper {
 
     try {
       // 替換尺寸參數為更大的值
-      const highRes = url
-        .replace(/w=\d+/, 'w=2400')
-        .replace(/h=\d+/, 'h=1600')
+      const highRes = url.replace(/w=\d+/, 'w=2400').replace(/h=\d+/, 'h=1600')
 
       return highRes !== url ? highRes : undefined
     } catch {
@@ -286,18 +279,37 @@ export class PorscheScraper extends BasePressroomScraper {
     // Porsche 車款
     const porscheModels = [
       // 911 系列
-      '911', '911 GT3', '911 GT3 RS', '911 Turbo', '911 Turbo S', '911 Carrera', '911 Targa', '911 Dakar',
+      '911',
+      '911 GT3',
+      '911 GT3 RS',
+      '911 Turbo',
+      '911 Turbo S',
+      '911 Carrera',
+      '911 Targa',
+      '911 Dakar',
       // 718 系列
-      '718', '718 Cayman', '718 Boxster', '718 Cayman GT4', '718 Spyder',
+      '718',
+      '718 Cayman',
+      '718 Boxster',
+      '718 Cayman GT4',
+      '718 Spyder',
       // SUV
-      'Cayenne', 'Cayenne Turbo', 'Cayenne E-Hybrid',
-      'Macan', 'Macan Electric',
+      'Cayenne',
+      'Cayenne Turbo',
+      'Cayenne E-Hybrid',
+      'Macan',
+      'Macan Electric',
       // 電動車
-      'Taycan', 'Taycan Turbo', 'Taycan Cross Turismo',
+      'Taycan',
+      'Taycan Turbo',
+      'Taycan Cross Turismo',
       // 跑車
-      'Panamera', 'Panamera Turbo',
+      'Panamera',
+      'Panamera Turbo',
       // 經典/限量
-      'Carrera GT', '918 Spyder', 'Mission X',
+      'Carrera GT',
+      '918 Spyder',
+      'Mission X',
     ]
 
     for (const model of porscheModels) {

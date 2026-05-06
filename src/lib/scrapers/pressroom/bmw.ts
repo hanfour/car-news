@@ -1,3 +1,4 @@
+import 'server-only'
 /**
  * BMW Group Pressroom 爬蟲
  *
@@ -75,9 +76,10 @@ export class BMWScraper extends BasePressroomScraper {
     const articleId = idMatch ? idMatch[1] : null
 
     // 2. 提取標題
-    const title = $('h1').first().text().trim() ||
-                  $('meta[property="og:title"]').attr('content') ||
-                  $('title').text()
+    const title =
+      $('h1').first().text().trim() ||
+      $('meta[property="og:title"]').attr('content') ||
+      $('title').text()
 
     if (!title) {
       logger.warn('scraper.pressroom.no_title', { brand: 'BMW', url })
@@ -120,7 +122,9 @@ export class BMWScraper extends BasePressroomScraper {
       brand: this.determineBrand(title, content, tags),
       url,
       title: cleanText(title),
-      summary: cleanText($('meta[property="og:description"]').attr('content') || content.slice(0, 300)),
+      summary: cleanText(
+        $('meta[property="og:description"]').attr('content') || content.slice(0, 300)
+      ),
       content: cleanText(content),
       publishedAt,
       images,
@@ -146,12 +150,24 @@ export class BMWScraper extends BasePressroomScraper {
       }
 
       // 手動解析 BMW 格式
-      const match = dateStr.match(/(\w{3})\s+(\w{3})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})\s+\w+\s+(\d{4})/)
+      const match = dateStr.match(
+        /(\w{3})\s+(\w{3})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})\s+\w+\s+(\d{4})/
+      )
       if (match) {
         const [, , month, day, hour, min, sec, year] = match
         const months: Record<string, number> = {
-          'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
-          'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+          Jan: 0,
+          Feb: 1,
+          Mar: 2,
+          Apr: 3,
+          May: 4,
+          Jun: 5,
+          Jul: 6,
+          Aug: 7,
+          Sep: 8,
+          Oct: 9,
+          Nov: 10,
+          Dec: 11,
         }
         return new Date(
           parseInt(year),
@@ -172,7 +188,10 @@ export class BMWScraper extends BasePressroomScraper {
   /**
    * 提取文章中的圖片
    */
-  private extractImages($: ReturnType<typeof cheerio.load>, articleId: string | null): PressroomImage[] {
+  private extractImages(
+    $: ReturnType<typeof cheerio.load>,
+    articleId: string | null
+  ): PressroomImage[] {
     const images: PressroomImage[] = []
     const seenUrls = new Set<string>()
 
@@ -243,9 +262,7 @@ export class BMWScraper extends BasePressroomScraper {
 
     // mediapool 圖片格式：...-1200x800px.jpg
     // 嘗試替換為更大尺寸
-    const highRes = url
-      .replace(/\d+x\d+px/, '2400x1600px')
-      .replace(/\d+px/, '2400px')
+    const highRes = url.replace(/\d+x\d+px/, '2400x1600px').replace(/\d+px/, '2400px')
 
     return highRes !== url ? highRes : undefined
   }
@@ -274,12 +291,12 @@ export class BMWScraper extends BasePressroomScraper {
    */
   private determineCategory(tags: string[]): string | undefined {
     const categoryMap: Record<string, string> = {
-      'motorsport': 'Motorsport',
-      'corporate': 'Corporate',
-      'sustainability': 'Sustainability',
-      'technology': 'Technology',
-      'product': 'Product',
-      'design': 'Design',
+      motorsport: 'Motorsport',
+      corporate: 'Corporate',
+      sustainability: 'Sustainability',
+      technology: 'Technology',
+      product: 'Product',
+      design: 'Design',
     }
 
     for (const tag of tags) {
@@ -303,21 +320,50 @@ export class BMWScraper extends BasePressroomScraper {
     // BMW 車款
     const bmwModels = [
       // 轎車
-      '1 Series', '2 Series', '3 Series', '4 Series', '5 Series', '6 Series', '7 Series', '8 Series',
+      '1 Series',
+      '2 Series',
+      '3 Series',
+      '4 Series',
+      '5 Series',
+      '6 Series',
+      '7 Series',
+      '8 Series',
       // SUV/SAV
-      'X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X7', 'XM',
+      'X1',
+      'X2',
+      'X3',
+      'X4',
+      'X5',
+      'X6',
+      'X7',
+      'XM',
       // 電動車
-      'iX', 'iX1', 'iX2', 'iX3', 'i4', 'i5', 'i7', 'iX M60',
+      'iX',
+      'iX1',
+      'iX2',
+      'iX3',
+      'i4',
+      'i5',
+      'i7',
+      'iX M60',
       // M 系列
-      'M2', 'M3', 'M4', 'M5', 'M8', 'M135i', 'M235i', 'M340i', 'M440i', 'M550i', 'M760i',
+      'M2',
+      'M3',
+      'M4',
+      'M5',
+      'M8',
+      'M135i',
+      'M235i',
+      'M340i',
+      'M440i',
+      'M550i',
+      'M760i',
       // Z 系列
       'Z4',
     ]
 
     // MINI 車款
-    const miniModels = [
-      'Cooper', 'Countryman', 'Clubman', 'Paceman', 'John Cooper Works', 'JCW',
-    ]
+    const miniModels = ['Cooper', 'Countryman', 'Clubman', 'Paceman', 'John Cooper Works', 'JCW']
 
     const allModels = [...bmwModels, ...miniModels]
 

@@ -1,3 +1,4 @@
+import 'server-only'
 import axios from 'axios'
 import * as cheerio from 'cheerio'
 import { logger } from '@/lib/logger'
@@ -5,8 +6,9 @@ import { logger } from '@/lib/logger'
 const axiosInstance = axios.create({
   timeout: 15000,
   headers: {
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-  }
+    'User-Agent':
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  },
 })
 
 export async function fetchWebpage(url: string): Promise<string> {
@@ -37,9 +39,10 @@ export function extractTextFromHtml(
       title = $(selector.title).first().text().trim()
     } else {
       // 默认策略：查找h1或meta title
-      title = $('h1').first().text().trim() ||
-              $('meta[property="og:title"]').attr('content') ||
-              $('title').text().trim()
+      title =
+        $('h1').first().text().trim() ||
+        $('meta[property="og:title"]').attr('content') ||
+        $('title').text().trim()
     }
 
     if (selector?.content) {
@@ -55,7 +58,10 @@ export function extractTextFromHtml(
         content = main.text()
       } else {
         // 最后尝试找所有p标签
-        content = $('p').map((_, el) => $(el).text()).get().join('\n')
+        content = $('p')
+          .map((_, el) => $(el).text())
+          .get()
+          .join('\n')
       }
     }
 
@@ -87,7 +93,7 @@ export function extractTextFromHtml(
     return {
       title,
       content: content.slice(0, 5000),
-      imageUrl: imageUrl || undefined
+      imageUrl: imageUrl || undefined,
     }
   } catch (error) {
     logger.error('scraper.fetch.extract_fail', error)

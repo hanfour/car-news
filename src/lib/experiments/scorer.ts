@@ -1,3 +1,4 @@
+import 'server-only'
 /**
  * Gemini Vision 評分器
  * 對生成的圖片進行 6 維度加權評分
@@ -122,8 +123,8 @@ Be strict but fair. 7.0+ is acceptable, 8.0+ is excellent. Common AI issues that
       } else {
         // 清理 JSON 字串中的問題
         const fixedJson = jsonMatch[0]
-          .replace(/,\s*\}/g, '}')  // 尾隨逗號
-          .replace(/[\x00-\x1F]/g, ' ')  // 控制字元
+          .replace(/,\s*\}/g, '}') // 尾隨逗號
+          .replace(/[\x00-\x1F]/g, ' ') // 控制字元
         parsed = JSON.parse(fixedJson)
       }
     }
