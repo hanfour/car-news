@@ -1,18 +1,33 @@
 /**
  * @jest-environment node
  */
-import { makeGenerator, generateWithFallback, makeModerator, moderateContent } from '../provider'
-import type { ArticleGenerator, AIProvider, ContentModerator, ModerationResult } from '../provider'
+import {
+  makeGenerator,
+  generateWithFallback,
+  makeModerator,
+  moderateContent,
+  makeTextGenerator,
+  generateText,
+} from '../provider'
+import type {
+  ArticleGenerator,
+  AIProvider,
+  ContentModerator,
+  ModerationResult,
+  TextGenerator,
+} from '../provider'
 
 // Mock underlying provider implementations, because we only want to exercise
 // the abstraction layer (factory + fallback) — not the real AI SDKs.
 jest.mock('../claude', () => ({
   generateArticleWithClaude: jest.fn(),
   moderateComment: jest.fn(),
+  generateText: jest.fn(),
 }))
 jest.mock('../gemini', () => ({
   generateArticleWithGemini: jest.fn(),
   moderateCommentWithGemini: jest.fn(),
+  generateTextWithGemini: jest.fn(),
 }))
 
 describe('makeGenerator', () => {
@@ -139,5 +154,73 @@ describe('moderateContent', () => {
     const fallback = fakeModerator('claude', 'fail')
     const res = await moderateContent('test', { primary, fallback })
     expect(res).toEqual({ passed: true, confidence: 0, flags: [] })
+  })
+})
+
+describe('makeTextGenerator', () => {
+  it('returns a Claude text generator when provider=claude', () => {
+    const t = makeTextGenerator('claude')
+    expect(t.provider).toBe('claude')
+  })
+
+  it('returns a Gemini text generator when provider=gemini', () => {
+    const t = makeTextGenerator('gemini')
+    expect(t.provider).toBe('gemini')
+  })
+})
+
+describe('generateText', () => {
+  function fakeTextGenerator(
+    provider: AIProvider,
+    behavior: 'ok' | 'fail',
+    output = 'generated text'
+  ): TextGenerator {
+    return {
+      provider,
+      generate: jest.fn().mockImplementation(() => {
+        if (behavior === 'fail') return Promise.reject(new Error(`${provider} text failure`))
+        return Promise.resolve(output)
+      }),
+    }
+  }
+
+  it('returns primary text when primary succeeds', async () => {
+    const primary = fakeTextGenerator('gemini', 'ok', 'gemini result')
+    const fallback = fakeTextGenerator('claude', 'ok', 'claude result')
+    const res = await generateText('prompt', { primary, fallback })
+    expect(res).toBe('gemini result')
+    expect(primary.generate).toHaveBeenCalledTimes(1)
+    expect(fallback.generate).not.toHaveBeenCalled()
+  })
+
+  it('falls back to claude when gemini fails', async () => {
+    const primary = fakeTextGenerator('gemini', 'fail')
+    const fallback = fakeTextGenerator('claude', 'ok', 'claude rescue')
+    const res = await generateText('prompt', { primary, fallback })
+    expect(res).toBe('claude rescue')
+    expect(fallback.generate).toHaveBeenCalledTimes(1)
+  })
+
+  it('throws AggregateError when both providers fail', async () => {
+    const primary = fakeTextGenerator('gemini', 'fail')
+    const fallback = fakeTextGenerator('claude', 'fail')
+    let thrown: unknown
+    try {
+      await generateText('prompt', { primary, fallback })
+    } catch (e) {
+      thrown = e
+    }
+    expect(thrown).toBeInstanceOf(AggregateError)
+    const agg = thrown as AggregateError
+    expect(agg.errors).toHaveLength(2)
+    expect((agg.errors[0] as Error).message).toBe('gemini text failure')
+    expect((agg.errors[1] as Error).message).toBe('claude text failure')
+  })
+
+  it('passes maxTokens and temperature to the underlying generator', async () => {
+    const primary = fakeTextGenerator('gemini', 'ok')
+    const fallback = fakeTextGenerator('claude', 'ok')
+    await generateText('prompt', { primary, fallback, maxTokens: 500, temperature: 0.3 })
+    expect(primary.generate).toHaveBeenCalledWith('prompt', { maxTokens: 500, temperature: 0.3 })
   })
 })

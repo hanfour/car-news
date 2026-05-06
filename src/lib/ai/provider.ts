@@ -2,10 +2,15 @@ import 'server-only'
 import {
   generateArticleWithClaude,
   moderateComment as moderateWithClaude,
+  generateText as generateTextWithClaude,
   type GenerateArticleInput,
   type GenerateArticleOutput,
 } from './claude'
-import { generateArticleWithGemini, moderateCommentWithGemini } from './gemini'
+import {
+  generateArticleWithGemini,
+  moderateCommentWithGemini,
+  generateTextWithGemini,
+} from './gemini'
 import { logger } from '@/lib/logger'
 import { getErrorMessage } from '@/lib/utils/error'
 
@@ -180,6 +185,99 @@ export async function moderateContent(
         fallbackError: getErrorMessage(fallbackError),
       })
       return SAFE_DEFAULT_MODERATION
+    }
+  }
+}
+
+// ============================================================================
+// 通用文字生成抽象 — 同款 primary/fallback pattern
+// 用於社群摘要等不需要結構化輸出的短文字場景
+// ============================================================================
+
+export interface TextGenerationOptions {
+  maxTokens?: number
+  temperature?: number
+}
+
+export interface TextGenerator {
+  readonly provider: AIProvider
+  generate(prompt: string, options?: TextGenerationOptions): Promise<string>
+}
+
+class ClaudeTextGenerator implements TextGenerator {
+  readonly provider: AIProvider = 'claude'
+  async generate(prompt: string, options?: TextGenerationOptions): Promise<string> {
+    return generateTextWithClaude(prompt, options)
+  }
+}
+
+class GeminiTextGenerator implements TextGenerator {
+  readonly provider: AIProvider = 'gemini'
+  private readonly model: GeminiModel
+  constructor(model: GeminiModel = 'flash') {
+    this.model = model
+  }
+  async generate(prompt: string, options?: TextGenerationOptions): Promise<string> {
+    return generateTextWithGemini(prompt, { ...options, model: this.model })
+  }
+}
+
+export function makeTextGenerator(provider: AIProvider, geminiModel?: GeminiModel): TextGenerator {
+  return provider === 'claude' ? new ClaudeTextGenerator() : new GeminiTextGenerator(geminiModel)
+}
+
+export function getConfiguredTextGenerators(): {
+  primary: TextGenerator
+  fallback: TextGenerator
+} {
+  const primaryProvider = (process.env.AI_PROVIDER as AIProvider) || 'gemini'
+  const geminiModel = (process.env.GEMINI_MODEL as GeminiModel) || 'flash'
+  const primary = makeTextGenerator(primaryProvider, geminiModel)
+  const fallbackProvider: AIProvider = primaryProvider === 'claude' ? 'gemini' : 'claude'
+  const fallback = makeTextGenerator(fallbackProvider, geminiModel)
+  return { primary, fallback }
+}
+
+/**
+ * 通用文字生成（Gemini Flash 為主、Claude 為備援）。
+ * - 主 provider 失敗 → 切到 fallback
+ * - 兩端都失敗 → throw AggregateError（與 generateWithFallback 一致）
+ *
+ * 適用：社群摘要、簡短改寫等不需 JSON 結構的短文字輸出。
+ * 呼叫端應自備 try/catch 與降級方案。
+ */
+export async function generateText(
+  prompt: string,
+  options?: TextGenerationOptions & {
+    primary?: TextGenerator
+    fallback?: TextGenerator
+  }
+): Promise<string> {
+  const { primary, fallback } =
+    options?.primary && options.fallback
+      ? { primary: options.primary, fallback: options.fallback }
+      : getConfiguredTextGenerators()
+
+  const genOptions: TextGenerationOptions = {
+    maxTokens: options?.maxTokens,
+    temperature: options?.temperature,
+  }
+
+  try {
+    return await primary.generate(prompt, genOptions)
+  } catch (primaryError) {
+    logger.warn('ai.text.primary_fail', {
+      provider: primary.provider,
+      fallback: fallback.provider,
+      error: getErrorMessage(primaryError),
+    })
+    try {
+      return await fallback.generate(prompt, genOptions)
+    } catch (fallbackError) {
+      throw new AggregateError(
+        [primaryError, fallbackError],
+        `Both AI text providers failed: ${primary.provider} then ${fallback.provider}`
+      )
     }
   }
 }

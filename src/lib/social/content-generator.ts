@@ -3,7 +3,7 @@
  * 用於為文章生成社群媒體貼文內容（100-200 字摘要）
  */
 
-import { generateText } from '@/lib/ai/claude'
+import { generateText } from '@/lib/ai/provider'
 import { logger } from '@/lib/logger'
 
 /**
@@ -25,7 +25,7 @@ export async function generateSocialSummary(
   const platformGuidelines = {
     facebook: '適合 Facebook 粉絲專頁的正式專業語氣',
     instagram: '適合 Instagram 的簡潔視覺化語氣，可以使用適當的表情符號',
-    threads: '適合 Threads 的輕鬆對話語氣'
+    threads: '適合 Threads 的輕鬆對話語氣',
   }
 
   const prompt = `你是汽車新聞社群媒體編輯。請為以下文章撰寫一則社群媒體貼文。
@@ -50,7 +50,7 @@ ${articleContent.substring(0, 1500)}
   try {
     const summary = await generateText(prompt, {
       maxTokens: 300, // 約 200 字中文
-      temperature: 0.7 // 適度創意
+      temperature: 0.7, // 適度創意
     })
 
     // 確保長度在 100-200 字之間
@@ -110,7 +110,7 @@ export async function generateMultiPlatformContent(
   const [facebook, instagram, threads] = await Promise.all([
     generateSocialSummary(articleTitle, articleContent, articleUrl, 'facebook'),
     generateSocialSummary(articleTitle, articleContent, articleUrl, 'instagram'),
-    generateSocialSummary(articleTitle, articleContent, articleUrl, 'threads')
+    generateSocialSummary(articleTitle, articleContent, articleUrl, 'threads'),
   ])
 
   return { facebook, instagram, threads }
