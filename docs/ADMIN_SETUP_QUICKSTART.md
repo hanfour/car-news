@@ -1,5 +1,8 @@
 # Admin 管理後台快速設置
 
+> ⚠️ 本文件中若仍提及 `ADMIN_API_KEY`，**請忽略** — 該靜態 key 已移除，
+> admin 操作只走 web login (`/admin`) + admin_session cookie。
+
 ## ✅ 已完成
 
 - [x] Email/Password 登入頁面 (`/admin/login`)
@@ -65,16 +68,19 @@ UPDATE profiles SET is_admin = TRUE WHERE email = 'your-email@example.com';
 ## 🔧 管理操作
 
 ### 添加更多 Admin
+
 ```sql
 UPDATE profiles SET is_admin = TRUE WHERE email = 'new-admin@example.com';
 ```
 
 ### 撤銷 Admin 權限
+
 ```sql
 UPDATE profiles SET is_admin = FALSE WHERE email = 'remove@example.com';
 ```
 
 ### 查看所有 Admin
+
 ```sql
 SELECT id, email, is_admin, created_at
 FROM profiles
@@ -89,12 +95,14 @@ WHERE is_admin = TRUE;
 ## ⚠️ 安全提醒
 
 ✅ **已實現**:
+
 - HttpOnly Cookie (防 XSS)
 - SameSite=Lax (防 CSRF)
 - 每次請求驗證 Admin 身份
 - 雙重認證支持
 
 🔒 **生產環境檢查**:
+
 - [ ] 確保 `ADMIN_API_KEY` 至少 20 字符
 - [ ] 檢查 Supabase RLS 策略已啟用
 - [ ] 驗證 HTTPS 已啟用 (production)

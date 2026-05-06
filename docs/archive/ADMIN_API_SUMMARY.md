@@ -1,4 +1,10 @@
-# Admin API MVP - Implementation Complete! 🎉
+# Admin API MVP - Implementation Complete! 🎉 — 已歸檔
+
+> ⚠️ **本文件已過時**。原 ADMIN_API_KEY Bearer token 認證已移除，
+> 改走 web login (`/admin`) + admin_session cookie。端點本身仍存在
+> 並可使用，但需用 cookie 認證取代原文中的 Bearer token 範例。
+
+---
 
 ## What's Been Built
 

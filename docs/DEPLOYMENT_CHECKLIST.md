@@ -4,11 +4,15 @@
 **最後更新**: 2025-11-13
 **狀態**: ✅ 準備就緒
 
+> ⚠️ 本檢查表中的 `ADMIN_API_KEY` 設定步驟**已過時**。靜態 admin key 已移除，
+> 請略過該變數；admin 操作改走 web login (`/admin`)。
+
 ---
 
 ## 📋 部署前必須完成的任務
 
 ### ✅ 1. 代碼質量 (已完成)
+
 - [x] 所有 TypeScript 錯誤已修復
 - [x] 構建成功通過 (`npm run build`)
 - [x] 所有安全漏洞已修復 (詳見 `SECURITY_AUDIT_REPORT.md`)
@@ -31,6 +35,7 @@ SUPABASE_SERVICE_ROLE_KEY=<your_supabase_service_key>
 ```
 
 **生成安全的 ADMIN_API_KEY**:
+
 ```bash
 openssl rand -hex 32
 # 輸出示例: 7f3c8b9a2e1d4f6c8a9b3e5d7f1c4a6b8e9f2d5c7a3b1e4f6c8d9a2b5e7f1c3a
@@ -53,6 +58,7 @@ ls -la supabase/migrations/
 ```
 
 **執行遷移** (在 Supabase Dashboard):
+
 1. 登入 Supabase Dashboard
 2. 進入 SQL Editor
 3. 依序執行上述 SQL 文件
@@ -115,6 +121,7 @@ vercel --prod
 ### 3. 設置環境變量
 
 在 Vercel Dashboard:
+
 1. 進入項目 → Settings → Environment Variables
 2. 添加 `ADMIN_API_KEY`
 3. 值: 使用 `openssl rand -hex 32` 生成的密鑰
@@ -183,6 +190,7 @@ curl -H "Authorization: Bearer admin" \
 ### 1. Vercel Analytics
 
 啟用 Vercel Analytics 監控:
+
 - Real User Monitoring (RUM)
 - Core Web Vitals
 - Error Tracking
@@ -190,6 +198,7 @@ curl -H "Authorization: Bearer admin" \
 ### 2. Supabase Logs
 
 監控以下日誌:
+
 ```sql
 -- 查看最近的錯誤
 SELECT * FROM logs
@@ -209,6 +218,7 @@ AND timestamp > NOW() - INTERVAL '1 hour';
 ### 3. 告警設置
 
 設置以下告警:
+
 - API 錯誤率 > 5%
 - 響應時間 > 2s
 - 數據庫 CPU > 80%
@@ -265,6 +275,7 @@ DROP FUNCTION IF EXISTS search_articles;
 ### 常見問題排查
 
 **問題 1: 應用無法啟動**
+
 ```bash
 # 檢查: ADMIN_API_KEY 是否設置
 echo $ADMIN_API_KEY
@@ -274,6 +285,7 @@ export ADMIN_API_KEY=$(openssl rand -hex 32)
 ```
 
 **問題 2: 搜索不返回結果**
+
 ```bash
 # 檢查: 搜索函數是否存在
 SELECT routine_name
@@ -285,6 +297,7 @@ psql -f supabase/migrations/20251112_search_function.sql
 ```
 
 **問題 3: XSS 攻擊未被阻止**
+
 ```bash
 # 檢查: DOMPurify 是否安裝
 npm list dompurify

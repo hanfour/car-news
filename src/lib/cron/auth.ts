@@ -26,11 +26,12 @@ export async function verifyCronAuth(request: NextRequest): Promise<boolean> {
 
 /**
  * Verify a bearer token against a given env-var name using timing-safe comparison.
- * For admin / migrate endpoints that share the CRON_SECRET or ADMIN_API_KEY pattern.
+ * 目前只用於 CRON_SECRET 變體（migrate routes、手動觸發 cron）。
+ * 歷史上也支援 ADMIN_API_KEY，後者已隨「移除靜態 admin key」PR 移除。
  */
 export async function verifyBearerSecret(
   request: NextRequest,
-  envVarName: 'CRON_SECRET' | 'ADMIN_API_KEY'
+  envVarName: 'CRON_SECRET'
 ): Promise<boolean> {
   const secret = process.env[envVarName]?.trim()
   if (!secret) return false

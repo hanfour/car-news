@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { verifySessionToken } from '@/lib/admin/session'
-import { secureCompare } from '@/lib/utils/secure-compare'
 
 /**
  * Debug API 訪問控制
@@ -24,10 +23,10 @@ export async function verifyDebugAccess(request: NextRequest): Promise<{
       response: NextResponse.json(
         {
           error: 'Debug API disabled in production',
-          hint: 'Use admin authentication or run in development mode'
+          hint: 'Login to /admin to obtain a session cookie before calling debug routes',
         },
         { status: 403 }
-      )
+      ),
     }
   }
 
@@ -35,40 +34,24 @@ export async function verifyDebugAccess(request: NextRequest): Promise<{
 }
 
 /**
- * Unified admin authentication
- * Supports both Bearer token and session cookie
+ * Admin 認證 — 僅接受 web login 取得的 admin_session cookie。
+ *
+ * 歷史：原本還支援 Bearer ADMIN_API_KEY 給 Postman / curl 用，
+ * 但靜態 long-lived secret 容易意外洩漏（曾在 git history 暴露 6 個月，
+ * 詳見 PR #31 與其後的輪換 PR），因此整條路徑移除。
+ *
+ * 程式化呼叫請改走 web login → 複製 admin_session cookie → 帶入 request。
  */
 export async function verifyAdminAuth(request: NextRequest): Promise<boolean> {
-  // Method 1: Bearer token (for API calls)
-  const authHeader = request.headers.get('authorization')
-  const ADMIN_API_KEY = process.env.ADMIN_API_KEY
-
-  if (ADMIN_API_KEY && authHeader?.startsWith('Bearer ')) {
-    const providedKey = authHeader.slice(7)
-    if (await secureCompare(providedKey, ADMIN_API_KEY)) {
-      return true
-    }
-  }
-
-  // Method 2: Cookie session (for Web UI)
   const sessionCookie = request.cookies.get('admin_session')
-  if (sessionCookie?.value) {
-    // Verify session token and get userId
-    const userId = await verifySessionToken(sessionCookie.value)
-    if (!userId) {
-      return false
-    }
+  if (!sessionCookie?.value) return false
 
-    // Verify this userId is actually an admin
-    const supabase = createServiceClient()
-    const { data } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', userId)
-      .single()
+  const userId = await verifySessionToken(sessionCookie.value)
+  if (!userId) return false
 
-    return data?.is_admin === true
-  }
+  // Verify this userId is actually an admin
+  const supabase = createServiceClient()
+  const { data } = await supabase.from('profiles').select('is_admin').eq('id', userId).single()
 
-  return false
+  return data?.is_admin === true
 }

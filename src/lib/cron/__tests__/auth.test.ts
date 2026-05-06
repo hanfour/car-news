@@ -69,16 +69,16 @@ describe('verifyCronAuth', () => {
 })
 
 describe('verifyBearerSecret', () => {
-  it('accepts Bearer matching named env var', async () => {
-    process.env.ADMIN_API_KEY = 'admin-key'
-    const req = mockRequest({ authorization: 'Bearer admin-key' })
-    expect(await verifyBearerSecret(req, 'ADMIN_API_KEY')).toBe(true)
+  it('accepts Bearer matching CRON_SECRET', async () => {
+    process.env.CRON_SECRET = 'cron-secret-value'
+    const req = mockRequest({ authorization: 'Bearer cron-secret-value' })
+    expect(await verifyBearerSecret(req, 'CRON_SECRET')).toBe(true)
   })
 
-  it('rejects mismatched Bearer for named env var', async () => {
-    process.env.ADMIN_API_KEY = 'admin-key'
+  it('rejects mismatched Bearer for CRON_SECRET', async () => {
+    process.env.CRON_SECRET = 'cron-secret-value'
     const req = mockRequest({ authorization: 'Bearer wrong' })
-    expect(await verifyBearerSecret(req, 'ADMIN_API_KEY')).toBe(false)
+    expect(await verifyBearerSecret(req, 'CRON_SECRET')).toBe(false)
   })
 
   it('rejects when env var is absent', async () => {

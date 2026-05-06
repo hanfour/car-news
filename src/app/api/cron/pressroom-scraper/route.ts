@@ -9,12 +9,13 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { scrapeAllPressrooms, getSupportedBrands } from '@/lib/scrapers/pressroom'
-import { verifyCronAuth, verifyBearerSecret, unauthorized } from '@/lib/cron/auth'
+import { verifyCronAuth, unauthorized } from '@/lib/cron/auth'
+import { verifyAdminAuth } from '@/lib/admin/auth'
 import { logger } from '@/lib/logger'
 
 // Vercel Cron 需要的 config
 export const runtime = 'nodejs'
-export const maxDuration = 300  // 5 分鐘超時
+export const maxDuration = 300 // 5 分鐘超時
 
 /**
  * GET /api/cron/pressroom-scraper
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
       new: result.stats.new,
       skipped: result.stats.skipped,
       failed: result.stats.failed,
-      errors: result.errors.slice(0, 3),  // 只返回前 3 個錯誤
+      errors: result.errors.slice(0, 3), // 只返回前 3 個錯誤
     }))
 
     return NextResponse.json({
@@ -67,27 +68,28 @@ export async function GET(request: NextRequest) {
       totalErrors,
       results: summary,
     })
-
   } catch (error) {
     const duration = ((Date.now() - startTime) / 1000).toFixed(1)
     logger.error('cron.pressroom.fatal', error, { duration: `${duration}s` })
 
-    return NextResponse.json({
-      success: false,
-      duration: `${duration}s`,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        duration: `${duration}s`,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }
 
 /**
  * POST /api/cron/pressroom-scraper
  *
- * 手動觸發爬蟲（需要 Admin 驗證）
+ * 手動觸發爬蟲（需要 admin session cookie，先到 /admin 登入）
  */
 export async function POST(request: NextRequest) {
-  // 檢查 Admin API Key（timing-safe）
-  if (!(await verifyBearerSecret(request, 'ADMIN_API_KEY'))) {
+  if (!(await verifyAdminAuth(request))) {
     return unauthorized()
   }
 

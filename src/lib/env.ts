@@ -19,7 +19,6 @@ interface RequiredEnvVars {
   OPENAI_API_KEY: string
 
   // Admin Security
-  ADMIN_API_KEY: string
   CRON_SECRET: string
 
   // App Config
@@ -39,8 +38,8 @@ function validateEnvVar(name: keyof RequiredEnvVars, value: string | undefined):
   if (!value || value.trim() === '') {
     throw new Error(
       `❌ Environment variable ${name} is not set.\n` +
-      `Please add it to your .env.local file.\n` +
-      `See .env.example for reference.`
+        `Please add it to your .env.local file.\n` +
+        `See .env.example for reference.`
     )
   }
 
@@ -51,7 +50,7 @@ function validateEnvVar(name: keyof RequiredEnvVars, value: string | undefined):
       if (lowerValue.includes(insecure)) {
         throw new Error(
           `❌ Environment variable ${name} contains insecure default value: "${insecure}".\n` +
-          `Please set a secure random value.`
+            `Please set a secure random value.`
         )
       }
     }
@@ -60,7 +59,7 @@ function validateEnvVar(name: keyof RequiredEnvVars, value: string | undefined):
     if (value.length < 20) {
       throw new Error(
         `❌ Environment variable ${name} is too short (${value.length} characters).\n` +
-        `Security keys should be at least 20 characters long.`
+          `Security keys should be at least 20 characters long.`
       )
     }
   }
@@ -76,20 +75,31 @@ export function validateEnv(): RequiredEnvVars {
   try {
     const env: RequiredEnvVars = {
       // Supabase
-      NEXT_PUBLIC_SUPABASE_URL: validateEnvVar('NEXT_PUBLIC_SUPABASE_URL', process.env.NEXT_PUBLIC_SUPABASE_URL),
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: validateEnvVar('NEXT_PUBLIC_SUPABASE_ANON_KEY', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
-      SUPABASE_SERVICE_ROLE_KEY: validateEnvVar('SUPABASE_SERVICE_ROLE_KEY', process.env.SUPABASE_SERVICE_ROLE_KEY),
+      NEXT_PUBLIC_SUPABASE_URL: validateEnvVar(
+        'NEXT_PUBLIC_SUPABASE_URL',
+        process.env.NEXT_PUBLIC_SUPABASE_URL
+      ),
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: validateEnvVar(
+        'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      ),
+      SUPABASE_SERVICE_ROLE_KEY: validateEnvVar(
+        'SUPABASE_SERVICE_ROLE_KEY',
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      ),
 
       // AI APIs
       ANTHROPIC_API_KEY: validateEnvVar('ANTHROPIC_API_KEY', process.env.ANTHROPIC_API_KEY),
       OPENAI_API_KEY: validateEnvVar('OPENAI_API_KEY', process.env.OPENAI_API_KEY),
 
       // Admin Security
-      ADMIN_API_KEY: validateEnvVar('ADMIN_API_KEY', process.env.ADMIN_API_KEY),
       CRON_SECRET: validateEnvVar('CRON_SECRET', process.env.CRON_SECRET),
 
       // App Config
-      NEXT_PUBLIC_BASE_URL: validateEnvVar('NEXT_PUBLIC_BASE_URL', process.env.NEXT_PUBLIC_BASE_URL),
+      NEXT_PUBLIC_BASE_URL: validateEnvVar(
+        'NEXT_PUBLIC_BASE_URL',
+        process.env.NEXT_PUBLIC_BASE_URL
+      ),
     }
 
     logger.info('env.validate_success')

@@ -1,5 +1,9 @@
 # Deployment Guide - Admin API MVP
 
+> ⚠️ **本文件部分過時**：原本提到的 `ADMIN_API_KEY` 環境變數已隨「移除靜態
+> admin key」PR 移除。Admin 操作改走 web login (`/admin`)，由 admin_session
+> HttpOnly cookie 認證；環境變數設定請忽略 ADMIN_API_KEY 相關章節。
+
 ## ⚠️ REQUIRED: Database Migration
 
 The Admin API requires a new `human_rating` column in the database. This migration **MUST** be applied before using the Admin API.
