@@ -5,7 +5,8 @@ import { generateArticle, decidePublish } from '@/lib/generator'
 import { generateShortId } from '@/lib/utils/short-id'
 import { groupArticlesByBrand } from '@/lib/utils/brand-extractor'
 import { generateAndSaveCoverImage } from '@/lib/ai/image-generation'
-import { downloadAndStoreImage, downloadAndStoreImages } from '@/lib/storage/image-downloader'
+import { pickBestCoverImage } from '@/lib/ai/cover-image-picker'
+import { downloadAndStoreImages } from '@/lib/storage/image-downloader'
 import { generateEmbedding } from '@/lib/ai/embeddings'
 import { RawArticle } from '@/types/database'
 import { getErrorMessage } from '@/lib/utils/error'
@@ -13,9 +14,12 @@ import {
   generateTopicHash,
   checkTopicLock,
   createTopicLock,
-  markRawArticlesAsUsed
+  markRawArticlesAsUsed,
 } from '@/lib/utils/deduplication'
-import { comprehensiveDuplicateCheck, checkBrandFrequency } from '@/lib/utils/advanced-deduplication'
+import {
+  comprehensiveDuplicateCheck,
+  checkBrandFrequency,
+} from '@/lib/utils/advanced-deduplication'
 import { collectByRoundRobin, sortBrandsByPriority } from '@/lib/generator/round-robin'
 import { createSocialPostsForArticle } from '@/lib/social/auto-publisher'
 import { verifyCronAuth, unauthorized } from '@/lib/cron/auth'
@@ -43,7 +47,7 @@ async function handleCronJob(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: 'Not enough articles to cluster',
-        count: rawCount
+        count: rawCount,
       })
     }
 
@@ -53,7 +57,7 @@ async function handleCronJob(request: NextRequest) {
         message: 'Not enough car articles after filtering',
         total: rawCount,
         filtered: filteredCount,
-        remaining: carArticles.length
+        remaining: carArticles.length,
       })
     }
 
@@ -70,7 +74,10 @@ async function handleCronJob(request: NextRequest) {
     })
 
     // 2.5 品牌優先級排序（PRIORITY_BRANDS 定義於 steps/config）
-    const sortedBrandList = sortBrandsByPriority(brandGroups, PRIORITY_BRANDS as unknown as string[])
+    const sortedBrandList = sortBrandsByPriority(
+      brandGroups,
+      PRIORITY_BRANDS as unknown as string[]
+    )
 
     logger.info('cron.generator.brand_priority_order', {
       top: sortedBrandList.slice(0, 10).map(({ brand, articles }) => ({
@@ -112,7 +119,7 @@ async function handleCronJob(request: NextRequest) {
           articles: [article],
           centroid: centroid as number[] | null,
           size: 1,
-          similarity: 1.0
+          similarity: 1.0,
         })
       } else if (brandArticles.length === 2) {
         brandClusters = await clusterArticles(brandArticles as RawArticle[], 2, 0.6)
@@ -130,7 +137,7 @@ async function handleCronJob(request: NextRequest) {
           articles: brandArticles as RawArticle[],
           centroid: centroid as number[] | null,
           size: brandArticles.length,
-          similarity: 0.5
+          similarity: 0.5,
         })
       }
 
@@ -232,7 +239,7 @@ async function handleCronJob(request: NextRequest) {
         const duplicateResult = await comprehensiveDuplicateCheck({
           title: generated.title_zh,
           embedding: newContentEmbedding,
-          brand: brand === 'Other' ? 'Unknown' : brand
+          brand: brand === 'Other' ? 'Unknown' : brand,
         })
 
         if (duplicateResult.isDuplicate) {
@@ -255,7 +262,7 @@ async function handleCronJob(request: NextRequest) {
           caption?: string
           sourceType?: string
           isOfficial?: boolean
-        }>  = []
+        }> = []
         for (const article of cluster.articles) {
           if (article.image_url) {
             const isOfficial = (article as { source_type?: string }).source_type === 'official'
@@ -273,7 +280,11 @@ async function handleCronJob(request: NextRequest) {
               for (const img of rawSourceImages) {
                 const imgUrl = img.highResUrl || img.url
                 // 避免重複加入已有的 image_url 或已收集的圖片
-                if (imgUrl && imgUrl !== article.image_url && !sourceImages.some(s => s.url === imgUrl)) {
+                if (
+                  imgUrl &&
+                  imgUrl !== article.image_url &&
+                  !sourceImages.some((s) => s.url === imgUrl)
+                ) {
                   sourceImages.push({
                     url: imgUrl,
                     credit: img.credit || article.image_credit || 'Unknown',
@@ -295,7 +306,7 @@ async function handleCronJob(request: NextRequest) {
         })
 
         // 檢查是否有官方圖片
-        const hasOfficialImage = sourceImages.some(img => img.isOfficial)
+        const hasOfficialImage = sourceImages.some((img) => img.isOfficial)
         if (hasOfficialImage) {
           logger.info('cron.generator.official_image_found', { brand })
         }
@@ -314,64 +325,50 @@ async function handleCronJob(request: NextRequest) {
         })
 
         // 3.4.2 決定封面圖片來源
+        //
+        // 流程：
+        //  1. 對 storedImages 全部跑 Gemini Vision scoring → 挑 composite >= 7 的最高分
+        //  2. 沒合格者（或全部評分失敗）→ AI Flux 生成
+        //
+        // 原本的「拿第一張 image_url」會把廣告 banner / logo 配給文章。
         let coverImage: string | undefined = undefined
         let imageCredit: string | undefined = undefined
 
-        // 優先順序：1. 來源文章的coverImage  2. 其他已下載的來源圖片  3. AI 生成
-        if (generated.coverImage) {
-          // 檢查 coverImage 是否來自來源文章
-          const matchingSource = sourceImages.find(img => {
-            if (img.url === generated.coverImage) return true
-            try {
-              const sourceHost = new URL(img.url).hostname
-              return generated.coverImage?.includes(sourceHost)
-            } catch {
-              return false
-            }
+        const enableScoring = process.env.ENABLE_COVER_IMAGE_SCORING !== 'false'
+
+        if (enableScoring && storedImages.length > 0) {
+          logger.info('cron.generator.cover_scoring_start', {
+            brand,
+            candidateCount: storedImages.length,
           })
-
-          const credit = matchingSource
-            ? matchingSource.credit
-            : (generated.imageCredit || 'Unknown')
-
-          logger.info('cron.generator.cover_download_start', { brand, credit })
-          const storedCover = await downloadAndStoreImage(
-            generated.coverImage,
-            shortId,
-            credit
-          )
-          if (storedCover) {
-            coverImage = storedCover.url
-            imageCredit = storedCover.credit
-            logger.info('cron.generator.cover_stored', {
+          const best = await pickBestCoverImage(storedImages, generated.title_zh)
+          if (best) {
+            coverImage = best.url
+            imageCredit = best.credit
+            logger.info('cron.generator.cover_picked_by_score', {
               brand,
-              from: matchingSource ? 'source' : 'external',
+              composite: best.composite,
             })
-          } else {
-            logger.warn('cron.generator.cover_download_fail', { brand })
           }
         }
 
-        // Fallback 1: 使用其他已下載的來源圖片
-        if (!coverImage && storedImages.length > 0) {
-          coverImage = storedImages[0].url
-          imageCredit = storedImages[0].credit
-          logger.info('cron.generator.cover_fallback_source', { brand })
-        }
-
-        // Fallback 2: AI 生成（僅當完全沒有可用圖片時）
+        // Fallback: AI 生成（沒有合格 source image 或 scoring disabled）
         if (!coverImage) {
-          logger.info('cron.generator.no_images_available', {
+          logger.info('cron.generator.cover_fallback_to_ai', {
             brand,
-            source: sourceImages.length,
-            stored: storedImages.length,
+            reason: !enableScoring
+              ? 'scoring_disabled'
+              : storedImages.length === 0
+                ? 'no_source_images'
+                : 'no_qualifying_source',
+            sourceCount: sourceImages.length,
+            storedCount: storedImages.length,
           })
 
-          // 成本考量：Flux ($0.008/張) / DALL-E 3 ($0.04/張) vs Gemini 文字 ($0.000675/篇)
+          // 成本考量：Flux ($0.008/張) / DALL-E 3 ($0.04/張)
           const enableAIGeneration = process.env.ENABLE_AI_IMAGE_GENERATION !== 'false'
 
           if (enableAIGeneration) {
-            logger.info('cron.generator.ai_cover_start', { brand })
             const aiImage = await generateAndSaveCoverImage(
               generated.title_zh,
               generated.content_zh,
@@ -393,12 +390,11 @@ async function handleCronJob(request: NextRequest) {
 
         // 3.5 计算来源文章的最早发布时间（UTC）
         const sourceDates = cluster.articles
-          .map(a => a.source_published_at)
+          .map((a) => a.source_published_at)
           .filter((date): date is string => !!date)
-          .map(date => new Date(date))
-        const earliestSourceDateUTC = sourceDates.length > 0
-          ? new Date(Math.min(...sourceDates.map(d => d.getTime())))
-          : null
+          .map((date) => new Date(date))
+        const earliestSourceDateUTC =
+          sourceDates.length > 0 ? new Date(Math.min(...sourceDates.map((d) => d.getTime()))) : null
 
         // 3.5.1 將 UTC 時間轉換為台灣時區日期（YYYY-MM-DD）
         let publishedAtTaiwan: string | null = null
@@ -419,7 +415,7 @@ async function handleCronJob(request: NextRequest) {
         if (brand !== 'Other') {
           filteredBrands.push(brand)
           // 添加其他品牌（不包括 primary_brand），最多再加 2 個
-          const otherBrands = allBrands.filter(b => b !== brand).slice(0, 2)
+          const otherBrands = allBrands.filter((b) => b !== brand).slice(0, 2)
           filteredBrands.push(...otherBrands)
         } else {
           // 沒有 primary_brand 時，直接取前 3 個
@@ -434,7 +430,7 @@ async function handleCronJob(request: NextRequest) {
             title_zh: generated.title_zh,
             content_zh: generated.content_zh,
             slug_en: generated.slug_en,
-            source_urls: cluster.articles.map(a => a.url),
+            source_urls: cluster.articles.map((a) => a.url),
             confidence: generated.confidence,
             quality_checks: generated.quality_checks,
             reasoning: generated.reasoning,
@@ -450,7 +446,7 @@ async function handleCronJob(request: NextRequest) {
             image_credit: imageCredit || null,
             primary_brand: brand === 'Other' ? null : brand,
             images: storedImages.length > 0 ? storedImages : [],
-            content_embedding: newContentEmbedding
+            content_embedding: newContentEmbedding,
           })
           .select()
           .single()
@@ -463,7 +459,7 @@ async function handleCronJob(request: NextRequest) {
 
         // ============ SOLUTION 2: Mark Raw Articles as Used ============
         // Mark all source articles as used to prevent reuse
-        const rawArticleIds = cluster.articles.map(a => a.id)
+        const rawArticleIds = cluster.articles.map((a) => a.id)
         const markedSuccess = await markRawArticlesAsUsed(rawArticleIds, shortId)
         if (markedSuccess) {
           logger.info('cron.generator.raw_marked_used', {
@@ -498,7 +494,7 @@ async function handleCronJob(request: NextRequest) {
               title_zh: generated.title_zh,
               content_zh: generated.content_zh,
               slug_en: generated.slug_en,
-              cover_image: coverImage || null
+              cover_image: coverImage || null,
             })
             logger.info('cron.generator.social_posts_done', {
               brand,
@@ -519,10 +515,10 @@ async function handleCronJob(request: NextRequest) {
           confidence: generated.confidence,
           published: decision.shouldPublish,
           reason: decision.reason,
-          images_count: storedImages.length
+          images_count: storedImages.length,
         })
 
-        totalProcessed++  // 增加已处理计数
+        totalProcessed++ // 增加已处理计数
 
         logger.info('cron.generator.article_saved', {
           brand,
@@ -532,7 +528,6 @@ async function handleCronJob(request: NextRequest) {
           processed: totalProcessed,
           target: TIMEOUT_CONFIG.TARGET_ARTICLES,
         })
-
       } catch (error) {
         logger.error('cron.generator.cluster_fail', error, { brand })
         // 继续处理下一个聚类
@@ -540,19 +535,23 @@ async function handleCronJob(request: NextRequest) {
     }
 
     // 4. 统计和记录日志
-    const totalClusters = Array.from(brandGroups.values())
-      .reduce((sum, articles) => sum + (articles.length >= 3 ? 1 : 0), 0)
+    const totalClusters = Array.from(brandGroups.values()).reduce(
+      (sum, articles) => sum + (articles.length >= 3 ? 1 : 0),
+      0
+    )
 
     const elapsedTime = Date.now() - startTime
-    const hitTimeout = totalProcessed >= TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN ||
-                       elapsedTime >= TIMEOUT_CONFIG.MAX_DURATION_MS
+    const hitTimeout =
+      totalProcessed >= TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN ||
+      elapsedTime >= TIMEOUT_CONFIG.MAX_DURATION_MS
 
     if (hitTimeout) {
       logger.info('cron.generator.graceful_stop', {
         processed: totalProcessed,
         elapsedSec: Math.round(elapsedTime / 1000),
         maxDurationSec: TIMEOUT_CONFIG.MAX_DURATION_MS / 1000,
-        reason: totalProcessed >= TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN ? 'article_limit' : 'time_limit',
+        reason:
+          totalProcessed >= TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN ? 'article_limit' : 'time_limit',
       })
     }
 
@@ -566,35 +565,43 @@ async function handleCronJob(request: NextRequest) {
         brand_groups: brandGroups.size,
         total_clusters: totalClusters,
         articles_generated: results.length,
-        articles_published: results.filter(r => r.published).length,
+        articles_published: results.filter((r) => r.published).length,
         duration_ms: elapsedTime,
         hit_timeout: hitTimeout,
-        timeout_reason: hitTimeout ? (totalProcessed >= TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN ? 'article_limit' : 'time_limit') : null,
+        timeout_reason: hitTimeout
+          ? totalProcessed >= TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN
+            ? 'article_limit'
+            : 'time_limit'
+          : null,
         round_robin: {
           collected: collected.length,
           rounds_completed: roundsCompleted,
-          brands_with_clusters: allBrandClusters.length
+          brands_with_clusters: allBrandClusters.length,
         },
         brands: Object.fromEntries(
           Array.from(brandGroups.entries()).map(([brand, articles]) => [brand, articles.length])
-        )
-      }
+        ),
+      },
     })
 
     return NextResponse.json({
       success: true,
       generated: results.length,
-      published: results.filter(r => r.published).length,
+      published: results.filter((r) => r.published).length,
       articles: results,
       duration: elapsedTime,
-      timeout_info: hitTimeout ? {
-        hit_limit: true,
-        processed: totalProcessed,
-        max_per_run: TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN,
-        reason: totalProcessed >= TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN ? 'article_limit' : 'time_limit'
-      } : null
+      timeout_info: hitTimeout
+        ? {
+            hit_limit: true,
+            processed: totalProcessed,
+            max_per_run: TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN,
+            reason:
+              totalProcessed >= TIMEOUT_CONFIG.MAX_ARTICLES_PER_RUN
+                ? 'article_limit'
+                : 'time_limit',
+          }
+        : null,
     })
-
   } catch (error) {
     logger.error('cron.generator.fail', error)
 
@@ -607,8 +614,8 @@ async function handleCronJob(request: NextRequest) {
         metadata: {
           error: getErrorMessage(error),
           stack: error instanceof Error ? error.stack : undefined,
-          duration_ms: Date.now() - startTime
-        }
+          duration_ms: Date.now() - startTime,
+        },
       })
     } catch (logError) {
       logger.error('cron.generator.log_fail', logError)
@@ -617,13 +624,12 @@ async function handleCronJob(request: NextRequest) {
     return NextResponse.json(
       {
         error: getErrorMessage(error),
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       },
       { status: 500 }
     )
   }
 }
-
 
 export async function GET(request: NextRequest) {
   return handleCronJob(request)
