@@ -1,5 +1,8 @@
 # Admin 管理後台設置指南
 
+> ⚠️ 本文件中若仍提及 `ADMIN_API_KEY` Bearer token，**請忽略** — 該靜態 key
+> 已移除，admin 操作只走 web login (`/admin`) + admin_session cookie。
+
 ## 架構說明
 
 Admin 系統使用 **Supabase Auth + Role-Based Access Control**:
@@ -98,13 +101,15 @@ UPDATE profiles SET is_admin = TRUE WHERE email = 'your-email@example.com';
 Admin API 支持兩種認證:
 
 ### 1. Cookie (Web UI 使用)
+
 ```typescript
 fetch('/api/admin/articles', {
-  credentials: 'include'  // 自動帶上 Cookie
+  credentials: 'include', // 自動帶上 Cookie
 })
 ```
 
 ### 2. Bearer Token (Postman/curl 使用)
+
 ```bash
 curl https://wantcar.autos/api/admin/articles \
   -H "Authorization: Bearer ${ADMIN_API_KEY}"
@@ -145,28 +150,37 @@ supabase/
 ## 常見問題
 
 ### Q: 登入後顯示 "Access denied"?
+
 A: 檢查數據庫中您的帳號 `is_admin` 是否為 `TRUE`:
+
 ```sql
 SELECT email, is_admin FROM profiles WHERE email = 'your-email@example.com';
 ```
 
 ### Q: 如何添加更多 Admin 用戶?
+
 A: 在 Supabase Dashboard → SQL Editor 執行:
+
 ```sql
 UPDATE profiles SET is_admin = TRUE WHERE email = 'another-admin@example.com';
 ```
 
 ### Q: 如何撤銷 Admin 權限?
+
 A: 在 Supabase Dashboard → SQL Editor 執行:
+
 ```sql
 UPDATE profiles SET is_admin = FALSE WHERE email = 'remove-admin@example.com';
 ```
 
 ### Q: Cookie 在哪裡設置?
+
 A: `/api/admin/auth/login` API 在驗證用戶是 Admin 後設置 `admin_session` Cookie
 
 ### Q: 為什麼不直接用 API Key?
+
 A: API Key 任何人拿到都能用,無法區分用戶身份。基於帳號的系統更安全:
+
 - 可以追蹤誰做了什麼操作
 - 可以單獨撤銷某個用戶權限
 - 支持密碼重置、Email 驗證等安全功能

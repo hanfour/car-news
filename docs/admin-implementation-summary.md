@@ -1,5 +1,8 @@
 # Admin 管理後台實現總結
 
+> ⚠️ 歷史總結文件。原本提到的 `ADMIN_API_KEY` Bearer token 認證已移除，
+> 請以最新程式碼（`src/lib/admin/auth.ts`）為準。
+
 ## 🎯 需求
 
 > **User:** "admin 應該要有限定的帳號才可以登入"
@@ -35,8 +38,10 @@ CREATE POLICY "Admins can view admin status" ON profiles
 
 ```typescript
 // 步驟 1: Supabase Auth 驗證
-const { data: authData, error: authError } =
-  await supabase.auth.signInWithPassword({ email, password })
+const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+  email,
+  password,
+})
 
 // 步驟 2: 檢查 Admin 權限
 const { data: profile } = await supabase
@@ -53,7 +58,7 @@ if (!profile?.is_admin) {
 // 步驟 3: 設置 Session Cookie
 await fetch('/api/admin/auth/login', {
   method: 'POST',
-  body: JSON.stringify({ userId: authData.user.id })
+  body: JSON.stringify({ userId: authData.user.id }),
 })
 ```
 
@@ -79,7 +84,7 @@ export async function POST(request: NextRequest) {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7
+    maxAge: 60 * 60 * 24 * 7,
   })
 
   return NextResponse.json({ success: true })
@@ -206,15 +211,15 @@ function verifyAuth(request: NextRequest): boolean {
 
 ## 🔒 安全特性
 
-| 特性 | 實現 | 防護 |
-|------|------|------|
-| **密碼哈希** | Supabase Auth | 密碼洩露保護 |
-| **HttpOnly Cookie** | `httpOnly: true` | XSS 攻擊防護 |
-| **SameSite** | `sameSite: 'lax'` | CSRF 攻擊防護 |
-| **Secure Flag** | Production 啟用 | MITM 攻擊防護 |
-| **雙重驗證** | 登入時 + 每次請求 | 權限提升防護 |
-| **Session 過期** | 7天自動過期 | Session 劫持防護 |
-| **角色檢查** | `is_admin` 欄位 | 未授權訪問防護 |
+| 特性                | 實現              | 防護             |
+| ------------------- | ----------------- | ---------------- |
+| **密碼哈希**        | Supabase Auth     | 密碼洩露保護     |
+| **HttpOnly Cookie** | `httpOnly: true`  | XSS 攻擊防護     |
+| **SameSite**        | `sameSite: 'lax'` | CSRF 攻擊防護    |
+| **Secure Flag**     | Production 啟用   | MITM 攻擊防護    |
+| **雙重驗證**        | 登入時 + 每次請求 | 權限提升防護     |
+| **Session 過期**    | 7天自動過期       | Session 劫持防護 |
+| **角色檢查**        | `is_admin` 欄位   | 未授權訪問防護   |
 
 ---
 
@@ -306,9 +311,11 @@ npm run dev
 ### ⚠️ Cookie 驗證簡化問題
 
 **當前實現 (src/app/api/admin/articles/[id]/route.ts:23):**
+
 ```typescript
 const sessionCookie = request.cookies.get('admin_session')
-if (sessionCookie?.value === ADMIN_API_KEY) {  // ❌ 錯誤!
+if (sessionCookie?.value === ADMIN_API_KEY) {
+  // ❌ 錯誤!
   return true
 }
 ```
@@ -316,6 +323,7 @@ if (sessionCookie?.value === ADMIN_API_KEY) {  // ❌ 錯誤!
 **問題:** Cookie 中存的是 `userId`,不應該與 `ADMIN_API_KEY` 比對。
 
 **正確實現:**
+
 ```typescript
 const sessionCookie = request.cookies.get('admin_session')
 if (sessionCookie?.value) {
@@ -331,6 +339,7 @@ if (sessionCookie?.value) {
 ```
 
 **改進計劃:**
+
 - [ ] 修復 Cookie 驗證邏輯
 - [ ] 添加 Session 管理表 (儲存 token,過期時間,IP 等)
 - [ ] 實現 Refresh Token 機制
@@ -341,16 +350,16 @@ if (sessionCookie?.value) {
 
 ## 📊 對比: 舊 vs 新
 
-| 項目 | 舊實現 (API Key) | 新實現 (User Account) |
-|------|------------------|----------------------|
-| **認證方式** | 輸入 API Key | Email + Password |
-| **身份識別** | 無 | Supabase User ID |
-| **權限管理** | 全有或全無 | 基於 `is_admin` 角色 |
+| 項目         | 舊實現 (API Key)          | 新實現 (User Account)       |
+| ------------ | ------------------------- | --------------------------- |
+| **認證方式** | 輸入 API Key              | Email + Password            |
+| **身份識別** | 無                        | Supabase User ID            |
+| **權限管理** | 全有或全無                | 基於 `is_admin` 角色        |
 | **撤銷權限** | 更改 API Key (影響所有人) | 單獨設置 `is_admin = FALSE` |
-| **Session** | 無 | Cookie (7天) |
-| **安全性** | 低 (Key 洩露 = 全丟) | 高 (多層驗證) |
-| **可追蹤性** | 無法知道誰操作 | 每個操作關聯到 User |
-| **可擴展性** | 難 | 易 (可加權限分級) |
+| **Session**  | 無                        | Cookie (7天)                |
+| **安全性**   | 低 (Key 洩露 = 全丟)      | 高 (多層驗證)               |
+| **可追蹤性** | 無法知道誰操作            | 每個操作關聯到 User         |
+| **可擴展性** | 難                        | 易 (可加權限分級)           |
 
 ---
 
@@ -395,15 +404,18 @@ if (sessionCookie?.value) {
 ## 📝 下一步
 
 ### 立即修復
+
 - [ ] 修正 `verifyAuth()` 的 Cookie 驗證邏輯
 
 ### 短期改進
+
 - [ ] 添加 Session 管理表
 - [ ] 實現操作日誌
 - [ ] 添加文章編輯頁面
 - [ ] 批量操作功能
 
 ### 長期規劃
+
 - [ ] 多級權限系統 (Editor, Moderator, Admin)
 - [ ] 2FA 雙因素驗證
 - [ ] API Rate Limiting

@@ -49,6 +49,3 @@ supabase/.temp/
 # IDE / AI 工具產生的本地狀態
 .workflow-confirmations.json
 
-# Postman collection — 範本檔 (.example) 入庫，含真實密鑰的本地副本不入庫
-/Admin_API.postman_collection.json
-

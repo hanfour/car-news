@@ -1,4 +1,14 @@
-# Admin API 使用指南 (MVP)
+# Admin API 使用指南 (MVP) — 已歸檔
+
+> ⚠️ **本文件已過時**。原 ADMIN_API_KEY Bearer token 認證已隨「移除靜態 admin
+> key」PR 完全移除。Admin 操作改走 web login（`/admin`），由 admin_session
+> HttpOnly cookie 認證。
+>
+> 程式化呼叫請先 web login → 從瀏覽器 dev tools 複製 cookie → 帶入 request。
+> 端點清單仍可參考下文，但所有 `Authorization: Bearer ...` 範例都應替換為
+> `Cookie: admin_session=...`。
+
+---
 
 ## 設定
 
