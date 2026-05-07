@@ -7,6 +7,7 @@ import 'server-only'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { ImageScore, ImageScoreDimensions, computeComposite } from './types'
 import { getErrorMessage } from '@/lib/utils/error'
+import { recordAIUsage } from '@/lib/ai/usage-tracker'
 
 let genAI: GoogleGenerativeAI | null = null
 
@@ -87,6 +88,14 @@ Be strict but fair. 7.0+ is acceptable, 8.0+ is excellent. Common AI issues that
         },
       },
     ])
+
+    recordAIUsage({
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      purpose: 'vision_scoring',
+      inputTokens: result.response.usageMetadata?.promptTokenCount,
+      outputTokens: result.response.usageMetadata?.candidatesTokenCount,
+    })
 
     const text = result.response.text()
 
