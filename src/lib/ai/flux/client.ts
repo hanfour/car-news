@@ -14,6 +14,7 @@ import 'server-only'
 import { fal } from '@fal-ai/client'
 import { getErrorMessage } from '@/lib/utils/error'
 import { logger } from '@/lib/logger'
+import { recordAIUsage } from '@/lib/ai/usage-tracker'
 
 // 配置 fal.ai
 let configured = false
@@ -27,7 +28,7 @@ function configureFal() {
   }
 
   fal.config({
-    credentials: apiKey
+    credentials: apiKey,
   })
   configured = true
 }
@@ -90,7 +91,7 @@ export async function generateWithFlux(
       seed: seed ?? null,
     })
 
-    const result = await fal.subscribe('fal-ai/flux/dev', {
+    const result = (await fal.subscribe('fal-ai/flux/dev', {
       input: {
         prompt,
         image_size: imageSize,
@@ -100,8 +101,8 @@ export async function generateWithFlux(
         guidance_scale: guidanceScale,
         ...(seed != null ? { seed } : {}),
       },
-      logs: false
-    }) as { data: FluxGenerationResult }
+      logs: false,
+    })) as { data: FluxGenerationResult }
 
     const imageUrl = result.data?.images?.[0]?.url
 
@@ -112,20 +113,27 @@ export async function generateWithFlux(
 
     logger.info('ai.flux.generate_ok', { urlPrefix: imageUrl.slice(0, 60) })
 
+    recordAIUsage({
+      provider: 'fal',
+      model: 'flux-pro',
+      purpose: 'image_generation',
+      costUsd: 0.008,
+      metadata: { variant: 'flux/dev', imageSize, seed: seed ?? null },
+    })
+
     return {
       url: imageUrl,
       revisedPrompt: prompt,
       provider: 'flux',
-      cost: 0.008
+      cost: 0.008,
     }
-
   } catch (error) {
     logger.error('ai.flux.generate_fail', error)
     return {
       url: '',
       error: getErrorMessage(error),
       provider: 'flux',
-      cost: 0
+      cost: 0,
     }
   }
 }
@@ -141,16 +149,16 @@ export async function generateWithFluxSchnell(
 
     logger.info('ai.flux.schnell_start')
 
-    const result = await fal.subscribe('fal-ai/flux/schnell', {
+    const result = (await fal.subscribe('fal-ai/flux/schnell', {
       input: {
         prompt,
         image_size: 'landscape_16_9',
         num_images: 1,
         enable_safety_checker: true,
-        num_inference_steps: 4
+        num_inference_steps: 4,
       },
-      logs: false
-    }) as { data: FluxGenerationResult }
+      logs: false,
+    })) as { data: FluxGenerationResult }
 
     const imageUrl = result.data?.images?.[0]?.url
 
@@ -161,13 +169,20 @@ export async function generateWithFluxSchnell(
 
     logger.info('ai.flux.schnell_ok')
 
+    recordAIUsage({
+      provider: 'fal',
+      model: 'flux-pro',
+      purpose: 'image_generation',
+      costUsd: 0.003,
+      metadata: { variant: 'flux/schnell' },
+    })
+
     return {
       url: imageUrl,
       revisedPrompt: prompt,
       provider: 'flux',
-      cost: 0.003
+      cost: 0.003,
     }
-
   } catch (error) {
     logger.error('ai.flux.schnell_fail', error)
     return null
@@ -194,17 +209,17 @@ export async function generateWithFluxImg2Img(
       strength,
     })
 
-    const result = await fal.subscribe('fal-ai/flux/dev/image-to-image', {
+    const result = (await fal.subscribe('fal-ai/flux/dev/image-to-image', {
       input: {
         image_url: referenceImageUrl,
         prompt,
         strength,
         num_inference_steps: 28,
         guidance_scale: 5.0,
-        enable_safety_checker: true
+        enable_safety_checker: true,
       },
-      logs: false
-    }) as { data: FluxGenerationResult }
+      logs: false,
+    })) as { data: FluxGenerationResult }
 
     const imageUrl = result.data?.images?.[0]?.url
 
@@ -215,13 +230,20 @@ export async function generateWithFluxImg2Img(
 
     logger.info('ai.flux.img2img_ok')
 
+    recordAIUsage({
+      provider: 'fal',
+      model: 'flux-pro',
+      purpose: 'image_generation',
+      costUsd: 0.025,
+      metadata: { variant: 'flux/dev/image-to-image', strength },
+    })
+
     return {
       url: imageUrl,
       revisedPrompt: prompt,
       provider: 'flux',
-      cost: 0.025
+      cost: 0.025,
     }
-
   } catch (error) {
     logger.error('ai.flux.img2img_fail', error)
     return null

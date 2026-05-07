@@ -4,6 +4,7 @@ import OpenAI from 'openai'
 import { getErrorMessage } from '@/lib/utils/error'
 import { logger } from '@/lib/logger'
 import { ARTICLE_OUTPUT_SCHEMA_PROMPT, stripJSONCodeBlock } from './article-output-schema'
+import { recordAIUsage } from './usage-tracker'
 
 let client: Anthropic | null = null
 let cachedModel: string | null = null
@@ -151,6 +152,14 @@ ${ARTICLE_OUTPUT_SCHEMA_PROMPT}`
 
       const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
 
+      recordAIUsage({
+        provider: 'claude',
+        model: claudeModel,
+        purpose: 'article_generation',
+        inputTokens: message.usage?.input_tokens,
+        outputTokens: message.usage?.output_tokens,
+      })
+
       const jsonText = stripJSONCodeBlock(responseText)
 
       // Parse JSON with error handling
@@ -191,6 +200,15 @@ ${ARTICLE_OUTPUT_SCHEMA_PROMPT}`
     })
 
     const responseText = completion.choices[0]?.message?.content || ''
+
+    recordAIUsage({
+      provider: 'openai',
+      model: 'gpt-4o',
+      purpose: 'article_generation',
+      inputTokens: completion.usage?.prompt_tokens,
+      outputTokens: completion.usage?.completion_tokens,
+    })
+
     const jsonText = stripJSONCodeBlock(responseText)
     const result = JSON.parse(jsonText)
     logger.info('ai.claude.openai_generate_ok')
@@ -232,8 +250,9 @@ ${content}
 `
 
   const anthropic = getAnthropic()
+  const moderationModel = 'claude-3-5-haiku-20241022'
   const message = await anthropic.messages.create({
-    model: 'claude-3-5-haiku-20241022',
+    model: moderationModel,
     max_tokens: 256,
     temperature: 0,
     messages: [
@@ -242,6 +261,14 @@ ${content}
         content: prompt,
       },
     ],
+  })
+
+  recordAIUsage({
+    provider: 'claude',
+    model: moderationModel,
+    purpose: 'moderation',
+    inputTokens: message.usage?.input_tokens,
+    outputTokens: message.usage?.output_tokens,
   })
 
   const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
@@ -273,6 +300,14 @@ export async function generateText(
         content: prompt,
       },
     ],
+  })
+
+  recordAIUsage({
+    provider: 'claude',
+    model: claudeModel,
+    purpose: 'text_generation',
+    inputTokens: message.usage?.input_tokens,
+    outputTokens: message.usage?.output_tokens,
   })
 
   return message.content[0].type === 'text' ? message.content[0].text : ''

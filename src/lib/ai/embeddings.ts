@@ -1,13 +1,14 @@
 import 'server-only'
 import OpenAI from 'openai'
 import { logger } from '@/lib/logger'
+import { recordAIUsage } from './usage-tracker'
 
 let openai: OpenAI | null = null
 
 function getOpenAI() {
   if (!openai) {
     openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY!
+      apiKey: process.env.OPENAI_API_KEY!,
     })
   }
   return openai
@@ -26,6 +27,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 
 async function generateEmbeddingWithGemini(text: string): Promise<number[]> {
   const apiKey = process.env.GEMINI_API_KEY!
+  const truncated = text.slice(0, 8000)
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${apiKey}`,
     {
@@ -33,9 +35,9 @@ async function generateEmbeddingWithGemini(text: string): Promise<number[]> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'models/gemini-embedding-001',
-        content: { parts: [{ text: text.slice(0, 8000) }] },
-        outputDimensionality: 768
-      })
+        content: { parts: [{ text: truncated }] },
+        outputDimensionality: 768,
+      }),
     }
   )
 
@@ -45,6 +47,15 @@ async function generateEmbeddingWithGemini(text: string): Promise<number[]> {
   }
 
   const result = await response.json()
+
+  // 粗略估 token 數：中文約 1.5 char/token，~4 char/token for English. 取保守 2 char/token
+  recordAIUsage({
+    provider: 'gemini',
+    model: 'gemini-embedding-001',
+    purpose: 'embedding',
+    inputTokens: Math.ceil(truncated.length / 2),
+  })
+
   return result.embedding.values
 }
 
@@ -53,7 +64,14 @@ async function generateEmbeddingWithOpenAI(text: string): Promise<number[]> {
   const response = await client.embeddings.create({
     model: 'text-embedding-3-small',
     input: text.slice(0, 8000),
-    encoding_format: 'float'
+    encoding_format: 'float',
+  })
+
+  recordAIUsage({
+    provider: 'openai',
+    model: 'text-embedding-3-small',
+    purpose: 'embedding',
+    inputTokens: response.usage?.prompt_tokens,
   })
 
   return response.data[0].embedding
@@ -74,10 +92,10 @@ export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
     const client = getOpenAI()
     const response = await client.embeddings.create({
       model: 'text-embedding-3-small',
-      input: texts.map(t => t.slice(0, 8000)),
-      encoding_format: 'float'
+      input: texts.map((t) => t.slice(0, 8000)),
+      encoding_format: 'float',
     })
-    return response.data.map(d => d.embedding)
+    return response.data.map((d) => d.embedding)
   }
 }
 

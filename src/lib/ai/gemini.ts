@@ -4,6 +4,7 @@ import type { GenerateArticleInput, GenerateArticleOutput } from './claude'
 import { getErrorMessage } from '@/lib/utils/error'
 import { logger } from '@/lib/logger'
 import { ARTICLE_OUTPUT_SCHEMA_PROMPT, stripJSONCodeBlock } from './article-output-schema'
+import { recordAIUsage } from './usage-tracker'
 
 let genAI: GoogleGenerativeAI | null = null
 
@@ -106,6 +107,14 @@ ${ARTICLE_OUTPUT_SCHEMA_PROMPT}`
     const response = result.response
     const text = response.text()
 
+    recordAIUsage({
+      provider: 'gemini',
+      model: modelName,
+      purpose: 'article_generation',
+      inputTokens: response.usageMetadata?.promptTokenCount,
+      outputTokens: response.usageMetadata?.candidatesTokenCount,
+    })
+
     // Parse JSON（Gemini 偶爾會包 markdown 代碼塊，集中由 helper 處理）
     let parsedResult: GenerateArticleOutput
     try {
@@ -170,7 +179,17 @@ ${content}
   })
 
   const result = await model.generateContent(prompt)
-  const jsonText = stripJSONCodeBlock(result.response.text())
+  const response = result.response
+
+  recordAIUsage({
+    provider: 'gemini',
+    model: 'gemini-2.5-flash',
+    purpose: 'moderation',
+    inputTokens: response.usageMetadata?.promptTokenCount,
+    outputTokens: response.usageMetadata?.candidatesTokenCount,
+  })
+
+  const jsonText = stripJSONCodeBlock(response.text())
 
   try {
     return JSON.parse(jsonText)
@@ -208,6 +227,15 @@ export async function generateTextWithGemini(
 
     const result = await model.generateContent(prompt)
     const response = result.response
+
+    recordAIUsage({
+      provider: 'gemini',
+      model: modelName,
+      purpose: 'text_generation',
+      inputTokens: response.usageMetadata?.promptTokenCount,
+      outputTokens: response.usageMetadata?.candidatesTokenCount,
+    })
+
     return response.text()
   } catch (error) {
     logger.error('ai.gemini.text_generate_fail', error)
