@@ -11,6 +11,7 @@ import { BatchActionBar } from '@/components/admin/BatchActionBar'
 import { GeneratorMonitor } from '@/components/admin/GeneratorMonitor'
 import { DuplicateMonitor } from '@/components/admin/DuplicateMonitor'
 import { SocialPostsPanel } from '@/components/admin/SocialPostsPanel'
+import { UsageDashboard } from '@/components/admin/UsageDashboard'
 
 export default function AdminDashboard() {
   const router = useRouter()
@@ -26,7 +27,11 @@ export default function AdminDashboard() {
 
   // Confirm dialog
   const [confirmDialog, setConfirmDialog] = useState<{
-    open: boolean; title: string; message: string; variant: 'danger' | 'default'; onConfirm: () => void
+    open: boolean
+    title: string
+    message: string
+    variant: 'danger' | 'default'
+    onConfirm: () => void
   }>({ open: false, title: '', message: '', variant: 'default', onConfirm: () => {} })
 
   const fetchArticles = useCallback(async () => {
@@ -37,7 +42,10 @@ export default function AdminDashboard() {
       if (filter === 'draft') url += '&published=false'
 
       const res = await fetch(url, { credentials: 'include' })
-      if (res.status === 401) { router.push('/admin/login'); return }
+      if (res.status === 401) {
+        router.push('/admin/login')
+        return
+      }
 
       const data = await res.json()
       setArticles(data.articles || [])
@@ -51,7 +59,9 @@ export default function AdminDashboard() {
     }
   }, [filter, router, showToast])
 
-  useEffect(() => { fetchArticles() }, [fetchArticles])
+  useEffect(() => {
+    fetchArticles()
+  }, [fetchArticles])
 
   const handleTogglePublish = async (id: string, currentStatus: boolean) => {
     try {
@@ -59,7 +69,7 @@ export default function AdminDashboard() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ published: !currentStatus })
+        body: JSON.stringify({ published: !currentStatus }),
       })
       if (res.ok) {
         showToast(currentStatus ? 'Unpublished' : 'Published', 'success')
@@ -77,9 +87,12 @@ export default function AdminDashboard() {
       message: `Are you sure you want to delete "${title}"? This cannot be undone.`,
       variant: 'danger',
       onConfirm: async () => {
-        setConfirmDialog(d => ({ ...d, open: false }))
+        setConfirmDialog((d) => ({ ...d, open: false }))
         try {
-          const res = await fetch(`/api/admin/articles/${id}`, { method: 'DELETE', credentials: 'include' })
+          const res = await fetch(`/api/admin/articles/${id}`, {
+            method: 'DELETE',
+            credentials: 'include',
+          })
           if (res.ok) {
             showToast('Article deleted', 'success')
             fetchArticles()
@@ -87,14 +100,19 @@ export default function AdminDashboard() {
         } catch {
           showToast('Failed to delete article', 'error')
         }
-      }
+      },
     })
   }
 
-  const filteredArticles = articles.filter(a => {
+  const filteredArticles = articles.filter((a) => {
     if (!searchTerm) return true
     const term = searchTerm.toLowerCase()
-    return a.id.toLowerCase().includes(term) || a.title_zh.toLowerCase().includes(term) || (a.primary_brand?.toLowerCase().includes(term) || false)
+    return (
+      a.id.toLowerCase().includes(term) ||
+      a.title_zh.toLowerCase().includes(term) ||
+      a.primary_brand?.toLowerCase().includes(term) ||
+      false
+    )
   })
 
   const toggleSelection = (id: string) => {
@@ -104,7 +122,11 @@ export default function AdminDashboard() {
   }
 
   const toggleSelectAll = () => {
-    setSelectedIds(selectedIds.size === filteredArticles.length ? new Set() : new Set(filteredArticles.map(a => a.id)))
+    setSelectedIds(
+      selectedIds.size === filteredArticles.length
+        ? new Set()
+        : new Set(filteredArticles.map((a) => a.id))
+    )
   }
 
   const batchAction = async (action: 'publish' | 'unpublish' | 'delete') => {
@@ -115,9 +137,9 @@ export default function AdminDashboard() {
         message: `Delete ${selectedIds.size} articles? This cannot be undone.`,
         variant: 'danger',
         onConfirm: () => {
-          setConfirmDialog(d => ({ ...d, open: false }))
+          setConfirmDialog((d) => ({ ...d, open: false }))
           executeBatch('delete')
-        }
+        },
       })
       return
     }
@@ -128,25 +150,28 @@ export default function AdminDashboard() {
     setBatchProcessing(true)
 
     const results = await Promise.allSettled(
-      Array.from(selectedIds).map(id =>
+      Array.from(selectedIds).map((id) =>
         action === 'delete'
           ? fetch(`/api/admin/articles/${id}`, { method: 'DELETE', credentials: 'include' })
           : fetch(`/api/admin/articles/${id}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               credentials: 'include',
-              body: JSON.stringify({ published: action === 'publish' })
+              body: JSON.stringify({ published: action === 'publish' }),
             })
       )
     )
 
-    const success = results.filter(r => r.status === 'fulfilled' && r.value.ok).length
+    const success = results.filter((r) => r.status === 'fulfilled' && r.value.ok).length
     const fail = results.length - success
 
     setBatchProcessing(false)
     setSelectedIds(new Set())
     fetchArticles()
-    showToast(`Batch ${action}: ${success} success, ${fail} failed`, fail > 0 ? 'warning' : 'success')
+    showToast(
+      `Batch ${action}: ${success} success, ${fail} failed`,
+      fail > 0 ? 'warning' : 'success'
+    )
   }
 
   return (
@@ -154,18 +179,25 @@ export default function AdminDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-        <span className="text-xs text-slate-500">
-          {new Date().toLocaleDateString('zh-TW')}
-        </span>
+        <span className="text-xs text-slate-500">{new Date().toLocaleDateString('zh-TW')}</span>
       </div>
 
       <StatsCards stats={stats} loading={loading} />
 
+      {/* AI usage */}
+      <UsageDashboard />
+
       {/* Monitor panels */}
       <div className="space-y-4">
-        <div id="generator"><GeneratorMonitor /></div>
-        <div id="duplicates"><DuplicateMonitor /></div>
-        <div id="social"><SocialPostsPanel /></div>
+        <div id="generator">
+          <GeneratorMonitor />
+        </div>
+        <div id="duplicates">
+          <DuplicateMonitor />
+        </div>
+        <div id="social">
+          <SocialPostsPanel />
+        </div>
       </div>
 
       {/* Articles */}
@@ -202,7 +234,7 @@ export default function AdminDashboard() {
         message={confirmDialog.message}
         variant={confirmDialog.variant}
         onConfirm={confirmDialog.onConfirm}
-        onCancel={() => setConfirmDialog(d => ({ ...d, open: false }))}
+        onCancel={() => setConfirmDialog((d) => ({ ...d, open: false }))}
         confirmText="Confirm"
         cancelText="Cancel"
       />
