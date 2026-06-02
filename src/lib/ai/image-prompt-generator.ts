@@ -8,6 +8,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import { getErrorMessage } from '@/lib/utils/error'
 import { extractCarModel, getVehicleVisualDescription } from './flux-image-generation'
 import { logger } from '@/lib/logger'
+import { recordAIUsage } from './usage-tracker'
 
 let genAI: GoogleGenerativeAI | null = null
 
@@ -102,6 +103,15 @@ Respond with valid JSON only, no markdown.`
     const result = await model.generateContent(prompt)
     const response = result.response
     const text = response.text()
+
+    recordAIUsage({
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      purpose: 'text_generation',
+      inputTokens: response.usageMetadata?.promptTokenCount,
+      outputTokens: response.usageMetadata?.candidatesTokenCount,
+      metadata: { step: 'image_prompt' },
+    })
 
     // 解析 JSON - 处理各种格式问题
     let jsonText = text
@@ -429,6 +439,16 @@ Describe this vehicle's unique exterior design features visible across these ima
     ])
 
     const description = result.response.text().trim()
+
+    recordAIUsage({
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      purpose: 'vision_scoring',
+      inputTokens: result.response.usageMetadata?.promptTokenCount,
+      outputTokens: result.response.usageMetadata?.candidatesTokenCount,
+      metadata: { step: 'multi_image_analysis', imageCount: imageParts.length },
+    })
+
     logger.info('ai.prompt.vision_analyze_ok', {
       descriptionPrefix: description.slice(0, 80),
     })

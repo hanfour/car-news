@@ -39,7 +39,7 @@ export interface UsageRecord {
 
 /**
  * 各 model 的單價（USD per 1M tokens）。
- * 來源：各 provider 官網 2026-05 定價，更動時集中改這。
+ * 來源：各 provider 官網 2026-06 定價，更動時集中改這。
  *
  * 圖片生成走 perImage，沒有 input/output。
  */
@@ -52,9 +52,11 @@ const PRICING: Record<string, { input?: number; output?: number; perImage?: numb
   'claude-opus-4-7': { input: 15.0, output: 75.0 },
 
   // ---- Gemini ----
-  'gemini-2.5-flash': { input: 0.075, output: 0.3 },
+  // 註：先前誤用 Gemini 1.5 Flash 舊價（0.075/0.3）與舊 embedding 價（0.025），
+  // 導致 dashboard 成本被低估約 4~8 倍。以下為 2026-06 官方現價。
+  'gemini-2.5-flash': { input: 0.3, output: 2.5 },
   'gemini-2.5-pro': { input: 1.25, output: 10.0 },
-  'gemini-embedding-001': { input: 0.025 },
+  'gemini-embedding-001': { input: 0.15 },
 
   // ---- OpenAI ----
   'gpt-4o': { input: 2.5, output: 10.0 },

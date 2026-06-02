@@ -12,9 +12,9 @@ describe('estimateCost', () => {
     expect(estimateCost('unknown-model', 1000, 500)).toBe(0)
   })
 
-  it('Gemini Flash: 1M input + 1M output = 0.075 + 0.30 = 0.375', () => {
+  it('Gemini Flash: 1M input + 1M output = 0.30 + 2.50 = 2.80', () => {
     const cost = estimateCost('gemini-2.5-flash', 1_000_000, 1_000_000)
-    expect(cost).toBeCloseTo(0.375, 5)
+    expect(cost).toBeCloseTo(2.8, 5)
   })
 
   it('Claude Haiku: 1M input + 1M output = 0.80 + 4.00 = 4.80', () => {
@@ -39,13 +39,13 @@ describe('estimateCost', () => {
 
   it('真實場景 Gemini Flash 文章生成：~3000 in, ~2000 out', () => {
     const cost = estimateCost('gemini-2.5-flash', 3000, 2000)
-    // 3000/1M * 0.075 + 2000/1M * 0.30 = 0.000225 + 0.0006 = 0.000825
-    expect(cost).toBeCloseTo(0.000825, 7)
+    // 3000/1M * 0.30 + 2000/1M * 2.50 = 0.0009 + 0.005 = 0.0059
+    expect(cost).toBeCloseTo(0.0059, 7)
   })
 
   it('部分 token 缺值時使用 0 補', () => {
-    expect(estimateCost('gemini-2.5-flash', undefined, 1000)).toBeCloseTo(0.0003, 7)
-    expect(estimateCost('gemini-2.5-flash', 1000, undefined)).toBeCloseTo(0.000075, 7)
+    expect(estimateCost('gemini-2.5-flash', undefined, 1000)).toBeCloseTo(0.0025, 7)
+    expect(estimateCost('gemini-2.5-flash', 1000, undefined)).toBeCloseTo(0.0003, 7)
     expect(estimateCost('gemini-2.5-flash')).toBe(0)
   })
 })
