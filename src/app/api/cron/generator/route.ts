@@ -249,14 +249,19 @@ async function handleCronJob(request: NextRequest) {
             relatedTitle: duplicateResult.relatedArticle?.title_zh,
           })
 
-          // 判重後止血：把這個 cluster 的素材標記為已用（歸到既有的重複文章），並對 topic 上鎖。
-          // 否則這些素材會留在池中，下次 cron 又被重新聚類、重新呼叫 Gemini 生成後再次被判重，
+          // 判重後止血：把這個 cluster 的素材標記為已用（歸到既有的重複文章）。
+          // 否則素材會留在池中，下次 cron 又被重新聚類、重新呼叫 Gemini 生成後再次被判重，
           // 造成同一則新聞反覆付費生成（這是生成浪費的主要來源之一）。
+          //
+          // 但「品牌頻率超限」是 rate limit、不是真重複——代表這是正當但暫時超量的新聞，
+          // 過了 24h 窗口應還能生成。若也燒掉素材會把它永久誤殺，故僅對真重複（關鍵詞/語義）止血。
+          // 註：素材移出池後同一 cluster 已無法重組，故不再額外 createTopicLock（避免冗餘與
+          //     ownership 驗證的 held_by_other 噪音 log）。
           const dupRelatedId = duplicateResult.relatedArticle?.id
-          if (dupRelatedId) {
+          const isRateLimit = duplicateResult.reason?.includes('品牌頻率')
+          if (dupRelatedId && !isRateLimit) {
             const dupRawIds = cluster.articles.map((a) => a.id)
             await markRawArticlesAsUsed(dupRawIds, dupRelatedId)
-            await createTopicLock(topicHash, dupRelatedId)
           }
           continue
         }

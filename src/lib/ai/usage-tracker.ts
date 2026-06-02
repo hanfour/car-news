@@ -55,6 +55,7 @@ const PRICING: Record<string, { input?: number; output?: number; perImage?: numb
   // 註：先前誤用 Gemini 1.5 Flash 舊價（0.075/0.3）與舊 embedding 價（0.025），
   // 導致 dashboard 成本被低估約 4~8 倍。以下為 2026-06 官方現價。
   'gemini-2.5-flash': { input: 0.3, output: 2.5 },
+  // pro 為 ≤200k prompt tier 價；>200k 官方為 2.50/15。本站文章 prompt 均 <200k，故用平價。
   'gemini-2.5-pro': { input: 1.25, output: 10.0 },
   'gemini-embedding-001': { input: 0.15 },
 
