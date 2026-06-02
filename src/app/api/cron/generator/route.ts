@@ -248,6 +248,16 @@ async function handleCronJob(request: NextRequest) {
             reason: duplicateResult.reason,
             relatedTitle: duplicateResult.relatedArticle?.title_zh,
           })
+
+          // 判重後止血：把這個 cluster 的素材標記為已用（歸到既有的重複文章），並對 topic 上鎖。
+          // 否則這些素材會留在池中，下次 cron 又被重新聚類、重新呼叫 Gemini 生成後再次被判重，
+          // 造成同一則新聞反覆付費生成（這是生成浪費的主要來源之一）。
+          const dupRelatedId = duplicateResult.relatedArticle?.id
+          if (dupRelatedId) {
+            const dupRawIds = cluster.articles.map((a) => a.id)
+            await markRawArticlesAsUsed(dupRawIds, dupRelatedId)
+            await createTopicLock(topicHash, dupRelatedId)
+          }
           continue
         }
 

@@ -16,14 +16,16 @@ export interface PrepareArticlesResult {
   embeddingFailures: number
 }
 
-export async function prepareRawArticles(
-  supabase: SupabaseClient
-): Promise<PrepareArticlesResult> {
+export async function prepareRawArticles(supabase: SupabaseClient): Promise<PrepareArticlesResult> {
   logger.info('generator.prepare.start')
+  // 只撈尚未被用過的素材。已被用過（used_in_article_id 非空）的素材代表內容已被某篇文章涵蓋，
+  // 若不排除，每次 cron 都會把它重新聚類、重新呼叫 Gemini 生成，最後又在生成後被判重複丟掉，
+  // 形成同一批素材反覆付費生成的浪費（對應 route.ts markRawArticlesAsUsed 的「prevent reuse」設計）。
   const { data: rawArticles, error: fetchError } = await supabase
     .from('raw_articles')
     .select('*')
     .gt('expires_at', new Date().toISOString())
+    .is('used_in_article_id', null)
 
   if (fetchError) {
     throw new Error(`Failed to fetch articles: ${fetchError.message}`)
