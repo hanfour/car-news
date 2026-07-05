@@ -23,13 +23,15 @@
 REVOKE UPDATE (is_admin) ON public.profiles FROM anon, authenticated;
 
 -- ------------------------------------------------------------
--- 層 2（主防線）：BEFORE UPDATE trigger
--- 任何「改變 is_admin 值」且非 service_role / DBA 的更新一律拒絕。
+-- 層 2（主防線）：BEFORE INSERT OR UPDATE trigger
+-- 涵蓋 INSERT 與 UPDATE 兩條路徑（INSERT 也要防：profiles 的 INSERT policy
+-- 只檢查 auth.uid()=id、不限 is_admin,若某使用者的 profile 列缺失,
+-- 他可 INSERT 自己的列並帶 is_admin=true 繞過只保護 UPDATE 的舊版）。
 -- SECURITY INVOKER（預設）確保 current_user 反映真實請求者：
 --   PostgREST 會對請求 SET ROLE 到 anon / authenticated / service_role，
 --   Supabase SQL editor / migration 則是 postgres / supabase_admin。
--- 只有「真的變更 is_admin」才會觸發（IS DISTINCT FROM），
--- 因此使用者正常更新 bio / username / avatar 完全不受影響。
+-- 註冊時的 handle_new_user() 以預設值(is_admin=false)建列,NEW.is_admin
+-- 不為 true,不受影響;只有「非授權角色把 is_admin 設/改為 true」才擋。
 -- ------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.prevent_is_admin_self_escalation()
 RETURNS TRIGGER
@@ -38,19 +40,25 @@ SECURITY INVOKER
 SET search_path = public
 AS $$
 BEGIN
-  IF (NEW.is_admin IS DISTINCT FROM OLD.is_admin)
-     AND current_user NOT IN ('service_role', 'supabase_admin', 'postgres')
-  THEN
+  IF current_user IN ('service_role', 'supabase_admin', 'postgres') THEN
+    RETURN NEW;  -- service_role / DBA 放行(後台指派 admin 的正常路徑)
+  END IF;
+
+  IF TG_OP = 'INSERT' AND NEW.is_admin IS TRUE THEN
+    RAISE EXCEPTION 'Forbidden: profiles.is_admin can only be set by service_role'
+      USING ERRCODE = 'insufficient_privilege';
+  ELSIF TG_OP = 'UPDATE' AND (NEW.is_admin IS DISTINCT FROM OLD.is_admin) THEN
     RAISE EXCEPTION 'Forbidden: profiles.is_admin can only be changed by service_role'
       USING ERRCODE = 'insufficient_privilege';
   END IF;
+
   RETURN NEW;
 END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_prevent_is_admin_self_escalation ON public.profiles;
 CREATE TRIGGER trg_prevent_is_admin_self_escalation
-  BEFORE UPDATE ON public.profiles
+  BEFORE INSERT OR UPDATE ON public.profiles
   FOR EACH ROW
   EXECUTE FUNCTION public.prevent_is_admin_self_escalation();
 
@@ -66,14 +74,25 @@ CREATE POLICY "Users can update own profile"
   WITH CHECK (auth.uid() = id);
 
 -- ============================================================
--- 驗證（套用後在 Supabase SQL editor 以「一般使用者」情境手動確認）：
---   1. 用某會員的 anon JWT（非 service_role）執行：
---        UPDATE public.profiles SET is_admin = true WHERE id = auth.uid();
---      預期：ERROR，insufficient_privilege（trigger 擋下）。
---   2. 同一使用者更新非敏感欄位：
---        UPDATE public.profiles SET bio = 'hello' WHERE id = auth.uid();
---      預期：成功（不受影響）。
---   3. 以 service_role 執行 is_admin 設定：
+-- 驗證（重要：Supabase SQL Editor 以 postgres 身分執行,會被 trigger 放行,
+--  因此「直接在 editor 跑 UPDATE ... is_admin=true」一定成功,測不到攔截。
+--  要測攔截必須在同一交易內切換成 authenticated role + 設 JWT claims）:
+--
+--   1. 測攔截(模擬一般會員 —— 預期 ERROR insufficient_privilege):
+--        BEGIN;
+--          SET LOCAL ROLE authenticated;
+--          SET LOCAL request.jwt.claims = '{"sub":"<某會員uid>","role":"authenticated"}';
+--          UPDATE public.profiles SET is_admin = true WHERE id = '<某會員uid>';
+--        ROLLBACK;
+--      （INSERT is_admin=true 同樣被擋。）
+--
+--   2. 測不影響一般更新(同樣模擬會員 —— 預期成功):
+--        BEGIN;
+--          SET LOCAL ROLE authenticated;
+--          SET LOCAL request.jwt.claims = '{"sub":"<uid>","role":"authenticated"}';
+--          UPDATE public.profiles SET display_name = 'test' WHERE id = '<uid>';
+--        ROLLBACK;
+--
+--   3. service_role / postgres 仍可指派 admin(直接在 editor 跑即可 —— 預期成功):
 --        UPDATE public.profiles SET is_admin = true WHERE id = '<uid>';
---      預期:成功(後台指派 admin 的正常路徑不被破壞)。
 -- ============================================================
