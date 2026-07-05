@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
+import { verifyAdminAuth } from '@/lib/admin/auth'
 import { getErrorMessage } from '@/lib/utils/error'
 import { logger } from '@/lib/logger'
 
 export async function GET(request: NextRequest) {
-  // 驗證 Admin API Key
-  const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.ADMIN_API_KEY}`) {
+  if (!(await verifyAdminAuth(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -24,8 +23,8 @@ export async function GET(request: NextRequest) {
     }
 
     const today = new Date().toISOString().split('T')[0]
-    const todayArticles = rawArticles?.filter(a => a.scraped_at?.startsWith(today)) || []
-    const withoutEmbedding = rawArticles?.filter(a => !a.embedding) || []
+    const todayArticles = rawArticles?.filter((a) => a.scraped_at?.startsWith(today)) || []
+    const withoutEmbedding = rawArticles?.filter((a) => !a.embedding) || []
 
     // 2. 檢查 generated_articles 狀態
     const { data: generatedArticles, error: genError } = await supabase
@@ -55,25 +54,22 @@ export async function GET(request: NextRequest) {
         total: rawArticles?.length || 0,
         today: todayArticles.length,
         without_embedding: withoutEmbedding.length,
-        last_scraped: rawArticles?.[0]?.scraped_at || null
+        last_scraped: rawArticles?.[0]?.scraped_at || null,
       },
       generated_articles: {
         today: generatedArticles?.length || 0,
-        published_today: generatedArticles?.filter(a => a.published).length || 0
+        published_today: generatedArticles?.filter((a) => a.published).length || 0,
       },
-      recent_cron_logs: cronLogs?.map(log => ({
-        job: log.job_name,
-        status: log.status,
-        time: log.created_at,
-        metadata: log.metadata
-      })) || []
+      recent_cron_logs:
+        cronLogs?.map((log) => ({
+          job: log.job_name,
+          status: log.status,
+          time: log.created_at,
+          metadata: log.metadata,
+        })) || [],
     })
-
   } catch (error) {
     logger.error('api.admin.status_fail', error)
-    return NextResponse.json(
-      { error: getErrorMessage(error) },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 })
   }
 }

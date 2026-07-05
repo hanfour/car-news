@@ -3,44 +3,13 @@ import { createServiceClient } from '@/lib/supabase'
 import {
   findSemanticDuplicatesInBatch,
   findKeywordDuplicatesInBatch,
-  ArticleForDuplicateCheck
+  ArticleForDuplicateCheck,
 } from '@/lib/utils/advanced-deduplication'
-import { verifySessionToken } from '@/lib/admin/session'
+import { verifyAdminAuth } from '@/lib/admin/auth'
 import { getErrorMessage } from '@/lib/utils/error'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
-
-// Secure API Key validation
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY
-
-async function verifyAuth(request: NextRequest): Promise<boolean> {
-  // 方式 1: Bearer token (用於 API 調用)
-  const authHeader = request.headers.get('authorization')
-  if (ADMIN_API_KEY && authHeader === `Bearer ${ADMIN_API_KEY}`) {
-    return true
-  }
-
-  // 方式 2: Cookie session (用於 Web UI)
-  const sessionCookie = request.cookies.get('admin_session')
-  if (sessionCookie?.value) {
-    const userId = await verifySessionToken(sessionCookie.value)
-    if (!userId) {
-      return false
-    }
-
-    const supabase = createServiceClient()
-    const { data } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', userId)
-      .single()
-
-    return data?.is_admin === true
-  }
-
-  return false
-}
 
 /**
  * Duplicate Monitor API
@@ -51,7 +20,7 @@ async function verifyAuth(request: NextRequest): Promise<boolean> {
  * 3. Brand frequency violations
  */
 export async function GET(request: NextRequest) {
-  if (!(await verifyAuth(request))) {
+  if (!(await verifyAdminAuth(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -74,24 +43,24 @@ export async function GET(request: NextRequest) {
     }
 
     // 使用共用函數檢測重複
-    const articlesForCheck: ArticleForDuplicateCheck[] = articles.map(a => ({
+    const articlesForCheck: ArticleForDuplicateCheck[] = articles.map((a) => ({
       id: a.id,
       title_zh: a.title_zh,
       created_at: a.created_at,
       published: a.published,
       view_count: a.view_count || 0,
       content_embedding: a.content_embedding,
-      primary_brand: a.primary_brand
+      primary_brand: a.primary_brand,
     }))
 
     // 1. Find semantic duplicates (embedding similarity > 90%)
-    const semanticDuplicates = findSemanticDuplicatesInBatch(articlesForCheck, 0.90)
+    const semanticDuplicates = findSemanticDuplicatesInBatch(articlesForCheck, 0.9)
 
     // 2. Find keyword duplicates (overlap > 70%)
-    const keywordDuplicatesRaw = findKeywordDuplicatesInBatch(articlesForCheck, 0.70, 2)
-    const keywordDuplicates = keywordDuplicatesRaw.map(d => ({
+    const keywordDuplicatesRaw = findKeywordDuplicatesInBatch(articlesForCheck, 0.7, 2)
+    const keywordDuplicates = keywordDuplicatesRaw.map((d) => ({
       ...d,
-      overlap: d.similarity // 保持 API 兼容性
+      overlap: d.similarity, // 保持 API 兼容性
     }))
 
     // 3. Find brand frequency violations (>3 articles in 24h)
@@ -105,7 +74,10 @@ export async function GET(request: NextRequest) {
       .not('primary_brand', 'is', null)
       .order('created_at', { ascending: false })
 
-    const brandCounts = new Map<string, Array<{ id: string; title_zh: string; created_at: string }>>()
+    const brandCounts = new Map<
+      string,
+      Array<{ id: string; title_zh: string; created_at: string }>
+    >()
 
     if (recent24h) {
       for (const article of recent24h) {
@@ -116,7 +88,7 @@ export async function GET(request: NextRequest) {
         brandCounts.get(brand)!.push({
           id: article.id,
           title_zh: article.title_zh,
-          created_at: article.created_at
+          created_at: article.created_at,
         })
       }
     }
@@ -126,27 +98,26 @@ export async function GET(request: NextRequest) {
       .map(([brand, articles]) => ({
         brand,
         count: articles.length,
-        articles: articles.slice(0, 5) // Show first 5
+        articles: articles.slice(0, 5), // Show first 5
       }))
       .sort((a, b) => b.count - a.count)
 
     // 4. Summary statistics
     const stats = {
       totalArticles: articles.length,
-      articlesWithEmbedding: articlesForCheck.filter(a => a.content_embedding).length,
+      articlesWithEmbedding: articlesForCheck.filter((a) => a.content_embedding).length,
       semanticDuplicatesCount: semanticDuplicates.length,
       keywordDuplicatesCount: keywordDuplicates.length,
       brandViolationsCount: brandViolations.length,
-      publishedArticles: articles.filter(a => a.published).length
+      publishedArticles: articles.filter((a) => a.published).length,
     }
 
     return NextResponse.json({
       stats,
       semanticDuplicates: semanticDuplicates.slice(0, 20), // Top 20
       keywordDuplicates: keywordDuplicates.slice(0, 20), // Top 20
-      brandViolations
+      brandViolations,
     })
-
   } catch (error) {
     logger.error('api.admin.duplicate_monitor_fail', error, { message: getErrorMessage(error) })
     return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 })
