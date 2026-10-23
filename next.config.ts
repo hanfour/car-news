@@ -1,14 +1,10 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   // 明確標記僅 server 端使用的套件，避免被錯誤打包進 client bundle
   // 注意：ESM 套件（youtube-transcript、cheerio 等）放在此列表會被 Turbopack 當 CJS 載入而爆
   // 只列出「實證需要外部化」的 native / CJS-only 套件
-  serverExternalPackages: [
-    'sharp',
-    'rss-parser',
-    'rss',
-  ],
+  serverExternalPackages: ['sharp', 'rss-parser', 'rss'],
   images: {
     remotePatterns: [
       {
@@ -71,6 +67,23 @@ const nextConfig: NextConfig = {
         hostname: 'i.ytimg.com',
         pathname: '/**',
       },
+      // 社群登入（Google / Facebook）會把第三方頭像網址寫進 profiles.avatar_url。
+      // 路徑限縮在頭像專用的路徑，避免 image optimizer 變成任意圖片的代理。
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        pathname: '/a/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        pathname: '/a-/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'platform-lookaside.fbsbx.com',
+        pathname: '/platform/profilepic/**',
+      },
     ],
   },
   async headers() {
@@ -86,6 +99,6 @@ const nextConfig: NextConfig = {
       },
     ]
   },
-};
+}
 
-export default nextConfig;
+export default nextConfig
