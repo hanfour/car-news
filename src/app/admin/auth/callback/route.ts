@@ -3,7 +3,9 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createAdminSession } from '@/lib/admin/session'
+import { logger } from '@/lib/logger'
 
+// 注意：此處刻意不記錄 request.url（含一次性 OAuth code）、使用者 email 與 profile 內容。
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
@@ -11,15 +13,12 @@ export async function GET(request: NextRequest) {
   const errorDescription = requestUrl.searchParams.get('error_description')
   const origin = requestUrl.origin
 
-  console.log('[OAuth Callback] Request URL:', request.url)
-  console.log('[OAuth Callback] Code:', code ? 'present' : 'missing')
-  console.log('[OAuth Callback] Error:', error)
-  console.log('[OAuth Callback] Error description:', errorDescription)
-
   // Handle OAuth error from provider
   if (error) {
-    console.error('[OAuth Callback] OAuth error from provider:', error, errorDescription)
-    return NextResponse.redirect(`${origin}/admin/login?error=${encodeURIComponent(error)}&description=${encodeURIComponent(errorDescription || '')}`)
+    logger.warn('admin.oauth_callback.provider_error', { error, errorDescription })
+    return NextResponse.redirect(
+      `${origin}/admin/login?error=${encodeURIComponent(error)}&description=${encodeURIComponent(errorDescription || '')}`
+    )
   }
 
   if (code) {
@@ -44,14 +43,15 @@ export async function GET(request: NextRequest) {
     )
 
     // Exchange code for session
-    const { data: { user }, error: authError } = await supabase.auth.exchangeCodeForSession(code)
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.exchangeCodeForSession(code)
 
     if (authError || !user) {
-      console.error('[OAuth Callback] Auth error:', authError)
+      logger.error('admin.oauth_callback.auth_failed', authError)
       return NextResponse.redirect(`${origin}/admin/login?error=auth_failed`)
     }
-
-    console.log('[OAuth Callback] User authenticated:', user.id, user.email)
 
     // Check if user is admin
     const { data: profile, error: profileError } = await supabase
@@ -60,10 +60,8 @@ export async function GET(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    console.log('[OAuth Callback] Profile:', profile, 'Error:', profileError)
-
     if (profileError || !profile?.is_admin) {
-      console.error('[OAuth Callback] Not an admin user:', user.id)
+      logger.warn('admin.oauth_callback.not_admin', { userId: user.id })
       // Sign out non-admin user
       await supabase.auth.signOut()
       return NextResponse.redirect(`${origin}/admin/login?error=not_admin`)
@@ -75,11 +73,9 @@ export async function GET(request: NextRequest) {
     const session = await createAdminSession(user.id, ipAddress, userAgent)
 
     if (!session) {
-      console.error('[OAuth Callback] Session creation failed')
+      logger.error('admin.oauth_callback.session_failed', undefined, { userId: user.id })
       return NextResponse.redirect(`${origin}/admin/login?error=session_failed`)
     }
-
-    console.log('[OAuth Callback] Admin session created, redirecting to /admin')
 
     // Set the session cookie directly and redirect
     cookieStore.set('admin_session', session.token, {

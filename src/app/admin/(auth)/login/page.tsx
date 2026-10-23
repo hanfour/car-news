@@ -5,6 +5,17 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import { getSafeRedirectUrl } from '@/lib/security'
 
+/**
+ * 用 Supabase access token 向伺服器換 admin session cookie。
+ * 伺服器只信 token 驗證出的身分，不接受 client 自報 userId。
+ */
+function requestAdminSession(accessToken: string) {
+  return fetch('/api/admin/auth/login', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+}
+
 function AdminLoginContent() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -52,12 +63,12 @@ function AdminLoginContent() {
           .eq('id', user.id)
           .single()
 
-        if (profile?.is_admin) {
-          const response = await fetch('/api/admin/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: user.id }),
-          })
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+
+        if (profile?.is_admin && session) {
+          const response = await requestAdminSession(session.access_token)
 
           if (response.ok) {
             router.push('/admin')
@@ -88,7 +99,7 @@ function AdminLoginContent() {
         return
       }
 
-      if (!authData.user) {
+      if (!authData.user || !authData.session) {
         setError('Login failed')
         setLoading(false)
         return
@@ -107,11 +118,7 @@ function AdminLoginContent() {
         return
       }
 
-      const response = await fetch('/api/admin/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: authData.user.id }),
-      })
+      const response = await requestAdminSession(authData.session.access_token)
 
       if (response.ok) {
         router.push('/admin')
