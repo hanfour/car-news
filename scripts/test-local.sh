@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# 憑證一律由環境變數提供，不可寫死在腳本裡（此 repo 是公開的）
+if [ -z "$CRON_SECRET" ]; then
+  echo "請先 export CRON_SECRET（與部署環境使用相同的值）"
+  exit 1
+fi
+
 echo "🚀 Car News AI - 本地测试脚本"
 echo "================================"
 echo ""
@@ -33,7 +39,7 @@ echo ""
 echo "4️⃣ 测试Scraper API（抓取新闻）..."
 echo "   这可能需要30-60秒..."
 RESPONSE=$(curl -s -X GET http://localhost:3000/api/cron/scraper \
-  -H "Authorization: Bearer YPxXuvXTQ1+Ya0Vb7tA+PV8W2SQCbbAvU4r46z5jKvE=")
+  -H "Authorization: Bearer ${CRON_SECRET}")
 
 echo "$RESPONSE" | python3 -c "import sys, json; print(json.dumps(json.load(sys.stdin), indent=2))" 2>/dev/null || echo "$RESPONSE"
 
