@@ -98,6 +98,11 @@ export async function uploadMultipleImages(
 
 /**
  * 刪除舊圖片（清理用）
+ *
+ * ⚠️ 不可直接掛到 cron：它依 lastModified 刪除整個 bucket 內所有舊物件，
+ * 不區分用途，也不檢查是否仍被文章、車庫或頭像引用，會造成既有內容破圖。
+ * 且 listR2Objects 不分頁，一次只處理前 1000 個物件。
+ * 要使用前請先加上 prefix 限制與 DB 引用排除。
  */
 export async function deleteOldImages(olderThanDays: number = 30): Promise<number> {
   try {

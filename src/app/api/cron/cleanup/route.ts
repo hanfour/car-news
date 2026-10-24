@@ -26,9 +26,7 @@ async function handleCronJob(request: NextRequest) {
     results.expired_articles = expiredArticles || 0
 
     // 2. 清理旧的daily_topic_locks（7天前）
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split('T')[0]
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
     const { count: oldLocks } = await supabase
       .from('daily_topic_locks')
@@ -47,10 +45,12 @@ async function handleCronJob(request: NextRequest) {
 
     results.old_logs = oldLogs || 0
 
-    // 4. 清理舊圖片（30天前的圖片）
-    const { deleteOldImages } = await import('@/lib/storage/image-uploader')
-    const deletedImages = await deleteOldImages(30)
-    results.old_images = deletedImages
+    // 4. （已停用）清理 R2 舊圖片
+    // 原本呼叫 deleteOldImages(30)：列出整個 bucket，刪除所有超過 30 天的物件。
+    // 但 bucket 內同時存放永久保留的文章封面、文章內圖與使用者車庫照片，
+    // 這會讓已發布的文章與車庫頁破圖。恢復前必須先以 DB 引用
+    // （generated_articles、user_cars、profiles.avatar_url）排除仍在使用的 key，
+    // 並限定 prefix、處理 ListObjectsV2 分頁。
 
     // 5. 清理過期的 admin sessions
     const { cleanupExpiredSessions } = await import('@/lib/admin/session')
@@ -63,16 +63,15 @@ async function handleCronJob(request: NextRequest) {
       status: 'success',
       metadata: {
         ...results,
-        duration_ms: Date.now() - startTime
-      }
+        duration_ms: Date.now() - startTime,
+      },
     })
 
     return NextResponse.json({
       success: true,
       cleaned: results,
-      duration: Date.now() - startTime
+      duration: Date.now() - startTime,
     })
-
   } catch (error) {
     logger.error('cron.cleanup.fail', error)
 
@@ -84,8 +83,8 @@ async function handleCronJob(request: NextRequest) {
         status: 'error',
         metadata: {
           error: getErrorMessage(error),
-          duration_ms: Date.now() - startTime
-        }
+          duration_ms: Date.now() - startTime,
+        },
       })
     } catch (logError) {
       logger.error('cron.cleanup.log_fail', logError)
@@ -94,13 +93,12 @@ async function handleCronJob(request: NextRequest) {
     return NextResponse.json(
       {
         error: getErrorMessage(error),
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       },
       { status: 500 }
     )
   }
 }
-
 
 export async function GET(request: NextRequest) {
   return handleCronJob(request)
