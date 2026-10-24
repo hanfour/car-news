@@ -25,6 +25,11 @@ function getAnthropic() {
  * 優先選擇最新的 Sonnet 模型
  */
 async function getAvailableClaudeModel(): Promise<string | null> {
+  // 明確指定模型時直接使用，不再自動挑「最新的 Sonnet」。
+  // 自動挑選會在 Anthropic 新增模型時悄悄換成參數不相容或價格不同的模型。
+  const pinned = process.env.CLAUDE_MODEL?.trim()
+  if (pinned) return pinned
+
   // 檢查緩存
   if (cachedModel && Date.now() - lastModelCheck < MODEL_CACHE_TTL) {
     return cachedModel
@@ -132,16 +137,18 @@ ${ARTICLE_OUTPUT_SCHEMA_PROMPT}`
 
   // 策略1: 嘗試使用 Claude
   const claudeModel = await getAvailableClaudeModel()
+  let claudeError: unknown
 
   if (claudeModel) {
     try {
       logger.info('ai.claude.generate_start', { model: claudeModel })
       const anthropic = getAnthropic()
 
+      // 刻意不送 temperature：較新的 Claude 模型已不接受這個參數（回 400），
+      // 而 getAvailableClaudeModel 會自動選到最新的 Sonnet，帶了就會每次都失敗。
       const message = await anthropic.messages.create({
         model: claudeModel,
         max_tokens: 4096,
-        temperature: 0.7,
         messages: [
           {
             role: 'user',
@@ -176,6 +183,7 @@ ${ARTICLE_OUTPUT_SCHEMA_PROMPT}`
       logger.info('ai.claude.generate_ok')
       return result
     } catch (error) {
+      claudeError = error
       logger.error('ai.claude.generate_fail', error)
       logger.info('ai.claude.fallback_to_openai')
     }
@@ -215,7 +223,11 @@ ${ARTICLE_OUTPUT_SCHEMA_PROMPT}`
     return result
   } catch (error) {
     logger.error('ai.claude.openai_generate_fail', error)
-    throw new Error('Failed to generate article with both Claude and OpenAI')
+    // 保留兩邊的原始錯誤，呼叫端才能分辨是額度、金鑰還是內容問題。
+    throw new AggregateError(
+      claudeError === undefined ? [error] : [claudeError, error],
+      'Failed to generate article with both Claude and OpenAI'
+    )
   }
 }
 
@@ -293,7 +305,6 @@ export async function generateText(
   const message = await anthropic.messages.create({
     model: claudeModel,
     max_tokens: options?.maxTokens || 1024,
-    temperature: options?.temperature || 0.7,
     messages: [
       {
         role: 'user',
