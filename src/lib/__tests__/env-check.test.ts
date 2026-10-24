@@ -17,6 +17,7 @@ function fullEnv(): Record<string, string> {
     R2_SECRET_ACCESS_KEY: 'r2-secret',
     R2_BUCKET_NAME: 'r2-bucket',
     NEXT_PUBLIC_BASE_URL: 'https://example.com',
+    ALERT_WEBHOOK_URL: 'https://hooks.example.com/alert',
   }
 }
 
@@ -47,6 +48,23 @@ describe('checkRequiredEnv', () => {
     const { requiredMissing, recommendedMissing } = checkRequiredEnv(env)
     expect(requiredMissing).toEqual([])
     expect(recommendedMissing).toContain('CRON_SECRET')
+  })
+
+  it('warns when no alert channel is configured', () => {
+    const env = fullEnv()
+    delete env.ALERT_WEBHOOK_URL
+    expect(checkRequiredEnv(env).recommendedMissing).toContain(
+      'ALERT_WEBHOOK_URL|TELEGRAM_BOT_TOKEN'
+    )
+  })
+
+  it('accepts Telegram as the alert channel instead of a webhook', () => {
+    const env = fullEnv()
+    delete env.ALERT_WEBHOOK_URL
+    env.TELEGRAM_BOT_TOKEN = 'bot-token'
+    expect(checkRequiredEnv(env).recommendedMissing).not.toContain(
+      'ALERT_WEBHOOK_URL|TELEGRAM_BOT_TOKEN'
+    )
   })
 
   it('accepts GOOGLE_AI_API_KEY as an alternative to GEMINI_API_KEY', () => {

@@ -1,5 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { generateEmbedding } from '@/lib/ai/embeddings'
+import {
+  embedManyWithProvider,
+  generateEmbedding,
+  type EmbeddingProvider,
+} from '@/lib/ai/embeddings'
 import { filterCarArticles } from '@/lib/utils/brand-extractor'
 import { RawArticle } from '@/types/database'
 import { logger } from '@/lib/logger'
@@ -16,7 +20,42 @@ export interface PrepareArticlesResult {
   embeddingFailures: number
 }
 
-export async function prepareRawArticles(supabase: SupabaseClient): Promise<PrepareArticlesResult> {
+export interface PrepareArticlesOptions {
+  /**
+   * primary：照舊，缺向量的用主要 provider 補並寫回資料庫。
+   * fallback：主要 provider 不可用。向量改用備援 provider 產生，**只留在記憶體、不寫回資料庫**，
+   * 因為不同模型的向量不能互相比較，混進資料庫會讓之後的分群與重複比對全部失準。
+   */
+  embeddingMode?: 'primary' | 'fallback'
+  fallbackProvider?: EmbeddingProvider | null
+}
+
+/** 降級模式一輪最多重新嵌入幾篇（取最新的），控制時間與費用。 */
+export const FALLBACK_MAX_ARTICLES = 1200
+/** 降級模式只取標題加內文前段，足以分群，也比較省。 */
+const FALLBACK_TEXT_CHARS = 2000
+
+async function embedInMemory(
+  articles: RawArticle[],
+  provider: EmbeddingProvider
+): Promise<RawArticle[]> {
+  const newest = [...articles]
+    .sort((a, b) => Date.parse(b.scraped_at) - Date.parse(a.scraped_at))
+    .slice(0, FALLBACK_MAX_ARTICLES)
+  const vectors = await embedManyWithProvider(
+    provider,
+    newest.map((a) => `${a.title}\n${a.content}`.slice(0, FALLBACK_TEXT_CHARS))
+  )
+  newest.forEach((article, index) => {
+    article.embedding = vectors[index]
+  })
+  return newest
+}
+
+export async function prepareRawArticles(
+  supabase: SupabaseClient,
+  options: PrepareArticlesOptions = {}
+): Promise<PrepareArticlesResult> {
   logger.info('generator.prepare.start')
   // 只撈尚未被用過的素材。已被用過（used_in_article_id 非空）的素材代表內容已被某篇文章涵蓋，
   // 若不排除，每次 cron 都會把它重新聚類、重新呼叫 Gemini 生成，最後又在生成後被判重複丟掉，
@@ -52,6 +91,19 @@ export async function prepareRawArticles(supabase: SupabaseClient): Promise<Prep
   if (disableEmbeddings) {
     logger.warn('generator.prepare.embeddings_disabled')
     return { rawCount, filteredCount, carArticles, embeddingFailures: 0 }
+  }
+
+  if (options.embeddingMode === 'fallback') {
+    if (!options.fallbackProvider) {
+      throw new Error('Embedding fallback mode requires a fallback provider')
+    }
+    const embedded = await embedInMemory(carArticles, options.fallbackProvider)
+    logger.warn('generator.prepare.embed_fallback_in_memory', {
+      provider: options.fallbackProvider,
+      embedded: embedded.length,
+      dropped: carArticles.length - embedded.length,
+    })
+    return { rawCount, filteredCount, carArticles: embedded, embeddingFailures: 0 }
   }
 
   const articlesWithoutEmbedding = carArticles.filter((a) => !a.embedding)
