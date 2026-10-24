@@ -15,11 +15,27 @@ config({ path: resolve(process.cwd(), '.env.local') })
 
 import { createServiceClient } from '../src/lib/supabase'
 
-const CRON_API_KEY = process.env.CRON_SECRET_KEY || 'YPxXuvXTQ1+Ya0Vb7tA+PV8W2SQCbbAvU4r46z5jKvE='
+// 憑證一律由環境變數提供，不可寫死在程式碼裡（此 repo 是公開的）
+const CRON_API_KEY = process.env.CRON_SECRET || process.env.CRON_SECRET_KEY
+if (!CRON_API_KEY) {
+  console.error('請先設定環境變數 CRON_SECRET（與部署環境使用相同的值）')
+  process.exit(1)
+}
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
 
+// 這支腳本會重複觸發 scraper 與 generator，會寫入資料並產生 AI 費用。
+// 目標不是本機時，必須明確加上 --yes 才會執行，避免載入 .env.local 後意外打到正式環境。
+const isLocalTarget = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/.test(BASE_URL)
+if (!isLocalTarget && !process.argv.includes('--yes')) {
+  console.error(`目標是 ${BASE_URL}，不是本機。`)
+  console.error(
+    '此腳本會觸發 scraper 與 generator（寫入資料並產生 AI 費用）。確認要執行請加上 --yes'
+  )
+  process.exit(1)
+}
+
 async function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 async function callCronEndpoint(endpoint: string): Promise<any> {
@@ -29,7 +45,7 @@ async function callCronEndpoint(endpoint: string): Promise<any> {
   const response = await fetch(url, {
     method: 'GET',
     headers: {
-      'Authorization': `Bearer ${CRON_API_KEY}`,
+      Authorization: `Bearer ${CRON_API_KEY}`,
     },
   })
 
@@ -73,7 +89,7 @@ async function getArticleStats() {
     generated: {
       count: generatedCount || 0,
       oldest: generatedStats?.[0]?.published_at || 'N/A',
-    }
+    },
   }
 }
 
@@ -83,8 +99,12 @@ async function backfillArticles(rounds: number = 10) {
   // Get initial stats
   const initialStats = await getArticleStats()
   console.log('📊 Initial stats:')
-  console.log(`   Scraped: ${initialStats.scraped.count} articles (oldest: ${initialStats.scraped.oldest})`)
-  console.log(`   Generated: ${initialStats.generated.count} articles (oldest: ${initialStats.generated.oldest})`)
+  console.log(
+    `   Scraped: ${initialStats.scraped.count} articles (oldest: ${initialStats.scraped.oldest})`
+  )
+  console.log(
+    `   Generated: ${initialStats.generated.count} articles (oldest: ${initialStats.generated.oldest})`
+  )
   console.log()
 
   for (let round = 1; round <= rounds; round++) {
@@ -109,8 +129,12 @@ async function backfillArticles(rounds: number = 10) {
       // Get current stats
       const currentStats = await getArticleStats()
       console.log('\n📈 Progress:')
-      console.log(`   Scraped: ${currentStats.scraped.count} (+${currentStats.scraped.count - initialStats.scraped.count})`)
-      console.log(`   Generated: ${currentStats.generated.count} (+${currentStats.generated.count - initialStats.generated.count})`)
+      console.log(
+        `   Scraped: ${currentStats.scraped.count} (+${currentStats.scraped.count - initialStats.scraped.count})`
+      )
+      console.log(
+        `   Generated: ${currentStats.generated.count} (+${currentStats.generated.count - initialStats.generated.count})`
+      )
 
       // Wait before next round
       if (round < rounds) {
@@ -131,7 +155,9 @@ async function backfillArticles(rounds: number = 10) {
   const finalStats = await getArticleStats()
   console.log('\n📊 Final stats:')
   console.log(`   Scraped: ${finalStats.scraped.count} (oldest: ${finalStats.scraped.oldest})`)
-  console.log(`   Generated: ${finalStats.generated.count} (oldest: ${finalStats.generated.oldest})`)
+  console.log(
+    `   Generated: ${finalStats.generated.count} (oldest: ${finalStats.generated.oldest})`
+  )
   console.log('\n   Total added:')
   console.log(`   - Scraped: +${finalStats.scraped.count - initialStats.scraped.count}`)
   console.log(`   - Generated: +${finalStats.generated.count - initialStats.generated.count}`)
