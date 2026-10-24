@@ -1,34 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
-import { verifySessionToken } from '@/lib/admin/session'
-
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY
-
-async function verifyAuth(request: NextRequest): Promise<boolean> {
-  const authHeader = request.headers.get('authorization')
-  if (authHeader === `Bearer ${ADMIN_API_KEY}`) return true
-
-  const sessionCookie = request.cookies.get('admin_session')
-  if (sessionCookie?.value) {
-    const userId = await verifySessionToken(sessionCookie.value)
-    if (!userId) return false
-    const supabase = createServiceClient()
-    const { data } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', userId)
-      .single()
-    return data?.is_admin === true
-  }
-  return false
-}
+import { verifyAdminAuth } from '@/lib/admin/auth'
 
 // GET /api/admin/images/audit/[articleId] — get latest audit for a single article
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ articleId: string }> }
 ) {
-  if (!(await verifyAuth(request))) {
+  if (!(await verifyAdminAuth(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

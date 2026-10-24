@@ -1,40 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
-import { verifySessionToken } from '@/lib/admin/session'
+import { verifyAdminAuth } from '@/lib/admin/auth'
 import { generateCoverImage, generateAndSaveCoverImage } from '@/lib/ai/image-generation'
 import { scoreImage } from '@/lib/experiments/scorer'
 import { logger } from '@/lib/logger'
 
 export const maxDuration = 300 // 5 分鐘
 
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY
-
-async function verifyAuth(request: NextRequest): Promise<boolean> {
-  const authHeader = request.headers.get('authorization')
-  if (authHeader === `Bearer ${ADMIN_API_KEY}`) return true
-
-  const sessionCookie = request.cookies.get('admin_session')
-  if (sessionCookie?.value) {
-    const userId = await verifySessionToken(sessionCookie.value)
-    if (!userId) return false
-    const supabase = createServiceClient()
-    const { data } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', userId)
-      .single()
-    return data?.is_admin === true
-  }
-  return false
-}
-
 function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 // POST /api/admin/images/regenerate-batch — batch regenerate low-score images
 export async function POST(request: NextRequest) {
-  if (!(await verifyAuth(request))) {
+  if (!(await verifyAdminAuth(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -73,16 +52,16 @@ export async function POST(request: NextRequest) {
   }
 
   // Get article details
-  const articleIds = auditRecords.map(r => r.article_id)
+  const articleIds = auditRecords.map((r) => r.article_id)
   const { data: articles } = await supabase
     .from('generated_articles')
     .select('id, title_zh, content_zh, brands, primary_brand, images, image_credit')
     .in('id', articleIds)
 
-  const articleMap = new Map((articles || []).map(a => [a.id, a]))
+  const articleMap = new Map((articles || []).map((a) => [a.id, a]))
 
   if (dryRun) {
-    const dryRunResults = auditRecords.map(r => {
+    const dryRunResults = auditRecords.map((r) => {
       const article = articleMap.get(r.article_id)
       const images = article?.images as Array<{ url: string }> | null
       return {
@@ -140,8 +119,14 @@ export async function POST(request: NextRequest) {
     })
 
     try {
-      const brands = article.brands as string[] || (article.primary_brand ? [article.primary_brand] : undefined)
-      const images = article.images as Array<{ url: string; caption?: string; size?: number }> | null
+      const brands =
+        (article.brands as string[]) ||
+        (article.primary_brand ? [article.primary_brand] : undefined)
+      const images = article.images as Array<{
+        url: string
+        caption?: string
+        size?: number
+      }> | null
 
       let newUrl: string | null = null
       let newCredit = ''
@@ -149,7 +134,10 @@ export async function POST(request: NextRequest) {
       if (images && images.length > 0) {
         // img2img path
         const result = await generateAndSaveCoverImage(
-          article.title_zh, article.content_zh, brands, images
+          article.title_zh,
+          article.content_zh,
+          brands,
+          images
         )
         if (result) {
           newUrl = result.url
@@ -158,7 +146,11 @@ export async function POST(request: NextRequest) {
       } else {
         // text2img with qualityBoost
         const result = await generateCoverImage(
-          article.title_zh, article.content_zh, brands, 'auto', true
+          article.title_zh,
+          article.content_zh,
+          brands,
+          'auto',
+          true
         )
         if (result?.url) {
           // Upload to permanent storage
@@ -172,7 +164,14 @@ export async function POST(request: NextRequest) {
       }
 
       if (!newUrl) {
-        details.push({ article_id: article.id, title: article.title_zh, scoreBefore, scoreAfter: null, improved: false, error: 'Generation failed' })
+        details.push({
+          article_id: article.id,
+          title: article.title_zh,
+          scoreBefore,
+          scoreAfter: null,
+          improved: false,
+          error: 'Generation failed',
+        })
         continue
       }
 
@@ -239,9 +238,10 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const scoredCount = details.filter(d => d.scoreAfter !== null).length
-  const avgScoreBefore = Math.round(totalScoreBefore / details.length * 100) / 100
-  const avgScoreAfter = scoredCount > 0 ? Math.round(totalScoreAfter / scoredCount * 100) / 100 : null
+  const scoredCount = details.filter((d) => d.scoreAfter !== null).length
+  const avgScoreBefore = Math.round((totalScoreBefore / details.length) * 100) / 100
+  const avgScoreAfter =
+    scoredCount > 0 ? Math.round((totalScoreAfter / scoredCount) * 100) / 100 : null
 
   logger.info('api.admin.image_regenerate_complete', {
     processed: details.length,

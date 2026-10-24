@@ -1,32 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
-import { verifySessionToken } from '@/lib/admin/session'
+import { verifyAdminAuth } from '@/lib/admin/auth'
 import { ImageScoreDimensions, SCORE_WEIGHTS } from '@/lib/experiments/types'
-
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY
-
-async function verifyAuth(request: NextRequest): Promise<boolean> {
-  const authHeader = request.headers.get('authorization')
-  if (authHeader === `Bearer ${ADMIN_API_KEY}`) return true
-
-  const sessionCookie = request.cookies.get('admin_session')
-  if (sessionCookie?.value) {
-    const userId = await verifySessionToken(sessionCookie.value)
-    if (!userId) return false
-    const supabase = createServiceClient()
-    const { data } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', userId)
-      .single()
-    return data?.is_admin === true
-  }
-  return false
-}
 
 // GET /api/admin/images/audit/analysis — detailed analysis report
 export async function GET(request: NextRequest) {
-  if (!(await verifyAuth(request))) {
+  if (!(await verifyAdminAuth(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -57,13 +36,13 @@ export async function GET(request: NextRequest) {
   }
 
   // Get article details for these records
-  const articleIds = records.map(r => r.article_id)
+  const articleIds = records.map((r) => r.article_id)
   const { data: articles } = await supabase
     .from('generated_articles')
     .select('id, title_zh, primary_brand, image_credit')
     .in('id', articleIds)
 
-  const articleMap = new Map((articles || []).map(a => [a.id, a]))
+  const articleMap = new Map((articles || []).map((a) => [a.id, a]))
 
   // 1. Per-brand average scores
   const brandScores: Record<string, { total: number; count: number }> = {}
@@ -77,7 +56,7 @@ export async function GET(request: NextRequest) {
   const brandAvg = Object.entries(brandScores)
     .map(([brand, { total, count }]) => ({
       brand,
-      avgScore: Math.round(total / count * 100) / 100,
+      avgScore: Math.round((total / count) * 100) / 100,
       count,
     }))
     .sort((a, b) => a.avgScore - b.avgScore)
@@ -95,21 +74,22 @@ export async function GET(request: NextRequest) {
   }
 
   const dimensionAvg = dimKeys
-    .map(key => ({
+    .map((key) => ({
       dimension: key,
-      avgScore: Math.round(dimTotals[key] / records.length * 100) / 100,
+      avgScore: Math.round((dimTotals[key] / records.length) * 100) / 100,
       weight: SCORE_WEIGHTS[key],
     }))
     .sort((a, b) => a.avgScore - b.avgScore)
 
   // 3. Low-score articles (composite < 7.0)
   const lowScoreArticles = records
-    .filter(r => Number(r.composite_score) < 7.0)
-    .map(r => {
+    .filter((r) => Number(r.composite_score) < 7.0)
+    .map((r) => {
       const article = articleMap.get(r.article_id)
       const scores = r.scores as ImageScoreDimensions
-      const weakest = (Object.entries(scores) as [string, number][])
-        .sort(([, a], [, b]) => a - b)[0]
+      const weakest = (Object.entries(scores) as [string, number][]).sort(
+        ([, a], [, b]) => a - b
+      )[0]
       return {
         id: r.article_id,
         title: article?.title_zh || 'Unknown',
@@ -133,9 +113,8 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const avg = (arr: number[]) => arr.length > 0
-    ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length * 100) / 100
-    : null
+  const avg = (arr: number[]) =>
+    arr.length > 0 ? Math.round((arr.reduce((s, v) => s + v, 0) / arr.length) * 100) / 100 : null
 
   // 5. Regeneration cost estimate
   const regenCount = lowScoreArticles.length
@@ -144,7 +123,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     batch,
     totalAudited: records.length,
-    overallAvgScore: avg(records.map(r => Number(r.composite_score))),
+    overallAvgScore: avg(records.map((r) => Number(r.composite_score))),
     brandAnalysis: brandAvg,
     dimensionAnalysis: dimensionAvg,
     weakestDimension: dimensionAvg[0]?.dimension || null,

@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
-import { verifySessionToken } from '@/lib/admin/session'
+import { verifyAdminAuth } from '@/lib/admin/auth'
 import { generateCoverImage, generateAndSaveCoverImage } from '@/lib/ai/image-generation'
-import { generateWithFlux, generateWithFluxSchnell, buildFluxPrompt } from '@/lib/ai/flux-image-generation'
+import {
+  generateWithFlux,
+  generateWithFluxSchnell,
+  buildFluxPrompt,
+} from '@/lib/ai/flux-image-generation'
 import { generateImagePromptFromArticle } from '@/lib/ai/image-prompt-generator'
 import { uploadImageFromUrl } from '@/lib/storage/image-uploader'
 import { logger } from '@/lib/logger'
@@ -10,40 +14,9 @@ import { logger } from '@/lib/logger'
 // 可選的生成方法
 type GenerationMethod = 'auto' | 'flux-dev' | 'flux-schnell' | 'dalle' | 'flux-img2img'
 
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY
-
-async function verifyAuth(request: NextRequest): Promise<boolean> {
-  const authHeader = request.headers.get('authorization')
-  if (authHeader === `Bearer ${ADMIN_API_KEY}`) {
-    return true
-  }
-
-  const sessionCookie = request.cookies.get('admin_session')
-  if (sessionCookie?.value) {
-    const userId = await verifySessionToken(sessionCookie.value)
-    if (!userId) {
-      return false
-    }
-
-    const supabase = createServiceClient()
-    const { data } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', userId)
-      .single()
-
-    return data?.is_admin === true
-  }
-
-  return false
-}
-
 // POST /api/admin/articles/[id]/regenerate-image - 重新生成封面圖
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  if (!(await verifyAuth(request))) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await verifyAdminAuth(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -54,7 +27,10 @@ export async function POST(
   let method: GenerationMethod = 'auto'
   try {
     const body = await request.json()
-    if (body.method && ['auto', 'flux-dev', 'flux-schnell', 'dalle', 'flux-img2img'].includes(body.method)) {
+    if (
+      body.method &&
+      ['auto', 'flux-dev', 'flux-schnell', 'dalle', 'flux-img2img'].includes(body.method)
+    ) {
       method = body.method
     }
   } catch {
@@ -84,11 +60,16 @@ export async function POST(
     // 2. 根據選擇的方法生成圖片
     if (method === 'flux-img2img') {
       // Flux img2img：使用文章已有的圖片作為參考
-      const articleImages = (article.images as Array<{ url: string; caption?: string; size?: number }>) || []
+      const articleImages =
+        (article.images as Array<{ url: string; caption?: string; size?: number }>) || []
       if (articleImages.length === 0) {
-        return NextResponse.json({
-          error: 'No reference images available for img2img. Article needs at least 1 stored image.'
-        }, { status: 400 })
+        return NextResponse.json(
+          {
+            error:
+              'No reference images available for img2img. Article needs at least 1 stored image.',
+          },
+          { status: 400 }
+        )
       }
 
       const img2imgResult = await generateAndSaveCoverImage(
@@ -104,7 +85,7 @@ export async function POST(
           .from('generated_articles')
           .update({
             cover_image: img2imgResult.url,
-            image_credit: img2imgResult.credit
+            image_credit: img2imgResult.credit,
           })
           .eq('id', id)
 
@@ -112,17 +93,24 @@ export async function POST(
           return NextResponse.json({ error: updateError.message }, { status: 500 })
         }
 
-        logger.info('api.admin.regenerate_image_done', { articleId: id, provider: 'flux-img2img', cost: 0.025 })
+        logger.info('api.admin.regenerate_image_done', {
+          articleId: id,
+          provider: 'flux-img2img',
+          cost: 0.025,
+        })
         return NextResponse.json({
           success: true,
           cover_image: img2imgResult.url,
           provider: 'Flux img2img',
-          cost: 0.025
+          cost: 0.025,
         })
       } else {
-        return NextResponse.json({
-          error: 'Flux img2img generation failed'
-        }, { status: 500 })
+        return NextResponse.json(
+          {
+            error: 'Flux img2img generation failed',
+          },
+          { status: 500 }
+        )
       }
     }
 
@@ -135,20 +123,23 @@ export async function POST(
       )
       const fluxPrompt = buildFluxPrompt(promptResult.fullPrompt, article.title_zh, brands?.[0])
 
-      const result = method === 'flux-schnell'
-        ? await generateWithFluxSchnell(fluxPrompt)
-        : await generateWithFlux(fluxPrompt)
+      const result =
+        method === 'flux-schnell'
+          ? await generateWithFluxSchnell(fluxPrompt)
+          : await generateWithFlux(fluxPrompt)
 
       if (result?.url && !result.error) {
         imageUrl = result.url
         provider = 'flux'
         cost = method === 'flux-schnell' ? 0.003 : 0.008
       } else {
-        return NextResponse.json({
-          error: result?.error || `${method} generation failed`
-        }, { status: 500 })
+        return NextResponse.json(
+          {
+            error: result?.error || `${method} generation failed`,
+          },
+          { status: 500 }
+        )
       }
-
     } else if (method === 'dalle') {
       // 直接使用 DALL-E
       const imageResult = await generateCoverImage(
@@ -163,11 +154,13 @@ export async function POST(
         provider = 'dalle'
         cost = 0.04
       } else {
-        return NextResponse.json({
-          error: imageResult?.error || 'DALL-E generation failed'
-        }, { status: 500 })
+        return NextResponse.json(
+          {
+            error: imageResult?.error || 'DALL-E generation failed',
+          },
+          { status: 500 }
+        )
       }
-
     } else {
       // Auto 模式：Flux 優先，DALL-E fallback
       const imageResult = await generateCoverImage(
@@ -182,9 +175,12 @@ export async function POST(
         provider = imageResult.provider || 'flux'
         cost = imageResult.cost || 0.008
       } else {
-        return NextResponse.json({
-          error: imageResult?.error || 'Image generation failed'
-        }, { status: 500 })
+        return NextResponse.json(
+          {
+            error: imageResult?.error || 'Image generation failed',
+          },
+          { status: 500 }
+        )
       }
     }
 
@@ -203,15 +199,14 @@ export async function POST(
     }
 
     // 4. 更新資料庫
-    const providerName = provider === 'flux'
-      ? (method === 'flux-schnell' ? 'Flux Schnell' : 'Flux')
-      : 'DALL-E 3'
+    const providerName =
+      provider === 'flux' ? (method === 'flux-schnell' ? 'Flux Schnell' : 'Flux') : 'DALL-E 3'
 
     const { error: updateError } = await supabase
       .from('generated_articles')
       .update({
         cover_image: permanentUrl,
-        image_credit: `AI 生成示意圖 (${providerName})`
+        image_credit: `AI 生成示意圖 (${providerName})`,
       })
       .eq('id', id)
 
@@ -225,13 +220,15 @@ export async function POST(
       success: true,
       cover_image: permanentUrl,
       provider: providerName,
-      cost
+      cost,
     })
-
   } catch (error) {
     logger.error('api.admin.regenerate_image_fail', error, { articleId: id, method })
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }

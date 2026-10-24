@@ -1,40 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
-import { verifySessionToken } from '@/lib/admin/session'
+import { verifyAdminAuth } from '@/lib/admin/auth'
 import { scoreImage } from '@/lib/experiments/scorer'
 import { ImageScoreDimensions } from '@/lib/experiments/types'
 import { logger } from '@/lib/logger'
 
 export const maxDuration = 300 // 5 分鐘
 
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY
-
-async function verifyAuth(request: NextRequest): Promise<boolean> {
-  const authHeader = request.headers.get('authorization')
-  if (authHeader === `Bearer ${ADMIN_API_KEY}`) return true
-
-  const sessionCookie = request.cookies.get('admin_session')
-  if (sessionCookie?.value) {
-    const userId = await verifySessionToken(sessionCookie.value)
-    if (!userId) return false
-    const supabase = createServiceClient()
-    const { data } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', userId)
-      .single()
-    return data?.is_admin === true
-  }
-  return false
-}
-
 function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 // POST /api/admin/images/audit — trigger full audit
 export async function POST(request: NextRequest) {
-  if (!(await verifyAuth(request))) {
+  if (!(await verifyAdminAuth(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -76,16 +55,17 @@ export async function POST(request: NextRequest) {
   // Exclude already-audited unless force=true
   let toAudit = articles
   if (!force) {
-    const { data: existingAudits } = await supabase
-      .from('image_audit')
-      .select('article_id')
+    const { data: existingAudits } = await supabase.from('image_audit').select('article_id')
 
-    const auditedIds = new Set((existingAudits || []).map(a => a.article_id))
-    toAudit = articles.filter(a => !auditedIds.has(a.id))
+    const auditedIds = new Set((existingAudits || []).map((a) => a.article_id))
+    toAudit = articles.filter((a) => !auditedIds.has(a.id))
   }
 
   if (toAudit.length === 0) {
-    return NextResponse.json({ message: 'All published articles already audited', total: articles.length })
+    return NextResponse.json({
+      message: 'All published articles already audited',
+      total: articles.length,
+    })
   }
 
   const now = new Date()
@@ -125,8 +105,9 @@ export async function POST(request: NextRequest) {
 
       // Find weakest dimension
       const dims = score.dimensions as ImageScoreDimensions
-      const weakest = (Object.entries(dims) as [string, number][])
-        .sort(([, a], [, b]) => a - b)[0][0]
+      const weakest = (Object.entries(dims) as [string, number][]).sort(
+        ([, a], [, b]) => a - b
+      )[0][0]
 
       results.push({
         article_id: article.id,
@@ -150,11 +131,13 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const avgScore = results.length > 0
-    ? Math.round(results.reduce((s, r) => s + r.composite_score, 0) / results.length * 100) / 100
-    : 0
+  const avgScore =
+    results.length > 0
+      ? Math.round((results.reduce((s, r) => s + r.composite_score, 0) / results.length) * 100) /
+        100
+      : 0
 
-  const belowThreshold = results.filter(r => r.composite_score < 7.0).length
+  const belowThreshold = results.filter((r) => r.composite_score < 7.0).length
 
   // Count top issues (weakest dimensions)
   const issueCounts: Record<string, number> = {}
@@ -185,7 +168,7 @@ export async function POST(request: NextRequest) {
 
 // GET /api/admin/images/audit — query audit results
 export async function GET(request: NextRequest) {
-  if (!(await verifyAuth(request))) {
+  if (!(await verifyAdminAuth(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -220,11 +203,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  const scores = (records || []).map(r => r.composite_score as number)
-  const avgScore = scores.length > 0
-    ? Math.round(scores.reduce((s, v) => s + v, 0) / scores.length * 100) / 100
-    : 0
-  const belowThreshold = scores.filter(s => s < 7.0).length
+  const scores = (records || []).map((r) => r.composite_score as number)
+  const avgScore =
+    scores.length > 0
+      ? Math.round((scores.reduce((s, v) => s + v, 0) / scores.length) * 100) / 100
+      : 0
+  const belowThreshold = scores.filter((s) => s < 7.0).length
 
   return NextResponse.json({
     batch,

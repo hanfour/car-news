@@ -1,20 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
+import { verifyAdminAuth } from '@/lib/admin/auth'
 import { uploadToR2 } from '@/lib/storage/r2-client'
 import { logger } from '@/lib/logger'
 
 export const maxDuration = 300
-
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY
 
 /**
  * POST /api/admin/migrate-to-r2
  * 將 Supabase Storage 中的圖片遷移到 Cloudflare R2
  */
 export async function POST(request: NextRequest) {
-  // 驗證身份
-  const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${ADMIN_API_KEY}`) {
+  if (!(await verifyAdminAuth(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -98,7 +95,9 @@ export async function POST(request: NextRequest) {
               .eq('id', article.id)
 
             if (updateError) {
-              logger.error('api.admin.migrate_r2_update_fail', updateError, { articleId: article.id })
+              logger.error('api.admin.migrate_r2_update_fail', updateError, {
+                articleId: article.id,
+              })
               errors.push(`Article ${article.id}: ${updateError.message}`)
               errorCount++
             } else {
@@ -122,12 +121,14 @@ export async function POST(request: NextRequest) {
       errors: errorCount,
       errorDetails: errors.length > 0 ? errors : undefined,
     })
-
   } catch (error) {
     logger.error('api.admin.migrate_r2_fatal', error)
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }
 
@@ -143,7 +144,10 @@ async function migrateImageUrl(oldUrl: string): Promise<string | null> {
     })
 
     if (!response.ok) {
-      logger.warn('api.admin.migrate_r2_download_fail', { status: response.status, urlPrefix: oldUrl.slice(0, 80) })
+      logger.warn('api.admin.migrate_r2_download_fail', {
+        status: response.status,
+        urlPrefix: oldUrl.slice(0, 80),
+      })
       return null
     }
 
