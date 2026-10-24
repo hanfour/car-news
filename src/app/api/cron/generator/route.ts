@@ -8,6 +8,9 @@ import { generateAndSaveCoverImage } from '@/lib/ai/image-generation'
 import { pickBestCoverImage } from '@/lib/ai/cover-image-picker'
 import { downloadAndStoreImages } from '@/lib/storage/image-downloader'
 import { generateEmbedding } from '@/lib/ai/embeddings'
+import { resolveEmbeddingMode, type EmbeddingStatus } from '@/lib/ai/embedding-health'
+import { drainProviderEvents } from '@/lib/ai/provider-health'
+import { sendAlert } from '@/lib/alerts'
 import { RawArticle } from '@/types/database'
 import { getErrorMessage } from '@/lib/utils/error'
 import {
@@ -26,9 +29,46 @@ import { verifyCronAuth, unauthorized } from '@/lib/cron/auth'
 import { TIMEOUT_CONFIG, PRIORITY_BRANDS, MAX_ARTICLES_PER_BRAND } from './steps/config'
 import { shouldContinueProcessing } from './steps/should-continue'
 import { prepareRawArticles } from './steps/prepare-articles'
+import { RunGuard, decideRunStatus } from './steps/run-guard'
+import { checkPipelineStale, notifyRunResult } from './steps/run-alerts'
+import { backfillMissingArticleEmbeddings } from './steps/backfill-embeddings'
 import { logger } from '@/lib/logger'
 
 export const maxDuration = 300 // Vercel Pro限制：最长5分钟
+
+/**
+ * 向量嵌入完全不可用時，這一輪不開始生成：記錄為失敗、發告警、回 503。
+ * 過去這種情況會照常生成文章，最後才因為無法產生向量而整篇丟棄，並且記成 success。
+ */
+async function failEmbeddingUnavailable(
+  supabase: ReturnType<typeof createServiceClient>,
+  embedding: EmbeddingStatus,
+  startTime: number
+) {
+  logger.error('cron.generator.embedding_unavailable', undefined, {
+    primary: embedding.primaryError,
+    fallback: embedding.fallbackError,
+  })
+
+  const { error } = await supabase.from('cron_logs').insert({
+    job_name: 'generator',
+    status: 'error',
+    metadata: {
+      reason: 'embedding_unavailable',
+      primary_error: embedding.primaryError ?? null,
+      fallback_error: embedding.fallbackError ?? null,
+      duration_ms: Date.now() - startTime,
+    },
+  })
+  if (error) logger.error('cron.generator.log_fail', error)
+
+  await notifyRunResult({ embedding, guard: null, providerEvents: [], generated: 0 })
+
+  return NextResponse.json(
+    { success: false, error: 'embedding_unavailable', duration: Date.now() - startTime },
+    { status: 503 }
+  )
+}
 
 async function handleCronJob(request: NextRequest) {
   if (!(await verifyCronAuth(request))) {
@@ -40,8 +80,29 @@ async function handleCronJob(request: NextRequest) {
   try {
     const supabase = createServiceClient()
 
+    // 0. 前置檢查
+    drainProviderEvents() // 丟掉上一輪殘留的失敗事件，之後累積的才屬於這一輪
+
+    // 看門狗：不論這一輪後面做了什麼，先確認網站到底有沒有新文章。
+    // 過去整產線停擺一天以上，cron 一直回報成功，沒有任何人收到通知。
+    await checkPipelineStale(supabase)
+
+    // 向量嵌入是分群與重複檢查的前提。先確認它可用，否則會先花錢生成文章，
+    // 最後卻在「幫新文章產生向量」那一步失敗，整篇白做。
+    const embedding = await resolveEmbeddingMode()
+    if (embedding.mode === 'unavailable') {
+      return await failEmbeddingUnavailable(supabase, embedding, startTime)
+    }
+    if (embedding.mode === 'primary') {
+      // 補上降級模式期間留下的空向量，讓語義重複比對涵蓋這些文章（失敗不影響本輪）
+      await backfillMissingArticleEmbeddings(supabase)
+    }
+
     // 1. 前置資料準備：抓取 + 過濾機車/不相關 + 補 embedding
-    const { rawCount, filteredCount, carArticles } = await prepareRawArticles(supabase)
+    const { rawCount, filteredCount, carArticles } = await prepareRawArticles(supabase, {
+      embeddingMode: embedding.mode,
+      fallbackProvider: embedding.provider,
+    })
 
     if (rawCount < 3) {
       return NextResponse.json({
@@ -166,6 +227,7 @@ async function handleCronJob(request: NextRequest) {
     const results = []
     let totalProcessed = 0
     let skippedDueToTimeout = 0
+    const guard = new RunGuard()
 
     // 3. 按輪盤順序處理收集到的 clusters
     for (const { brand, cluster } of collected) {
@@ -230,15 +292,30 @@ async function handleCronJob(request: NextRequest) {
 
         // ============ COMPREHENSIVE DUPLICATE CHECK ============
         // Step 1: Generate embedding for the new article
-        logger.info('cron.generator.dup_check_start', { brand })
-        const newContentEmbedding = await generateEmbedding(
-          `${generated.title_zh}\n\n${generated.content_zh}`
-        )
+        logger.info('cron.generator.dup_check_start', { brand, embeddingMode: embedding.mode })
+        let newContentEmbedding: number[] | null = null
+        if (embedding.mode === 'primary') {
+          try {
+            newContentEmbedding = await generateEmbedding(
+              `${generated.title_zh}\n\n${generated.content_zh}`
+            )
+          } catch (embeddingError) {
+            // 文章已經花錢生成完了，向量只是用來做語義重複比對。這裡失敗就略過那一項，
+            // 其他檢查（品牌頻率、關鍵字重疊）照常執行，向量留空，之後由補寫步驟補上。
+            // 過去這裡失敗會整篇丟棄，素材又不標記已用，下一輪重新生成再丟一次。
+            logger.warn('cron.generator.new_embedding_unavailable', {
+              brand,
+              error: getErrorMessage(embeddingError),
+            })
+          }
+        }
+        // 降級模式（備援 provider）下刻意不產生新文章的向量：它與資料庫裡其他文章的向量
+        // 來自不同模型，不能互相比較，也不能寫進資料庫。
 
         // Step 2: Run all duplicate checks (brand frequency, keyword overlap, embedding similarity)
         const duplicateResult = await comprehensiveDuplicateCheck({
           title: generated.title_zh,
-          embedding: newContentEmbedding,
+          embedding: newContentEmbedding ?? undefined,
           brand: brand === 'Other' ? 'Unknown' : brand,
         })
 
@@ -534,6 +611,7 @@ async function handleCronJob(request: NextRequest) {
         })
 
         totalProcessed++ // 增加已处理计数
+        guard.recordSuccess()
 
         logger.info('cron.generator.article_saved', {
           brand,
@@ -545,6 +623,12 @@ async function handleCronJob(request: NextRequest) {
         })
       } catch (error) {
         logger.error('cron.generator.cluster_fail', error, { brand })
+        guard.recordFailure(error)
+        if (guard.shouldAbort) {
+          // 連續失敗都屬於「服務不可用」，不是這幾篇的問題；繼續下去只是白白耗時與花錢。
+          logger.error('cron.generator.abort', undefined, { ...guard.summary() })
+          break
+        }
         // 继续处理下一个聚类
       }
     }
@@ -570,10 +654,21 @@ async function handleCronJob(request: NextRequest) {
       })
     }
 
+    const guardSummary = guard.summary()
+    const runStatus = decideRunStatus({
+      generated: results.length,
+      failures: guardSummary.failures,
+      aborted: guard.shouldAbort,
+    })
+
     await supabase.from('cron_logs').insert({
       job_name: 'generator',
-      status: 'success',
+      status: runStatus,
       metadata: {
+        embedding_mode: embedding.mode,
+        cluster_failures: guardSummary.failures,
+        failure_kinds: guardSummary.failuresByKind,
+        aborted_reason: guardSummary.abortReason,
         raw_articles: rawCount,
         motorcycle_filtered: filteredCount,
         car_articles: carArticles.length,
@@ -599,8 +694,17 @@ async function handleCronJob(request: NextRequest) {
       },
     })
 
-    return NextResponse.json({
-      success: true,
+    await notifyRunResult({
+      embedding,
+      guard: guardSummary,
+      providerEvents: drainProviderEvents(),
+      generated: results.length,
+    })
+
+    const responseBody = {
+      success: runStatus === 'success',
+      embedding_mode: embedding.mode,
+      abort_reason: guardSummary.abortReason,
       generated: results.length,
       published: results.filter((r) => r.published).length,
       articles: results,
@@ -616,7 +720,10 @@ async function handleCronJob(request: NextRequest) {
                 : 'time_limit',
           }
         : null,
-    })
+    }
+
+    // 失敗時回 503，Vercel 的 cron 頁面才會把這一輪標成失敗
+    return NextResponse.json(responseBody, { status: runStatus === 'success' ? 200 : 503 })
   } catch (error) {
     logger.error('cron.generator.fail', error)
 
@@ -635,6 +742,14 @@ async function handleCronJob(request: NextRequest) {
     } catch (logError) {
       logger.error('cron.generator.log_fail', logError)
     }
+
+    await sendAlert({
+      key: 'generator:crashed',
+      severity: 'error',
+      title: '文章產線本輪發生未預期的錯誤',
+      details: [getErrorMessage(error)],
+      cooldownMinutes: 180,
+    })
 
     return NextResponse.json(
       {

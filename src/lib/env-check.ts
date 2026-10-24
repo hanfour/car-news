@@ -29,7 +29,11 @@ const RECOMMENDED = [
 ] as const
 
 // 群組:群組內任一存在即滿足(如 Gemini 主 key 可用兩種名稱之一)。
-const RECOMMENDED_ANY: readonly string[][] = [['GEMINI_API_KEY', 'GOOGLE_AI_API_KEY']]
+// 告警管道：產線出事時主動通知，缺了就只能靠人去翻 log 才發現（過去停擺一天都沒人知道）。
+const RECOMMENDED_ANY: readonly string[][] = [
+  ['GEMINI_API_KEY', 'GOOGLE_AI_API_KEY'],
+  ['ALERT_WEBHOOK_URL', 'TELEGRAM_BOT_TOKEN'],
+]
 
 export interface EnvCheckResult {
   requiredMissing: string[]

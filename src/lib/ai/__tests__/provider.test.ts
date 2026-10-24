@@ -9,6 +9,7 @@ import {
   makeTextGenerator,
   generateText,
 } from '../provider'
+import { resetProviderHealth } from '../provider-health'
 import type {
   ArticleGenerator,
   AIProvider,
@@ -29,6 +30,9 @@ jest.mock('../gemini', () => ({
   moderateCommentWithGemini: jest.fn(),
   generateTextWithGemini: jest.fn(),
 }))
+
+// provider-health 的冷卻狀態存在模組記憶體裡，每個測試之間要清掉，避免互相影響。
+afterEach(() => resetProviderHealth())
 
 describe('makeGenerator', () => {
   it('returns a ClaudeGenerator when provider=claude', () => {
@@ -251,5 +255,101 @@ describe('generateText', () => {
     const fallback = fakeTextGenerator('claude', 'ok')
     await generateText('prompt', { primary, fallback, maxTokens: 500, temperature: 0.3 })
     expect(primary.generate).toHaveBeenCalledWith('prompt', { maxTokens: 500, temperature: 0.3 })
+  })
+})
+
+describe('generateWithFallback 與 provider 健康狀態', () => {
+  const input = { sources: [], systemPrompt: 's', styleGuide: 'g' }
+  const output = {
+    title_zh: '標題',
+    content_zh: '內文',
+    slug_en: 'slug',
+    confidence: 0.9,
+    quality_checks: {},
+    reasoning: 'r',
+    brands: [],
+    car_models: [],
+    categories: [],
+    tags: [],
+  }
+  const billingError = () => Object.assign(new Error('402 Payment Required'), { status: 402 })
+
+  afterEach(() => jest.restoreAllMocks())
+
+  it('主要 provider 因額度失敗後，下一次呼叫直接先走備援，不再白打一次', async () => {
+    const primary = {
+      provider: 'gemini' as AIProvider,
+      generate: jest.fn().mockRejectedValue(billingError()),
+    }
+    const fallback = {
+      provider: 'claude' as AIProvider,
+      generate: jest.fn().mockResolvedValue(output),
+    }
+
+    const first = await generateWithFallback(input, { primary, fallback })
+    const second = await generateWithFallback(input, { primary, fallback })
+
+    expect(first.usedProvider).toBe('claude')
+    expect(second.usedProvider).toBe('claude')
+    expect(primary.generate).toHaveBeenCalledTimes(1)
+    expect(fallback.generate).toHaveBeenCalledTimes(2)
+  })
+
+  it('備援也失敗時，仍會把冷卻中的主要 provider 當最後手段再試', async () => {
+    const primary = {
+      provider: 'gemini' as AIProvider,
+      generate: jest.fn().mockRejectedValue(billingError()),
+    }
+    const fallback = {
+      provider: 'claude' as AIProvider,
+      generate: jest.fn().mockRejectedValue(new Error('claude down')),
+    }
+
+    await expect(generateWithFallback(input, { primary, fallback })).rejects.toBeInstanceOf(
+      AggregateError
+    )
+    await expect(generateWithFallback(input, { primary, fallback })).rejects.toBeInstanceOf(
+      AggregateError
+    )
+
+    expect(primary.generate).toHaveBeenCalledTimes(2)
+    expect(fallback.generate).toHaveBeenCalledTimes(2)
+  })
+
+  it('冷卻結束且額度補上後，主要 provider 會被優先使用並恢復', async () => {
+    const now = jest.spyOn(Date, 'now')
+    now.mockReturnValue(1_000_000)
+    const primary = {
+      provider: 'gemini' as AIProvider,
+      generate: jest.fn().mockRejectedValueOnce(billingError()).mockResolvedValue(output),
+    }
+    const fallback = {
+      provider: 'claude' as AIProvider,
+      generate: jest.fn().mockResolvedValue(output),
+    }
+
+    const first = await generateWithFallback(input, { primary, fallback })
+    expect(first.usedProvider).toBe('claude')
+
+    now.mockReturnValue(1_000_000 + 11 * 60_000)
+    const later = await generateWithFallback(input, { primary, fallback })
+    expect(later.usedProvider).toBe('gemini')
+    expect(primary.generate).toHaveBeenCalledTimes(2)
+  })
+
+  it('一般錯誤不會觸發冷卻，下一次仍先試主要 provider', async () => {
+    const primary = {
+      provider: 'gemini' as AIProvider,
+      generate: jest.fn().mockRejectedValue(new Error('Invalid JSON from Gemini: x')),
+    }
+    const fallback = {
+      provider: 'claude' as AIProvider,
+      generate: jest.fn().mockResolvedValue(output),
+    }
+
+    await generateWithFallback(input, { primary, fallback })
+    await generateWithFallback(input, { primary, fallback })
+
+    expect(primary.generate).toHaveBeenCalledTimes(2)
   })
 })
