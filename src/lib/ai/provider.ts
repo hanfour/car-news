@@ -12,6 +12,7 @@ import {
   generateTextWithGemini,
 } from './gemini'
 import { preFilterContent } from './pre-filter'
+import { orderByHealth, recordProviderFailure, recordProviderSuccess } from './provider-health'
 import { logger } from '@/lib/logger'
 import { getErrorMessage } from '@/lib/utils/error'
 
@@ -67,6 +68,10 @@ export function getConfiguredGenerators(): {
 
 /**
  * 呼叫主 provider，失敗自動切到 fallback；回傳結果與實際用到的 provider。
+ *
+ * 剛因額度、金鑰或暫時故障失敗的 provider 會被排到後面（見 provider-health），
+ * 所以額度用完時不會每篇文章都先白打一次必定失敗的呼叫。
+ * 兩個都失敗時 throw AggregateError，保留兩邊的原始錯誤。
  */
 export async function generateWithFallback(
   input: GenerateArticleInput,
@@ -77,27 +82,33 @@ export async function generateWithFallback(
       ? { primary: options.primary, fallback: options.fallback }
       : getConfiguredGenerators()
 
-  try {
-    logger.info('ai.generate.primary_start', { provider: primary.provider })
-    const result = await primary.generate(input)
-    return { result, usedProvider: primary.provider }
-  } catch (primaryError) {
-    logger.warn('ai.generate.primary_fail', {
-      provider: primary.provider,
-      fallback: fallback.provider,
-      error: getErrorMessage(primaryError),
-    })
+  const attempts = orderByHealth([primary, fallback])
+  const errors: unknown[] = []
+
+  for (const generator of attempts) {
+    const role = generator === primary ? 'primary' : 'fallback'
     try {
-      const result = await fallback.generate(input)
-      return { result, usedProvider: fallback.provider }
-    } catch (fallbackError) {
-      // 兩端都失敗時保留兩個錯誤方便 debug（否則 primary error 會被吞掉）
-      throw new AggregateError(
-        [primaryError, fallbackError],
-        `Both AI providers failed: ${primary.provider} then ${fallback.provider}`
-      )
+      logger.info(`ai.generate.${role}_start`, { provider: generator.provider })
+      const result = await generator.generate(input)
+      recordProviderSuccess(generator.provider)
+      return { result, usedProvider: generator.provider }
+    } catch (error) {
+      const classified = recordProviderFailure(generator.provider, error)
+      logger.warn(`ai.generate.${role}_fail`, {
+        provider: generator.provider,
+        kind: classified.kind,
+        status: classified.status,
+        error: classified.message,
+      })
+      errors.push(error)
     }
   }
+
+  // 兩端都失敗時保留兩個錯誤方便 debug（否則 primary error 會被吞掉）
+  throw new AggregateError(
+    errors,
+    `Both AI providers failed: ${attempts.map((generator) => generator.provider).join(' then ')}`
+  )
 }
 
 // ============================================================================
