@@ -114,3 +114,162 @@ describe('generateText (Claude)', () => {
     expect(anthropicCreate.mock.calls[0][0]).not.toHaveProperty('temperature')
   })
 })
+
+describe('Claude 回應處理', () => {
+  const thinkingBlock = { type: 'thinking', thinking: '' }
+
+  it('thinking 區塊排在前面時，仍能取出後面的文章（過去因此得到空字串而失敗）', async () => {
+    anthropicCreate.mockResolvedValue({
+      content: [thinkingBlock, { type: 'text', text: articleJson }],
+      stop_reason: 'end_turn',
+      usage: {},
+    })
+    const { generateArticleWithClaude } = await loadClaude()
+
+    const result = await generateArticleWithClaude(input)
+
+    expect(result.title_zh).toBe('標題')
+    expect(openaiCreate).not.toHaveBeenCalled()
+  })
+
+  it('被 max_tokens 截斷時視為失敗，並改用 OpenAI', async () => {
+    anthropicCreate.mockResolvedValue({
+      content: [{ type: 'text', text: '{"title_zh":"半' }],
+      stop_reason: 'max_tokens',
+      usage: {},
+    })
+    openaiCreate.mockResolvedValue({
+      choices: [{ message: { content: articleJson } }],
+      usage: {},
+    })
+    const { generateArticleWithClaude } = await loadClaude()
+
+    const result = await generateArticleWithClaude(input)
+
+    expect(result.title_zh).toBe('標題')
+    expect(openaiCreate).toHaveBeenCalledTimes(1)
+  })
+
+  it('JSON 前後有多餘的說明文字也能解析', async () => {
+    anthropicCreate.mockResolvedValue({
+      content: [{ type: 'text', text: `以下是文章：\n${articleJson}\n以上。` }],
+      stop_reason: 'end_turn',
+      usage: {},
+    })
+    const { generateArticleWithClaude } = await loadClaude()
+
+    const result = await generateArticleWithClaude(input)
+
+    expect(result.title_zh).toBe('標題')
+  })
+
+  it('輸出上限留足空間，避免思考把額度吃光', async () => {
+    anthropicCreate.mockResolvedValue({
+      content: [{ type: 'text', text: articleJson }],
+      stop_reason: 'end_turn',
+      usage: {},
+    })
+    const { generateArticleWithClaude } = await loadClaude()
+
+    await generateArticleWithClaude(input)
+
+    expect(anthropicCreate.mock.calls[0][0].max_tokens).toBe(16000)
+  })
+})
+
+describe('Sonnet 5.5 的思考設定', () => {
+  const okResponse = {
+    content: [{ type: 'text', text: articleJson }],
+    stop_reason: 'end_turn',
+    usage: {},
+  }
+
+  it('Sonnet 5.5 會送出關閉思考的參數', async () => {
+    process.env.CLAUDE_MODEL = 'claude-sonnet-5-5'
+    anthropicCreate.mockResolvedValue(okResponse)
+    const { generateArticleWithClaude } = await loadClaude()
+
+    await generateArticleWithClaude(input)
+
+    expect(anthropicCreate.mock.calls[0][0].thinking).toEqual({ type: 'between_tools' })
+  })
+
+  it('其他模型不送 thinking 參數', async () => {
+    process.env.CLAUDE_MODEL = 'claude-sonnet-4-6'
+    anthropicCreate.mockResolvedValue(okResponse)
+    const { generateArticleWithClaude } = await loadClaude()
+
+    await generateArticleWithClaude(input)
+
+    expect(anthropicCreate.mock.calls[0][0]).not.toHaveProperty('thinking')
+  })
+
+  it('API 因 thinking 參數回 400 時，退回不帶它的請求而不是整個失敗', async () => {
+    process.env.CLAUDE_MODEL = 'claude-sonnet-5-5'
+    anthropicCreate
+      .mockRejectedValueOnce(httpError(400, 'thinking.type: Input should be adaptive'))
+      .mockResolvedValueOnce(okResponse)
+    const { generateArticleWithClaude } = await loadClaude()
+
+    const result = await generateArticleWithClaude(input)
+
+    expect(result.title_zh).toBe('標題')
+    expect(anthropicCreate).toHaveBeenCalledTimes(2)
+    expect(anthropicCreate.mock.calls[0][0]).toHaveProperty('thinking')
+    expect(anthropicCreate.mock.calls[1][0]).not.toHaveProperty('thinking')
+    expect(openaiCreate).not.toHaveBeenCalled()
+  })
+
+  it('與 thinking 無關的 400（例如餘額不足）不重試，直接改用 OpenAI', async () => {
+    process.env.CLAUDE_MODEL = 'claude-sonnet-5-5'
+    anthropicCreate.mockRejectedValue(httpError(400, 'Your credit balance is too low'))
+    openaiCreate.mockResolvedValue({
+      choices: [{ message: { content: articleJson } }],
+      usage: {},
+    })
+    const { generateArticleWithClaude } = await loadClaude()
+
+    await generateArticleWithClaude(input)
+
+    expect(anthropicCreate).toHaveBeenCalledTimes(1)
+    expect(openaiCreate).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('generateText (Claude) 的回應處理', () => {
+  it('thinking 區塊在前時仍能取出文字', async () => {
+    anthropicCreate.mockResolvedValue({
+      content: [
+        { type: 'thinking', thinking: '' },
+        { type: 'text', text: '摘要內容' },
+      ],
+      stop_reason: 'end_turn',
+      usage: {},
+    })
+    const { generateText } = await loadClaude()
+
+    expect(await generateText('hello')).toBe('摘要內容')
+  })
+
+  it('被截斷的短文字可以接受', async () => {
+    anthropicCreate.mockResolvedValue({
+      content: [{ type: 'text', text: '摘要的前半' }],
+      stop_reason: 'max_tokens',
+      usage: {},
+    })
+    const { generateText } = await loadClaude()
+
+    expect(await generateText('hello')).toBe('摘要的前半')
+  })
+
+  it('完全沒有文字時丟錯，而不是回傳空字串', async () => {
+    anthropicCreate.mockResolvedValue({
+      content: [{ type: 'thinking', thinking: '' }],
+      stop_reason: 'end_turn',
+      usage: {},
+    })
+    const { generateText } = await loadClaude()
+
+    await expect(generateText('hello')).rejects.toThrow(/no text/)
+  })
+})
