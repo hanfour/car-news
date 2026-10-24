@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAuthenticatedClient } from '@/lib/auth'
 import { uploadToR2, deleteFromR2 } from '@/lib/storage/r2-client'
+import { resolveGarageImageKey } from '@/lib/storage/garage-image-key'
 import { getErrorMessage } from '@/lib/utils/error'
 import { rateLimit } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
@@ -10,10 +11,7 @@ const MAX_SIZE = 5 * 1024 * 1024 // 5MB
 const MAX_GALLERY = 10
 
 // POST: 上傳車庫圖片到 R2
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: carId } = await params
     const auth = await createAuthenticatedClient(request)
@@ -137,7 +135,7 @@ export async function DELETE(
     const { supabase, userId } = auth
 
     const { url, type } = await request.json()
-    if (!url || !type) {
+    if (typeof url !== 'string' || !url || (type !== 'cover' && type !== 'gallery')) {
       return NextResponse.json({ error: '缺少必要參數' }, { status: 400 })
     }
 
@@ -176,7 +174,7 @@ export async function DELETE(
       dbError = error
     } else {
       const currentImages: string[] = car.images || []
-      const newImages = currentImages.filter(img => img !== url)
+      const newImages = currentImages.filter((img) => img !== url)
       const { error } = await supabase
         .from('user_cars')
         .update({ images: newImages, updated_at: new Date().toISOString() })
@@ -191,15 +189,21 @@ export async function DELETE(
     }
 
     // DB 已成功移除引用；嘗試刪 R2。失敗只記 log，不讓使用者重試（避免重試造成 DB 已成功但提示失敗的混亂）
-    const r2PublicUrl = (process.env.R2_PUBLIC_URL || '').replace(/\/+$/, '')
-    if (r2PublicUrl && url.startsWith(r2PublicUrl)) {
-      const key = url.slice(r2PublicUrl.length + 1)
+    //
+    // 只刪「此使用者、此車輛」自己上傳的物件。user_cars.images 是使用者可寫入的欄位，
+    // 它記錄的 URL 不代表該物件真的屬於這輛車，所以不能直接由 URL 推出要刪的 key。
+    const r2PublicUrl = process.env.R2_PUBLIC_URL || ''
+    const key = resolveGarageImageKey(url, r2PublicUrl, userId, carId)
+    if (key) {
       try {
         await deleteFromR2(key)
       } catch (r2Err) {
         // 孤兒 R2 物件 — 記下 key 供後續清理排程使用
         logger.error('api.garage.image_r2_orphan', r2Err, { carId, userId, type, key })
       }
+    } else if (r2PublicUrl && url.startsWith(r2PublicUrl.replace(/\/+$/, ''))) {
+      // 引用已移除，但這個物件不在此車輛的上傳路徑底下，刻意不刪
+      logger.warn('api.garage.image_r2_skip_foreign_key', { carId, userId, type })
     }
 
     return NextResponse.json({ success: true })
