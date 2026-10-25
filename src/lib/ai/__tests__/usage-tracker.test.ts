@@ -27,6 +27,11 @@ describe('estimateCost', () => {
     expect(cost).toBeCloseTo(18.0, 5)
   })
 
+  it('Claude Sonnet 5.5: 1M input + 1M output = 2.00 + 10.00 = 12.00', () => {
+    const cost = estimateCost('claude-sonnet-5-5', 1_000_000, 1_000_000)
+    expect(cost).toBeCloseTo(12.0, 5)
+  })
+
   it('Flux per-image 不依 tokens：固定 $0.008', () => {
     expect(estimateCost('flux-pro', 0, 0)).toBeCloseTo(0.008, 5)
     expect(estimateCost('flux-pro', 99999, 99999)).toBeCloseTo(0.008, 5)

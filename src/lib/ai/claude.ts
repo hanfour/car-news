@@ -4,6 +4,12 @@ import OpenAI from 'openai'
 import { getErrorMessage } from '@/lib/utils/error'
 import { logger } from '@/lib/logger'
 import { ARTICLE_OUTPUT_SCHEMA_PROMPT, stripJSONCodeBlock } from './article-output-schema'
+import {
+  claudeThinkingParams,
+  getClaudeTextOrThrow,
+  isThinkingParamRejected,
+  parseClaudeJson,
+} from './claude-response'
 import { recordAIUsage } from './usage-tracker'
 
 let client: Anthropic | null = null
@@ -18,6 +24,36 @@ function getAnthropic() {
     })
   }
   return client
+}
+
+/** 文章 JSON 的輸出上限。留足空間，避免模型預設的思考把額度吃光、JSON 寫到一半被截斷。 */
+const CLAUDE_ARTICLE_MAX_TOKENS = 16000
+
+/**
+ * 送出請求。Sonnet 5.5 會附上關閉思考的參數；若 API 因為該參數回 400，
+ * 就退回不帶它的請求，而不是讓整個 Claude 備援因此失效。
+ */
+async function createClaudeMessage(
+  anthropic: Anthropic,
+  params: Anthropic.MessageCreateParamsNonStreaming
+): Promise<Anthropic.Message> {
+  const extras = claudeThinkingParams(params.model)
+  if (!('thinking' in extras)) return anthropic.messages.create(params)
+
+  try {
+    // 安裝的 SDK 版本的型別還不認得這個參數，但請求內容會原樣送出。
+    return await anthropic.messages.create({
+      ...params,
+      ...extras,
+    } as unknown as Anthropic.MessageCreateParamsNonStreaming)
+  } catch (error) {
+    if (!isThinkingParamRejected(error)) throw error
+    logger.warn('ai.claude.thinking_param_rejected', {
+      model: params.model,
+      error: getErrorMessage(error),
+    })
+    return anthropic.messages.create(params)
+  }
 }
 
 /**
@@ -146,9 +182,9 @@ ${ARTICLE_OUTPUT_SCHEMA_PROMPT}`
 
       // 刻意不送 temperature：較新的 Claude 模型已不接受這個參數（回 400），
       // 而 getAvailableClaudeModel 會自動選到最新的 Sonnet，帶了就會每次都失敗。
-      const message = await anthropic.messages.create({
+      const message = await createClaudeMessage(anthropic, {
         model: claudeModel,
-        max_tokens: 4096,
+        max_tokens: CLAUDE_ARTICLE_MAX_TOKENS,
         messages: [
           {
             role: 'user',
@@ -157,8 +193,7 @@ ${ARTICLE_OUTPUT_SCHEMA_PROMPT}`
         ],
       })
 
-      const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
-
+      // 不論內容能不能用，token 都已經花了，先記錄用量。
       recordAIUsage({
         provider: 'claude',
         model: claudeModel,
@@ -167,15 +202,17 @@ ${ARTICLE_OUTPUT_SCHEMA_PROMPT}`
         outputTokens: message.usage?.output_tokens,
       })
 
-      const jsonText = stripJSONCodeBlock(responseText)
+      // 取出所有文字區塊：content[0] 可能是 thinking，過去只讀它而得到空字串。
+      const responseText = getClaudeTextOrThrow(message)
 
       // Parse JSON with error handling
-      let result
+      let result: GenerateArticleOutput
       try {
-        result = JSON.parse(jsonText)
+        result = parseClaudeJson<GenerateArticleOutput>(responseText)
       } catch (parseError) {
         logger.error('ai.claude.parse_fail', parseError, {
-          snippet: jsonText.slice(0, 500),
+          snippet: stripJSONCodeBlock(responseText).slice(0, 500),
+          stopReason: message.stop_reason,
         })
         throw new Error(`Invalid JSON from Claude: ${(parseError as Error).message}`)
       }
@@ -302,7 +339,7 @@ export async function generateText(
   }
 
   const anthropic = getAnthropic()
-  const message = await anthropic.messages.create({
+  const message = await createClaudeMessage(anthropic, {
     model: claudeModel,
     max_tokens: options?.maxTokens || 1024,
     messages: [
@@ -321,5 +358,6 @@ export async function generateText(
     outputTokens: message.usage?.output_tokens,
   })
 
-  return message.content[0].type === 'text' ? message.content[0].text : ''
+  // 短文字可以接受被截斷的結果；空內容或被拒絕則丟錯，讓呼叫端走降級流程。
+  return getClaudeTextOrThrow(message, { allowTruncated: true })
 }
