@@ -273,3 +273,50 @@ describe('generateText (Claude) 的回應處理', () => {
     await expect(generateText('hello')).rejects.toThrow(/no text/)
   })
 })
+
+describe('記錄實際寫稿的模型 (ai_model)', () => {
+  it('Claude 寫稿時，記錄實際使用的 Claude 模型 id', async () => {
+    anthropicCreate.mockResolvedValue({ content: [{ type: 'text', text: articleJson }], usage: {} })
+    const { generateArticleWithClaude } = await loadClaude()
+
+    const result = await generateArticleWithClaude(input)
+
+    expect(result.ai_model).toBe('claude-sonnet-test')
+  })
+
+  it('Claude 失敗改由 OpenAI 寫稿時，記錄的是 gpt-4o 而不是 Claude', async () => {
+    anthropicCreate.mockRejectedValue(httpError(400, 'bad request'))
+    openaiCreate.mockResolvedValue({
+      choices: [{ message: { content: articleJson } }],
+      usage: { prompt_tokens: 1, completion_tokens: 1 },
+    })
+    const { generateArticleWithClaude } = await loadClaude()
+
+    const result = await generateArticleWithClaude(input)
+
+    expect(result.ai_model).toBe('gpt-4o')
+  })
+
+  it.each(['Claude', 'OpenAI'])('%s 寫稿時，模型自己輸出的 ai_model 欄位不採用', async (writer) => {
+    // 來源文章的文字可能誘導模型在 JSON 裡亂填這個欄位，記錄的值必須由程式決定。
+    const forged = JSON.stringify({
+      title_zh: '標題',
+      content_zh: '內文',
+      ai_model: 'forged-by-source-text',
+    })
+    if (writer === 'Claude') {
+      anthropicCreate.mockResolvedValue({ content: [{ type: 'text', text: forged }], usage: {} })
+    } else {
+      anthropicCreate.mockRejectedValue(httpError(400, 'bad request'))
+      openaiCreate.mockResolvedValue({
+        choices: [{ message: { content: forged } }],
+        usage: { prompt_tokens: 1, completion_tokens: 1 },
+      })
+    }
+    const { generateArticleWithClaude } = await loadClaude()
+
+    const result = await generateArticleWithClaude(input)
+
+    expect(result.ai_model).toBe(writer === 'Claude' ? 'claude-sonnet-test' : 'gpt-4o')
+  })
+})

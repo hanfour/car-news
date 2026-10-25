@@ -31,6 +31,7 @@ import { shouldContinueProcessing } from './steps/should-continue'
 import { prepareRawArticles } from './steps/prepare-articles'
 import { RunGuard, decideRunStatus } from './steps/run-guard'
 import { checkPipelineStale, notifyRunResult } from './steps/run-alerts'
+import { insertGeneratedArticle } from './steps/save-article'
 import { backfillMissingArticleEmbeddings } from './steps/backfill-embeddings'
 import { logger } from '@/lib/logger'
 
@@ -515,9 +516,9 @@ async function handleCronJob(request: NextRequest) {
         }
 
         // 3.8 保存文章（包含标签、封面圖、品牌、多張圖片、來源時間、content_embedding）
-        const { data: article, error: insertError } = await supabase
-          .from('generated_articles')
-          .insert({
+        const { data: article, error: insertError } = await insertGeneratedArticle(
+          (row) => supabase.from('generated_articles').insert(row).select().single(),
+          {
             id: shortId,
             title_zh: generated.title_zh,
             content_zh: generated.content_zh,
@@ -539,9 +540,9 @@ async function handleCronJob(request: NextRequest) {
             primary_brand: brand === 'Other' ? null : brand,
             images: storedImages.length > 0 ? storedImages : [],
             content_embedding: newContentEmbedding,
-          })
-          .select()
-          .single()
+            ai_model: generated.ai_model ?? null,
+          }
+        )
 
         if (insertError) {
           logger.error('cron.generator.article_insert_fail', insertError, { brand, shortId })
