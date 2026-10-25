@@ -2,6 +2,9 @@ import 'server-only'
 /**
  * 用 Gemini 智能分析文章，生成精准的图片描述
  * 确保 AI 生成的封面图与文章内容匹配
+ *
+ * Gemini 不可用時（額度用盡、金鑰失效、暫時故障）改用 Claude；
+ * 兩邊都失敗才降級成關鍵字模板，封面圖仍會產出，只是描述比較制式。
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai'
@@ -9,6 +12,8 @@ import { getErrorMessage } from '@/lib/utils/error'
 import { extractCarModel, getVehicleVisualDescription } from './flux-image-generation'
 import { logger } from '@/lib/logger'
 import { recordAIUsage } from './usage-tracker'
+import { generateText as generateTextWithClaude } from './claude'
+import { orderByHealth, recordProviderFailure, recordProviderSuccess } from './provider-health'
 
 let genAI: GoogleGenerativeAI | null = null
 
@@ -40,29 +45,9 @@ export interface ImagePromptResult {
   fullPrompt: string
 }
 
-/**
- * 用 Gemini 分析文章内容，生成精准的图片描述
- */
-export async function generateImagePromptFromArticle(
-  title: string,
-  content: string,
-  brands?: string[],
-  options?: { temperature?: number }
-): Promise<ImagePromptResult> {
-  const gemini = getGemini()
-  const temperature = options?.temperature ?? 0.3
-  const model = gemini.getGenerativeModel({
-    model: 'gemini-2.5-flash',
-    generationConfig: {
-      temperature,
-      maxOutputTokens: 1024,
-      responseMimeType: 'application/json',
-      // @ts-expect-error -- thinkingConfig 尚未在型別中定義，但 gemini-2.5-flash 需要關閉 thinking 才能正確輸出 JSON
-      thinkingConfig: { thinkingBudget: 0 },
-    },
-  })
-
-  // 從標題提取車款資訊，提供給 Gemini 作為參考
+/** 組出給文字模型的提示詞。Gemini 與 Claude 共用同一份。 */
+function buildImagePromptRequest(title: string, content: string, brands?: string[]): string {
+  // 從標題提取車款資訊，提供給模型作為參考
   const detectedModel = extractCarModel(title, brands?.[0])
   const knownVisualDesc = detectedModel ? getVehicleVisualDescription(detectedModel) : null
 
@@ -70,7 +55,7 @@ export async function generateImagePromptFromArticle(
     ? `\nKNOWN VISUAL REFERENCE for "${detectedModel}": ${knownVisualDesc}\nYou MUST incorporate these visual details into the fullPrompt.`
     : ''
 
-  const prompt = `Generate an image prompt for this automotive news article.
+  return `Generate an image prompt for this automotive news article.
 
 Title: ${title}
 Content: ${content.slice(0, 800)}
@@ -96,82 +81,172 @@ Output a JSON object with these fields:
 - fullPrompt: complete English prompt (200-300 words). Start with "Professional automotive photography." Spend 60%+ of words on the vehicle's unique physical appearance. Include: body shape, panel geometry, headlight/taillight design, grille (or lack thereof), proportions, surface finish, stance height, wheel arch shape. End with "Sharp focus, editorial quality, no text or watermarks."
 
 Respond with valid JSON only, no markdown.`
+}
+
+async function requestFromGemini(prompt: string, temperature: number): Promise<string> {
+  const model = getGemini().getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    generationConfig: {
+      temperature,
+      maxOutputTokens: 1024,
+      responseMimeType: 'application/json',
+      // @ts-expect-error -- thinkingConfig 尚未在型別中定義，但 gemini-2.5-flash 需要關閉 thinking 才能正確輸出 JSON
+      thinkingConfig: { thinkingBudget: 0 },
+    },
+  })
+
+  const result = await model.generateContent(prompt)
+  const response = result.response
+  const text = response.text()
+
+  recordAIUsage({
+    provider: 'gemini',
+    model: 'gemini-2.5-flash',
+    purpose: 'text_generation',
+    inputTokens: response.usageMetadata?.promptTokenCount,
+    outputTokens: response.usageMetadata?.candidatesTokenCount,
+    metadata: { step: 'image_prompt' },
+  })
+
+  return text
+}
+
+/** Claude 沒有 JSON 模式，靠提示詞要求；回應格式的差異由 parseImagePromptText 吸收。 */
+function requestFromClaude(prompt: string): Promise<string> {
+  return generateTextWithClaude(prompt, { maxTokens: 2048 })
+}
+
+/**
+ * 把模型的回應解析成 ImagePromptResult。
+ * 能容忍 markdown 圍欄、JSON 前後的說明文字與常見的格式瑕疵；
+ * 沒有可用的 fullPrompt 就丟錯，讓呼叫端換下一個 provider 或降級。
+ */
+function parseImagePromptText(text: string, brands?: string[]): ImagePromptResult {
+  // 解析 JSON - 处理各种格式问题
+  let jsonText = text
+    .replace(/```json\n?/g, '')
+    .replace(/```\n?/g, '')
+    .trim()
+
+  // 尝试修复常见的 JSON 问题
+  // 1. 移除可能的 BOM
+  jsonText = jsonText.replace(/^\uFEFF/, '')
+  // 2. 只取第一個 { 到最後一個 }（Claude 偶爾會在 JSON 前後加說明文字）
+  const start = jsonText.indexOf('{')
+  const end = jsonText.lastIndexOf('}')
+  if (start !== -1 && end > start) jsonText = jsonText.slice(start, end + 1)
+  // 3. 移除控制字符（保留換行符以利後續處理）
+  jsonText = jsonText.replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]/g, ' ')
+  // 4. 將單引號屬性名修復為雙引號（常見 Gemini 問題）
+  jsonText = jsonText.replace(/([{,]\s*)'([^']+)'\s*:/g, '$1"$2":')
+  // 5. 移除尾隨逗號
+  jsonText = jsonText.replace(/,\s*([}\]])/g, '$1')
+
+  let parsed: ImagePromptResult
 
   try {
-    logger.info('ai.prompt.analyze_start')
-
-    const result = await model.generateContent(prompt)
-    const response = result.response
-    const text = response.text()
-
-    recordAIUsage({
-      provider: 'gemini',
-      model: 'gemini-2.5-flash',
-      purpose: 'text_generation',
-      inputTokens: response.usageMetadata?.promptTokenCount,
-      outputTokens: response.usageMetadata?.candidatesTokenCount,
-      metadata: { step: 'image_prompt' },
+    parsed = JSON.parse(jsonText) as ImagePromptResult
+  } catch (parseError) {
+    // 如果 JSON 解析失败，尝试提取关键信息
+    logger.warn('ai.prompt.parse_fail_regex_extract', {
+      error: getErrorMessage(parseError),
     })
 
-    // 解析 JSON - 处理各种格式问题
-    let jsonText = text
-      .replace(/```json\n?/g, '')
-      .replace(/```\n?/g, '')
-      .trim()
+    const fullPromptMatch = jsonText.match(/"fullPrompt"\s*:\s*"([^"]+(?:\\"[^"]*)*[^"]*)"/)
 
-    // 尝试修复常见的 JSON 问题
-    // 1. 移除可能的 BOM
-    jsonText = jsonText.replace(/^\uFEFF/, '')
-    // 2. 移除控制字符（保留換行符以利後續處理）
-    jsonText = jsonText.replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]/g, ' ')
-    // 3. 將單引號屬性名修復為雙引號（常見 Gemini 問題）
-    jsonText = jsonText.replace(/([{,]\s*)'([^']+)'\s*:/g, '$1"$2":')
-    // 4. 移除尾隨逗號
-    jsonText = jsonText.replace(/,\s*([}\]])/g, '$1')
+    const subjectMatch = jsonText.match(/"subject"\s*:\s*"([^"]+)"/)
 
-    let parsed: ImagePromptResult
-
-    try {
-      parsed = JSON.parse(jsonText) as ImagePromptResult
-    } catch (parseError) {
-      // 如果 JSON 解析失败，尝试提取关键信息
-      logger.warn('ai.prompt.parse_fail_regex_extract', {
-        error: getErrorMessage(parseError),
-      })
-
-      const fullPromptMatch = jsonText.match(/"fullPrompt"\s*:\s*"([^"]+(?:\\"[^"]*)*[^"]*)"/)
-
-      const subjectMatch = jsonText.match(/"subject"\s*:\s*"([^"]+)"/)
-
-      if (fullPromptMatch) {
-        // 如果能提取到 fullPrompt，使用它
-        return {
-          subject: subjectMatch?.[1] || 'A modern automobile',
-          vehicleType: 'automobile',
-          brandStyle: getBrandStyleDescription(brands?.[0] || ''),
-          setting: 'professional setting',
-          keyElements: ['modern design'],
-          mood: 'professional',
-          fullPrompt: fullPromptMatch[1].replace(/\\"/g, '"'),
-        }
+    if (fullPromptMatch) {
+      // 如果能提取到 fullPrompt，使用它
+      return {
+        subject: subjectMatch?.[1] || 'A modern automobile',
+        vehicleType: 'automobile',
+        brandStyle: getBrandStyleDescription(brands?.[0] || ''),
+        setting: 'professional setting',
+        keyElements: ['modern design'],
+        mood: 'professional',
+        fullPrompt: fullPromptMatch[1].replace(/\\"/g, '"'),
       }
-
-      throw parseError
     }
 
-    logger.info('ai.prompt.generate_ok', {
-      subject: parsed.subject,
-      vehicle: parsed.vehicleType,
-      style: parsed.brandStyle,
-    })
-
-    return parsed
-  } catch (error) {
-    logger.error('ai.prompt.generate_fail', error)
-
-    // Fallback：返回基础描述（传递 content 以提取车型关键词）
-    return createFallbackPrompt(title, brands, content)
+    throw parseError
   }
+
+  // 少了 fullPrompt 的回應不能拿去生圖（會變成 "undefined"），視為這個 provider 沒答出來
+  if (typeof parsed?.fullPrompt !== 'string' || parsed.fullPrompt.trim() === '') {
+    throw new Error('Image prompt answer has no fullPrompt')
+  }
+
+  return parsed
+}
+
+interface ImagePromptAttempt {
+  provider: 'gemini' | 'claude'
+  request: () => Promise<string>
+}
+
+/**
+ * 分析文章內容，生成精準的圖片描述。
+ *
+ * Gemini 為主（有 JSON 模式、較便宜），Claude 為備援。剛因額度或金鑰失敗的 provider
+ * 會排到後面（見 provider-health），所以 Gemini 額度用盡時不會每張封面都先白打一次
+ * 必定失敗的呼叫。兩邊都沒給出可用的回應時，降級成關鍵字模板，永遠不會 throw。
+ */
+export async function generateImagePromptFromArticle(
+  title: string,
+  content: string,
+  brands?: string[],
+  options?: { temperature?: number }
+): Promise<ImagePromptResult> {
+  const temperature = options?.temperature ?? 0.3
+  const prompt = buildImagePromptRequest(title, content, brands)
+
+  logger.info('ai.prompt.analyze_start')
+
+  const attempts = orderByHealth<ImagePromptAttempt>([
+    { provider: 'gemini', request: () => requestFromGemini(prompt, temperature) },
+    { provider: 'claude', request: () => requestFromClaude(prompt) },
+  ])
+
+  for (const attempt of attempts) {
+    let answer: string
+    try {
+      answer = await attempt.request()
+      recordProviderSuccess(attempt.provider)
+    } catch (error) {
+      const classified = recordProviderFailure(attempt.provider, error)
+      logger.warn('ai.prompt.provider_fail', {
+        provider: attempt.provider,
+        kind: classified.kind,
+        status: classified.status,
+        error: classified.message,
+      })
+      continue
+    }
+
+    try {
+      const parsed = parseImagePromptText(answer, brands)
+      logger.info('ai.prompt.generate_ok', {
+        provider: attempt.provider,
+        subject: parsed.subject,
+        vehicle: parsed.vehicleType,
+        style: parsed.brandStyle,
+      })
+      return parsed
+    } catch (error) {
+      logger.warn('ai.prompt.parse_fail', {
+        provider: attempt.provider,
+        error: getErrorMessage(error),
+      })
+    }
+  }
+
+  logger.error('ai.prompt.generate_fail', undefined, {
+    attempted: attempts.map((attempt) => attempt.provider),
+  })
+
+  // Fallback：返回基础描述（传递 content 以提取车型关键词）
+  return createFallbackPrompt(title, brands, content)
 }
 
 /**
@@ -256,7 +331,7 @@ function extractVehicleType(title: string, content: string): string {
 }
 
 /**
- * 创建 fallback prompt（当 Gemini 分析失败时）
+ * 创建 fallback prompt（当 Gemini 与 Claude 都失败时）
  */
 function createFallbackPrompt(
   title: string,
