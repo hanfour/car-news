@@ -2,26 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { secureCompare } from '@/lib/utils/secure-compare'
 
 /**
- * Verify a cron request. Accepts either:
- *   - Vercel Cron invocation: `x-vercel-cron: 1` AND 正在 Vercel 環境跑 (process.env.VERCEL)
- *     Vercel Edge 會自動從外部請求剝除此 header，但僅在實際跑在 Vercel 上這保證才成立；
- *     若不加 `VERCEL` 檢查，local / 自架 proxy 可能讓此 header 被偽造。
- *   - Manual trigger: Bearer CRON_SECRET (timing-safe compared)
+ * Verify a cron request.
+ *
+ * 只認 Vercel 官方文件記載的方式：`Authorization: Bearer ${CRON_SECRET}`（timing-safe 比對）。
+ * 專案設定了 CRON_SECRET 之後，Vercel 排程器會自動帶上它；手動觸發也用同一種方式。
+ *
+ * 過去這裡還額外接受任何帶 `x-vercel-cron: 1` 標頭的請求。該標頭不在官方文件中，
+ * 文件也沒有說明外部請求會被剝除，不能當作身分證明，所以已移除。
+ * 請勿再加回任何「只看某個標頭」的放行路徑。
  */
 export async function verifyCronAuth(request: NextRequest): Promise<boolean> {
-  const onVercel = process.env.VERCEL === '1'
-  if (onVercel && request.headers.get('x-vercel-cron') === '1') {
-    return true
-  }
-
-  const secret = process.env.CRON_SECRET?.trim()
-  if (!secret) return false
-
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader?.startsWith('Bearer ')) return false
-
-  const provided = authHeader.slice(7)
-  return secureCompare(provided, secret)
+  return verifyBearerSecret(request, 'CRON_SECRET')
 }
 
 /**
