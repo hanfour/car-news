@@ -50,3 +50,23 @@
 ## Gemini 不可用時仍然沒有備援的步驟
 
 看圖的步驟仍只靠 Gemini Vision：從來源圖片挑封面，以及多張參考圖的外觀分析。Gemini 不可用時這些步驟會略過，封面改由 Flux 依文字描述生成。
+
+## 比較各模型寫的稿
+
+每篇文章的 `ai_model` 欄位記錄實際寫稿的模型。Claude 失敗、改由 OpenAI 寫稿時，記的是 `gpt-4o`。舊文章是 NULL。
+
+發布與否由品質閘門決定：信心分數 80 以上且有數據才發布，70 到 79 會被擋下等人工審核。信心分數是模型自己填的，不同模型的習慣不同，所以換了寫稿的模型，被擋下的比例可能跟著變。用下面的查詢比較：
+
+```sql
+SELECT ai_model,
+       count(*) AS written,
+       count(*) FILTER (WHERE published) AS published,
+       round(avg(confidence)::numeric, 1) AS avg_confidence
+FROM generated_articles
+WHERE ai_model IS NOT NULL
+  AND created_at > now() - interval '7 days'
+GROUP BY ai_model
+ORDER BY written DESC;
+```
+
+被擋下的文章在後台文章列表切到草稿就看得到。

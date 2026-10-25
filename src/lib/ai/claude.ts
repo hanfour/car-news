@@ -16,6 +16,8 @@ let client: Anthropic | null = null
 let cachedModel: string | null = null
 let lastModelCheck: number = 0
 const MODEL_CACHE_TTL = 60 * 60 * 1000 // 1小時
+/** Claude 失敗時改用的 OpenAI 模型。請求與 ai_model 記錄共用同一個值，才不會對不上。 */
+const OPENAI_ARTICLE_MODEL = 'gpt-4o'
 
 function getAnthropic() {
   if (!client) {
@@ -136,6 +138,8 @@ export interface GenerateArticleOutput {
   car_models?: string[]
   categories?: string[]
   tags?: string[]
+  /** 實際寫出這篇文章的模型 id。由各 provider 的實作在回傳前填入，不採用模型自己輸出的值。 */
+  ai_model?: string
 }
 
 export async function generateArticleWithClaude(
@@ -218,7 +222,7 @@ ${ARTICLE_OUTPUT_SCHEMA_PROMPT}`
       }
 
       logger.info('ai.claude.generate_ok')
-      return result
+      return { ...result, ai_model: claudeModel }
     } catch (error) {
       claudeError = error
       logger.error('ai.claude.generate_fail', error)
@@ -233,7 +237,7 @@ ${ARTICLE_OUTPUT_SCHEMA_PROMPT}`
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: OPENAI_ARTICLE_MODEL,
       messages: [
         {
           role: 'user',
@@ -248,7 +252,7 @@ ${ARTICLE_OUTPUT_SCHEMA_PROMPT}`
 
     recordAIUsage({
       provider: 'openai',
-      model: 'gpt-4o',
+      model: OPENAI_ARTICLE_MODEL,
       purpose: 'article_generation',
       inputTokens: completion.usage?.prompt_tokens,
       outputTokens: completion.usage?.completion_tokens,
@@ -257,7 +261,7 @@ ${ARTICLE_OUTPUT_SCHEMA_PROMPT}`
     const jsonText = stripJSONCodeBlock(responseText)
     const result = JSON.parse(jsonText)
     logger.info('ai.claude.openai_generate_ok')
-    return result
+    return { ...result, ai_model: OPENAI_ARTICLE_MODEL }
   } catch (error) {
     logger.error('ai.claude.openai_generate_fail', error)
     // 保留兩邊的原始錯誤，呼叫端才能分辨是額度、金鑰還是內容問題。

@@ -125,7 +125,7 @@ ${ARTICLE_OUTPUT_SCHEMA_PROMPT}`
     }
 
     logger.info('ai.gemini.generate_ok', { model })
-    return parsedResult
+    return { ...parsedResult, ai_model: modelName }
   } catch (error) {
     logger.error('ai.gemini.generate_fail', error)
     throw error
